@@ -173,11 +173,11 @@
 		
 		currSet = '';
 		currSet += 'Step: '+numStp.toString()+'<br />';
-		currSet += 'Relative Start Time (HH:MM:SS.SSS)
+		currSet += 'Relative Start Time (HH:MM:SS.SSS): <input type="text" name="obs'+obsID.toString()+'stpStart'+numStp.toString()+'" /><br />';
 		currSet += 'Tuning 1 Frequency (MHz): <input type="text" name="obs'+obsID.toString()+'stpFrequency'+numStp.toString()+'-1" /><br />';
 		currSet += 'Tuning 2 Frequency (MHz): <input type="text" name="obs'+obsID.toString()+'stpFrequency'+numStp.toString()+'-2" /><br />';
-		currSet += 'Coordinate 1: <input type="text" name="stpC1'+numStp.toString()+'" /><br />';
-		currSet += 'Coordinate 2: <input type="text" name="stpC2'+numStp.toString()+'" /><br />';
+		currSet += 'Coordinate 1: <input type="text" name="obs'+obsID.toString()+'stpC1'+numStp.toString()+'" /><br />';
+		currSet += 'Coordinate 2: <input type="text" name="obs'+obsID.toString()+'stpC2'+numStp.toString()+'" /><br />';
 
 		newEntry = document.createElement('div');
 		newEntry.setAttribute('id', 'stp'+obsID.toString());
@@ -250,6 +250,7 @@
 	<p>
 		Session Title: <input type="text" name="sessionName" size="65" /><br />
 		Session ID: <input type="text" name="sessionID" value="1"/><br />
+		Data Return: <input type="radio" name="dataReturnMethod" value="DRSU" checked/>DRSU <input type="radio" name="dataReturnMethod" value="USBHD" />USB Harddrives (max. 4)<br />
 		Comments:<br />
 		<textarea rows="10" cols="75" name="sessionComments"></textarea><br />
 	</p>

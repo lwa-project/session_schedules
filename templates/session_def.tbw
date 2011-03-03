@@ -1,5 +1,5 @@
 {%- if obs.mode == 'TBW' -%}
 OBS_DUR         {{ "%i"|format(obs.dur) }}
-OBS_DUR+        {{ "%.1f ms"|format(obs.samples / 196000) }} + read-out time (estimated)
+OBS_DUR+        {{ "%.1f ms"|format(obs.samples / 196000) }} + estimated read-out time
 OBS_MODE        {{ obs.mode }}
 {%- endif %}
