@@ -1,0 +1,42 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<title>LWA Session Definition File</title>
+</head>
+
+<body>
+<a id="logo" href="http://lwa.unm.edu/"><img src="/lwa/logo.png" alt="The Long Wavelength Array Software Page" /></a>
+<h2>LWA Session Definition File</h2>
+
+<form action="session-definition.py" method="POST">
+	<h3>Observer Information</h3>
+	<p>
+		Name:  First <input type="text" name="firstName" />  Last <input type="text" name="lastName" /><br />
+		Observer ID: <input type="text" name="observerID" /><br />
+	</p>
+
+	<h3>Proposal Information</h3>
+	<p>
+		Project Title: <input type="text" name="projectName" size="65" /><br />
+		Project ID: <input type="text" name="projectID" /><br />
+		Comments:<br />
+		<textarea rows="10" cols="75" name="projectComments"></textarea><br />
+	</p>
+
+	<h3>Session Information</h3>
+	<p>
+		Principle DP Output:
+		<select name="sessionMode">
+			<option value="TBW">TBW </option>
+			<option value="TBN">TBN</option>
+			<option value="DRX" selected="selected">DRX </option>
+		</select>
+	</p>
+
+	<input type="hidden" name="mode" value="observations" />
+	<input type="submit" name="Continue" />
+</form>
+
+
+</body>
+</html>

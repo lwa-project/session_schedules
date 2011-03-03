@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Source>
+	<Name>{{ target }}</Name>
+	<RA coordsys="{{ coordsys }}" units="{{ raUnits }}">{{ ra }}</RA>
+	<Dec coordsys="{{ coordsys }}" units="{{ decUnits }}">{{ dec }}</Dec>
+	<Service>{{ service }}</Service>
+</Source>

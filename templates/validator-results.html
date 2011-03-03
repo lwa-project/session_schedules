@@ -1,0 +1,78 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<title>LWA Session Definition File Validator</title>
+
+	<link rel="stylesheet" href="schedule.css" type="text/css" />
+</head>
+
+<body>
+<a id="logo" href="http://lwa.unm.edu/"><img src="/lwa/logo.png" alt="The Long Wavelength Array Software Page" /></a>
+<h2>LWA Session Definition File Validator</h2>
+
+{%- if tpss.valid -%}
+	Congratulations, you have a valid session definition file.<br />
+{% else %}
+	{%- trans count=tpss.errors|length -%}
+		{{ count }} error has been detected in your session definition file:<br />
+	{% pluralize %}
+		{{ count }} errors have been detected in your session definition file:<br />
+	{% endtrans %}
+	<ol>
+	{%- for error in tpss.errors -%}
+		<li>On <a href="#sdf{{ error.line }}">line {{ error.line }}</a>: {{ error.message }}</li>
+	{% endfor %}
+	</ol>
+{% endif %}
+
+{%- if tpss.numObs != sdf.numObs -%}
+	<i>Warning</i> the number of observations parsed does not equal the number of observations in the submitted file<br />
+{% endif %}
+
+<h3>Summary:</h3>
+<p>
+	Type of observations: {{ sdf.mode }}<br />
+	Total number of parsed observations: {{ tpss.numObs }}<br />
+	Total observing time: {{ "%.3f seconds"|format(tpss.totDur / 1000) }}<br />
+	TPSS version used for validation: {{ tpss.version }}<br />
+</p>
+
+{%- if sdf.mode == 'beam forming' -%}
+<h3>Source List:</h3>
+<ol>
+{% for object in sdf.targets %}
+	{% if object.type == 'TRK_RADEC' %}
+	<li>{{ object.name }} at RA: {{ "%.6f hours"|format(object.ra) }}, Dec.: {{ "%+.6f degrees"|format(object.dec) }}  is visible {{ "%i%%"|format(object.visibility * 100) }} of the observation</li>
+	{% endif %}
+
+	{% if object.type == 'TRK_SOL' %}
+	<li>Sun is visible {{ "%i%%"|format(object.visibility * 100) }} of the observation</li>
+	{% endif %}
+
+	{% if object.type == 'TRK_JOV' %}
+	<li>Jupiter is visible {{ "%i%%"|format(object.visibility * 100) }} of the observation</li>
+	{% endif %}
+	
+{% endfor %}
+</ol>
+{% endif %}
+
+<h3>Validator Output:</h3>
+<p>
+	{%- for line in tpss.output -%}
+	{{ line }}<br />
+	{% endfor %}
+</p>
+
+
+<h3>File Contents:</h3>
+<div style="border-style: solid; border-width: 1px; border-color=black;">
+<table style="border-collapse: collapse">
+	{%- for line in sdf.output -%}
+	<tr style="border-collapse: collapsed"><td class="linenumber"> {{ loop.index }} &nbsp;</td><td><a name="sdf{{ loop.index }}">{{ line }}</a></td></tr>
+	{% endfor %}
+</table>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,14 @@
+{%- if obs.mode == 'STEPPED' -%}
+OBS_STP_N       {{ obs.steps|length }}
+OBS_STP_RADEC   {{ "%i"|format(obs.stepRADec) }}
+{%- for step in obs.steps -%}
+OBS_STP_C1{{ loop.index }}      {{ step.c1 }}
+OBS_STP_C2{{ loop.index }}      {{ step.c2 }}
+OBS_STP_C2{{ loop.index }}      {{ step.start }}
+OBS_STP_FREQ1{{ loop.index }}   {{ step.freq1 }}
+OBS_STP_FREQ1{{ loop.index }}+  {{ "%.9f MHz"|format(step.frequency1/1000000) }}
+OBS_STP_FREQ2{{ loop.index }}   {{ step.freq2 }}
+OBS_STP_FREQ2{{ loop.index }}+  {{ "%.9f MHz"|format(step.frequency2/1000000) }}
+OBS_STP_B{{ loop.index }}       {{ step.beam }}
+{% endfor %}
+{% endif %}

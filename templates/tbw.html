@@ -1,0 +1,119 @@
+<head>
+	<title>LWA Session Definition File</title>
+	
+	<link rel="stylesheet" href="schedule.css" type="text/css" />
+
+	<script language="javascript">
+
+	numObs = 0;
+
+	function validateSamples(fieldID, bitsID) {
+		nSamples = fieldID.value;
+		if(bitsID.value == 12) {
+			maxSamples = 12000000;
+		} else {
+			maxSamples = 36000000;
+		}
+		if(nSamples > maxSamples) {
+			fieldID.value = maxSamples;
+		}
+	}
+
+	function addTBW() {
+		numObs = numObs + 1;
+		
+		currSet = '';
+		currSet += 'Observation ID: '+numObs.toString()+'<br />';
+		currSet += 'Title: <input type="text" name="obsName'+numObs.toString()+'" /><br />';
+		currSet += 'Target: <input type="text" name="obsTarget'+numObs.toString()+'" value="All-Sky" /><br />';
+		currSet += 'Start (UTC YYYY MM DD HH:MM:SS.SSS): <input type="txt" name="obsStart'+numObs.toString()+'" /><br />';
+		currSet += 'Comments:<br /><textarea rows="5" cols="75" name="obsComments'+numObs.toString()+'"></textarea><br />';
+
+		newEntry = document.createElement('div');
+		newEntry.setAttribute('id', 'obs'+numObs.toString());
+		newEntry.setAttribute('class', 'obs');
+		newEntry.innerHTML = currSet;
+
+		document.getElementById('observations').appendChild(newEntry)
+	}
+
+	function validateTBW(form) {
+		bits = form.bits.value;
+		samples = form.samples.value;
+		if( bits == 12 ) {
+			if( samples > 12000000) {
+				form.samples.style.backgroundColor = '#ffc4de';
+			} else {
+				form.samples.style.backgroundColor = 'white';
+			}
+		} else {
+			if( samples > 36000000) {
+				form.samples.style.backgroundColor = '#ffc4de';
+			} else {
+				form.samples.style.backgroundColor = 'white';
+			}
+		}
+
+		fields = form.elements;
+		for(i=0; i<fields.length; i++) {
+			if( fields[i].name.search('Comment') == -1 && fields[i].type == 'text') {
+				if( fields[i].value.length == 0 ) {
+					fields[i].style.backgroundColor = '#ffc4de';
+				} else {
+					fields[i].style.backgroundColor = 'white';
+				}
+			}
+		}
+	}
+
+	</script>
+</head>
+
+<body onload="addTBW();">
+<a id="logo" href="http://lwa.unm.edu/"><img src="/lwa/logo.png" alt="The Long Wavelength Array Software Page" /></a>
+<h2>LWA Session Definition File</h2>
+
+<form action="session-definition.py" method="POST">
+	<h3>Project Information</h3>
+	<p>
+		Observer ID: {{ projectInfo['observerID'] }}<br />
+		Proposal ID: {{ projectInfo['projectID'] }}<br />
+		<input type="hidden" name="firstName" value="{{ projectInfo['firstName'] }}" />
+		<input type="hidden" name="lastName" value="{{ projectInfo['lastName'] }}" />
+		<input type="hidden" name="observerID" value="{{ projectInfo['observerID'] }}" />
+		<input type="hidden" name="projectName" value="{{ projectInfo['projectName'] }}" />
+		<input type="hidden" name="projectID" value="{{ projectInfo['projectID'] }}" />
+		<input type="hidden" name="projectComments" value="{{ projectInfo['projectComments'] }}" />
+		<input type="hidden" name="sessionMode" value="{{ projectInfo['sessionMode'] }}" />
+	</p>
+
+	<h3>Session Information</h3>
+	<p>
+		Session Title: <input type="text" name="sessionName" size="65" /><br />
+		Session ID: <input type="text" name="sessionID" value="1"/><br />
+		Comments:<br />
+		<textarea rows="10" cols="75" name="sessionComments"></textarea><br />
+	</p>
+
+	<h3>TBW Observations</h3>
+	<h4>Global Settings</h4>
+	<p>
+		Data Bits: <select name="bits">
+			<option value="4">4-bit</option>
+			<option value="12" selected="selected">12-bit</option>
+		</select><br />
+		Maximum Samples: <input type="text" name="samples" value="12000000" size="9"/><br />
+	</p>
+
+	<h4>Observations</h4>
+	<a id="addTBWObservation" href="#" onClick="addTBW();">Add TBW Observation</a>
+	<div id="observations"></div>
+	<div style="float: left;">
+	<input type="hidden" name="mode" value="definitions" />
+	<input type="button" value="Validate" onClick="validateTBW(this.form);" />
+	<input type="submit" name="Create" />
+	</div>
+</form>
+
+</body>
+</html>

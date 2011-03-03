@@ -1,0 +1,100 @@
+<head>
+	<title>LWA Session Definition File</title>
+
+	<link rel="stylesheet" href="schedule.css" type="text/css" />
+
+	<script language="javascript">
+
+	numObs = 0;
+
+	function addTBN() {
+		numObs = numObs + 1;
+		
+		currSet = '';
+		currSet += 'Observation ID: '+numObs.toString()+'<br />';
+		currSet += 'Title: <input type="text" name="obsName'+numObs.toString()+'" /><br />';
+		currSet += 'Target: <input type="text" name="obsTarget'+numObs.toString()+'" value="All-Sky" /><br />';
+		currSet += 'Start (UTC YYYY MM DD HH:MM:SS.SSS): <input type="text" name="obsStart'+numObs.toString()+'" /><br />';
+		currSet += 'Duration (HH:MM:SS.SSS): <input type="text" name="obsDuration'+numObs.toString()+'" /><br />';
+		currSet += 'Tuning Frequency (MHz): <input type="text" name="obsFrequency'+numObs.toString()+'" /><br />';
+		currSet += 'Filter: <select name="obsFilter'+numObs.toString()+'">';
+		currSet += '     <option value="1">1 kHz</option>';
+		currSet += '     <option value="2">3.125 kHz</option>';
+		currSet += '     <option value="3">6.25 kHz</option>';
+		currSet += '     <option value="4">12.5 kHz</option>';
+		currSet += '     <option value="5">25 kHz</option>';
+		currSet += '     <option value="6">50 kHz</option>';
+		currSet += '     <option value="7" selected="selected">100 kHz</option>';
+		currSet += '</select>';
+		currSet += 'Comments:<br /><textarea rows="5" cols="75" name="obsComments'+numObs.toString()+'"></textarea><br />';
+
+		newEntry = document.createElement('div');
+		newEntry.setAttribute('id', 'obs'+numObs.toString());
+		newEntry.setAttribute('class', 'obs');
+		newEntry.innerHTML = currSet;
+
+		document.getElementById('observations').appendChild(newEntry)
+	}
+
+	function validateTBN(form) {
+		fields = form.elements;
+		for(i=0; i<fields.length; i++) {
+			if( fields[i].name.search('Comment') == -1 && fields[i].type == 'text') {
+				if( fields[i].value.length == 0 ) {
+					fields[i].style.backgroundColor = '#ffc4de';
+				} else {
+					fields[i].style.backgroundColor = 'white';
+				}
+			}
+
+			if( fields[i].name.search('Frequency') != -1 ) {
+				if( fields[i].value < 9.9999999776483 || fields[i].value > 87.999999976717 ) {
+					fields[i].style.backgroundColor = '#ffc4de';
+				} else {
+					fields[i].style.backgroundColor = 'white';
+				}
+			}
+		}
+	}
+
+	</script>
+</head>
+
+<body onload="addTBN();">
+<a id="logo" href="http://lwa.unm.edu/"><img src="/lwa/logo.png" alt="The Long Wavelength Array Software Page" /></a>
+<h2>LWA Session Definition File</h2>
+
+<form action="session-definition.py" method="POST">
+	<input type="hidden" name="pickledProject" value="{{ pickledProject }}" />
+	<h3>Project Information</h3>
+	<p>
+		Observer ID: {{ projectInfo['observerID'] }}<br />
+		Proposal ID: {{ projectInfo['projectID'] }}<br />
+		<input type="hidden" name="firstName" value="{{ projectInfo['firstName'] }}" />
+		<input type="hidden" name="lastName" value="{{ projectInfo['lastName'] }}" />
+		<input type="hidden" name="observerID" value="{{ projectInfo['observerID'] }}" />
+		<input type="hidden" name="projectName" value="{{ projectInfo['projectName'] }}" />
+		<input type="hidden" name="projectID" value="{{ projectInfo['projectID'] }}" />
+		<input type="hidden" name="projectComments" value="{{ projectInfo['projectComments'] }}" />
+		<input type="hidden" name="sessionMode" value="{{ projectInfo['sessionMode'] }}" />
+	</p>
+
+	<h3>Session Information</h3>
+	<p>
+		Session Title: <input type="text" name="sessionName" size="65" /><br />
+		Session ID: <input type="text" name="sessionID" value="1"/><br />
+		Comments:<br />
+		<textarea rows="10" cols="75" name="sessionComments"></textarea><br />
+	</p>
+
+	<h3>TBN Observations</h3>
+	<a id="addTBNObservation" href="#" onClick="addTBN();">Add TBN Observation</a>
+	<div id="observations">
+	</div>
+	<input type="hidden" name="mode" value="definitions" />
+	<input type="button" value="Validate" onClick="validateTBN(this.form);" />
+	<input type="submit" name="Create" />
+</form>
+
+</body>
+</html>

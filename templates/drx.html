@@ -1,0 +1,267 @@
+<head>
+	<title>LWA Session Definition File</title>
+
+	<link rel="stylesheet" href="schedule.css" type="text/css" />
+
+	<script language="javascript">
+
+	var numObs = 0;
+	var numStp = 0;
+	var xmlhttp;
+
+	function resolve(nameField, raField, decField) {
+		xmlhttp = new XMLHttpRequest();
+		var name = nameField.value;
+		name = name.replace('+', '%2B')
+		xmlhttp.open("GET", "/lwa/schedule/resolve.py?name="+name);
+		xmlhttp.setRequestHeader("Content-Type", "text/xml");
+		xmlhttp.onreadystatechange=function() {
+			if (xmlhttp.readyState == 4) {
+				if( xmlhttp.status == 200 ) {
+					var parser = new DOMParser();
+					var resXML = parser.parseFromString(xmlhttp.responseText, 'text/xml');
+					var ra = resXML.getElementsByTagName('RA')[0].firstChild.data;
+					var dec = resXML.getElementsByTagName('Dec')[0].firstChild.data;
+					if( parseFloat(ra) >= 0.0 ) {
+						raField.value = Math.round(parseFloat(ra)/15.0*1000000)/1000000.0;
+						decField.value = Math.round(parseFloat(dec)*1000000)/1000000.0;
+					}
+				}
+			}
+		};
+		xmlhttp.send(null);
+	}
+
+	function addDRX() {
+		numObs = numObs + 1;
+		
+		currSet = '';
+		currSet += 'Observation ID: '+numObs.toString()+'<br />';
+		currSet += '<input type="hidden" name="obsMode'+numObs.toString()+'" value="TRK_RADEC" />';
+		currSet += 'Title: <input type="text" name="obsName'+numObs.toString()+'" /><br />';
+		currSet += 'Target: <input type="text" name="obsTarget'+numObs.toString()+'" />';
+		currSet += '<input type="button" value="Resolve" onClick="resolve(this.form.obsTarget'+numObs.toString()+', this.form.obsRA'+numObs.toString()+', this.form.obsDec'+numObs.toString()+')" /><br />';
+		currSet += 'Start (UTC YYYY MM DD HH:MM:SS.SSS): <input type="text" name="obsStart'+numObs.toString()+'" /><br />';
+		currSet += 'Duration (HH:MM:SS.SSS): <input type="text" name="obsDuration'+numObs.toString()+'" /><br />';
+		currSet += 'Tuning 1 Frequency (MHz): <input type="text" name="obsFrequency'+numObs.toString()+'-1" /><br />';
+		currSet += 'Tuning 2 Frequency (MHz): <input type="text" name="obsFrequency'+numObs.toString()+'-2" /><br />';
+		currSet += 'Filter: <select name="obsFilter'+numObs.toString()+'">';
+		currSet += '     <option value="1">250 kHz</option>';
+		currSet += '     <option value="2">500 kHz</option>';
+		currSet += '     <option value="3">1 MHz</option>';
+		currSet += '     <option value="4">2 MHz</option>';
+		currSet += '     <option value="5">4.9 MHz</option>';
+		currSet += '     <option value="6">9.8 MHz</option>';
+		currSet += '     <option value="7" selected="selected">19.6 MHz</option>';
+		currSet += '</select><br />';
+		currSet += 'Beam-forming Mode: <input type="radio" name="obsBeam'+numObs.toString()+'" value="SIMPLE" checked> Simple';
+		currSet += '<input type="radio" name="obsBeam'+numObs.toString()+'" value="MAX_SNR">Maximum S/N<br />';
+		currSet += 'RA (HH.HHHHH, J2000): <input type="text" name="obsRA'+numObs.toString()+'" /><br />';
+		currSet += 'Dec (DD.DDDDD, J2000): <input type="text" name="obsDec'+numObs.toString()+'" /><br />';
+		currSet += 'Comments:<br /><textarea rows="5" cols="75" name="obsComments'+numObs.toString()+'"></textarea><br />';
+		
+		newEntry = document.createElement('div');
+		newEntry.setAttribute('id', 'obs'+numObs.toString());
+		newEntry.setAttribute('class', 'obs');
+		newEntry.innerHTML = currSet;
+
+		document.getElementById('observations').appendChild(newEntry)
+	}
+
+	function addDRXS() {
+		numObs = numObs + 1;
+		
+		currSet = '';
+		currSet += 'Observation ID: '+numObs.toString()+'<br />';
+		currSet += '<input type="hidden" name="obsMode'+numObs.toString()+'" value="TRK_SOL" />';
+		currSet += 'Title: <input type="text" name="obsName'+numObs.toString()+'" /><br />';
+		currSet += 'Target: <input type="text" name="obsTarget'+numObs.toString()+'" value="Sun"/><br />';
+		currSet += 'Start (UTC YYYY MM DD HH:MM:SS.SSS): <input type="text" name="obsStart'+numObs.toString()+'" /><br />';
+		currSet += 'Duration (HH:MM:SS.SSS): <input type="text" name="obsDuration'+numObs.toString()+'" /><br />';
+		currSet += 'Tuning 1 Frequency (MHz): <input type="text" name="obsFrequency'+numObs.toString()+'-1" /><br />';
+		currSet += 'Tuning 2 Frequency (MHz): <input type="text" name="obsFrequency'+numObs.toString()+'-2" /><br />';
+		currSet += 'Filter: <select name="obsFilter'+numObs.toString()+'">';
+		currSet += '     <option value="1">250 kHz</option>';
+		currSet += '     <option value="2">500 kHz</option>';
+		currSet += '     <option value="3">1 MHz</option>';
+		currSet += '     <option value="4">2 MHz</option>';
+		currSet += '     <option value="5">4.9 MHz</option>';
+		currSet += '     <option value="6">9.8 MHz</option>';
+		currSet += '     <option value="7" selected="selected">19.6 MHz</option>';
+		currSet += '</select><br />';
+		currSet += 'Beam-forming Mode: <input type="radio" name="obsBeam'+numObs.toString()+'" value="SIMPLE" checked> Simple';
+		currSet += '<input type="radio" name="obsBeam'+numObs.toString()+'" value="MAX_SNR">Maximum S/N';
+		currSet += 'Comments:<br /><textarea rows="5" cols="75" name="obsComments'+numObs.toString()+'"></textarea><br />';
+
+		newEntry = document.createElement('div');
+		newEntry.setAttribute('id', 'obs'+numObs.toString());
+		newEntry.setAttribute('class', 'obs');
+		newEntry.innerHTML = currSet;
+
+		document.getElementById('observations').appendChild(newEntry)
+	}
+
+	function addDRXJ() {
+		numObs = numObs + 1;
+		
+		currSet = '';
+		currSet += 'Observation ID: '+numObs.toString()+'<br />';
+		currSet += '<input type="hidden" name="obsMode'+numObs.toString()+'" value="TRK_JOV" />';
+		currSet += 'Title: <input type="text" name="obsName'+numObs.toString()+'" /><br />';
+		currSet += 'Target: <input type="text" name="obsTarget'+numObs.toString()+'" value="Jupiter" /><br />';
+		currSet += 'Start (UTC YYYY MM DD HH:MM:SS.SSS): <input type="text" name="obsStart'+numObs.toString()+'" /><br />';
+		currSet += 'Duration (HH:MM:SS.SSS): <input type="text" name="obsDuration'+numObs.toString()+'" /><br />';
+		currSet += 'Tuning 1 Frequency (MHz): <input type="text" name="obsFrequency'+numObs.toString()+'-1" /><br />';
+		currSet += 'Tuning 2 Frequency (MHz): <input type="text" name="obsFrequency'+numObs.toString()+'-2" /><br />';
+		currSet += 'Filter: <select name="obsFilter'+numObs.toString()+'">';
+		currSet += '     <option value="1">250 kHz</option>';
+		currSet += '     <option value="2">500 kHz</option>';
+		currSet += '     <option value="3">1 MHz</option>';
+		currSet += '     <option value="4">2 MHz</option>';
+		currSet += '     <option value="5">4.9 MHz</option>';
+		currSet += '     <option value="6">9.8 MHz</option>';
+		currSet += '     <option value="7" selected="selected">19.6 MHz</option>';
+		currSet += '</select><br />';
+		currSet += 'Beam-forming Mode: <input type="radio" name="obsBeam'+numObs.toString()+'" value="SIMPLE" checked> Simple';
+		currSet += '<input type="radio" name="obsBeam'+numObs.toString()+'" value="MAX_SNR">Maximum S/N';
+		currSet += 'Comments:<br /><textarea rows="5" cols="75" name="obsComments'+numObs.toString()+'"></textarea><br />';
+
+		newEntry = document.createElement('div');
+		newEntry.setAttribute('id', 'obs'+numObs.toString());
+		newEntry.setAttribute('class', 'obs');
+		newEntry.innerHTML = currSet;
+
+		document.getElementById('observations').appendChild(newEntry)
+	}
+
+	function addStepped() {
+		numObs = numObs + 1;
+		
+		currSet = '';
+		currSet += 'Observation ID: '+numObs.toString()+'<br />';
+		currSet += '<input type="hidden" name="obsMode'+numObs.toString()+'" value="STEPPED" />';
+		currSet += 'Title: <input type="text" name="obsName'+numObs.toString()+'" /><br />';
+		currSet += 'Target: <input type="text" name="obsTarget'+numObs.toString()+'" /><br />';
+		currSet += 'Start (UTC YYYY MM DD HH:MM:SS.SSS): <input type="text" name="obsStart'+numObs.toString()+'" /><br />';
+		currSet += 'Filter: <select name="obsFilter'+numObs.toString()+'">';
+		currSet += '     <option value="1">250 kHz</option>';
+		currSet += '     <option value="2">500 kHz</option>';
+		currSet += '     <option value="3">1 MHz</option>';
+		currSet += '     <option value="4">2 MHz</option>';
+		currSet += '     <option value="5">4.9 MHz</option>';
+		currSet += '     <option value="6">9.8 MHz</option>';
+		currSet += '     <option value="7" selected="selected">19.6 MHz</option>';
+		currSet += '</select><br />';
+		currSet += 'Beam-forming Mode: <input type="radio" name="obsBeam'+numObs.toString()+'" value="SIMPLE" checked> Simple';
+		currSet += '<input type="radio" name="obsBeam'+numObs.toString()+'" value="MAX_SNR">Maximum S/N<br />';
+		currSet += 'Coordinate Mode: <input type="radio" name="obsCoords'+numObs.toString()+'" value="RADec" checked> RA/Dec.';
+		currSet += '<input type="radio" name="obsCoords'+numObs.toString()+'" value="AzAlt">Az./Alt.<br />';
+		currSet += '<input type="button" value="Add Step" onClick="addStep('+numObs.toString()+');" />';
+		currSet += '<div id="obsSteps'+numObs.toString()+'"></div>';
+		currSet += 'Comments:<br /><textarea rows="5" cols="75" name="obsComments'+numObs.toString()+'"></textarea><br />';
+
+		newEntry = document.createElement('div');
+		newEntry.setAttribute('id', 'obs'+numObs.toString());
+		newEntry.setAttribute('class', 'obs');
+		newEntry.innerHTML = currSet;
+
+		document.getElementById('observations').appendChild(newEntry)
+	}
+
+	function addStep(obsID) {
+		numStp = numStp + 1;
+		
+		currSet = '';
+		currSet += 'Step: '+numStp.toString()+'<br />';
+		currSet += 'Relative Start Time (HH:MM:SS.SSS)
+		currSet += 'Tuning 1 Frequency (MHz): <input type="text" name="obs'+obsID.toString()+'stpFrequency'+numStp.toString()+'-1" /><br />';
+		currSet += 'Tuning 2 Frequency (MHz): <input type="text" name="obs'+obsID.toString()+'stpFrequency'+numStp.toString()+'-2" /><br />';
+		currSet += 'Coordinate 1: <input type="text" name="stpC1'+numStp.toString()+'" /><br />';
+		currSet += 'Coordinate 2: <input type="text" name="stpC2'+numStp.toString()+'" /><br />';
+
+		newEntry = document.createElement('div');
+		newEntry.setAttribute('id', 'stp'+obsID.toString());
+		newEntry.setAttribute('class', 'stp');
+		newEntry.innerHTML = currSet;
+
+		document.getElementById('obsSteps'+obsID.toString()).appendChild(newEntry)
+	}
+
+	function validateDRX(form) {
+		fields = form.elements;
+		for(i=0; i<fields.length; i++) {
+			if( fields[i].name.search('Comment') == -1 && fields[i].type == 'text') {
+				if( fields[i].value.length == 0 ) {
+					fields[i].style.backgroundColor = '#ffc4de';
+				} else {
+					fields[i].style.backgroundColor = 'white';
+				}
+			}
+
+			if(fields[i].name.search('Frequency') != -1) {
+				if( fields[i].value < 9.9999999776483 || fields[i].value > 87.999999976717 || fields[i].value.length == 0 ) {
+					fields[i].style.backgroundColor = '#ffc4de';
+				} else {
+					fields[i].style.backgroundColor = 'white';
+				}
+			}
+
+			if(fields[i].name.search('RA') != -1) {
+				if(fields[i].value < 0 || fields[i].value >= 24 || fields[i].value.length == 0 ) {
+					fields[i].style.backgroundColor = '#ffc4de';
+				} else {
+					fields[i].style.backgroundColor = 'white';
+				}
+			}
+
+			if(fields[i].name.search('Dec') != -1) {
+				if(fields[i].value < -90 || fields[i].value > 90 || fields[i].value.length == 0 ) {
+					fields[i].style.backgroundColor = '#ffc4de';
+				} else {
+					fields[i].style.backgroundColor = 'white';
+				}
+			}
+		}
+	}
+
+	</script>
+</head>
+
+<body>
+<a id="logo" href="http://lwa.unm.edu/"><img src="/lwa/logo.png" alt="The Long Wavelength Array Software Page" /></a>
+<h2>LWA Session Definition File</h2>
+
+<form action="session-definition.py" method="POST">
+	<input type="hidden" name="pickledProject" value="{{ pickledProject }}" />
+	<h3>Project Information</h3>
+	<p>
+		Observer ID: {{ projectInfo['observerID'] }}<br />
+		Proposal ID: {{ projectInfo['projectID'] }}<br />
+		<input type="hidden" name="firstName" value="{{ projectInfo['firstName'] }}" />
+		<input type="hidden" name="lastName" value="{{ projectInfo['lastName'] }}" />
+		<input type="hidden" name="observerID" value="{{ projectInfo['observerID'] }}" />
+		<input type="hidden" name="projectName" value="{{ projectInfo['projectName'] }}" />
+		<input type="hidden" name="projectID" value="{{ projectInfo['projectID'] }}" />
+		<input type="hidden" name="projectComments" value="{{ projectInfo['projectComments'] }}" />
+		<input type="hidden" name="sessionMode" value="{{ projectInfo['sessionMode'] }}" />
+	</p>
+
+	<h3>Session Information</h3>
+	<p>
+		Session Title: <input type="text" name="sessionName" size="65" /><br />
+		Session ID: <input type="text" name="sessionID" value="1"/><br />
+		Comments:<br />
+		<textarea rows="10" cols="75" name="sessionComments"></textarea><br />
+	</p>
+
+	<h3>DRX Observations</h3>
+	<a id="addDRXObservation" href="#" onClick="addDRX();">Add RA/Dec Observation</a>  |  <a id="addDRXObservationS" href="#" onClick="addDRXS();">Add Solar Observation</a>  |  <a id="addDRXObservationJ" href="#" onClick="addDRXJ();">Add Jovian Observation</a>  |   <a id="addSteppedObservation" href="#" onClick="addStepped();">Add Stepped</a>
+	<div id="observations">
+	</div>
+	<input type="hidden" name="mode" value="definitions" />
+	<input type="button" value="Validate" onClick="validateDRX(this.form);" />
+	<input type="submit" name="Create" />
+</form>
+
+</body>
+</html>
