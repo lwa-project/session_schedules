@@ -25,8 +25,32 @@ is:
 All of the classes, except for Stepped and BeamStep, are complete and functional.  In 
 addition, most class contain 'validate' attribute functions that can be used to 
 determine if the project/session/observation are valid or not given the constraints of
-the DP system."""
+the DP system.
 
+In adition to providing the means for creating session deifinition files from scratch, 
+this module also includes a simple parser for SD file.  It is mostly complete but does
+not currently support some of the extended session/observation parameters.  This 
+includes:
+  * SESSION_DRX_BEAM
+  * SESSION_MRP_sss
+  * SESSION_MUP_sss
+  * SESSION_LOG_SCH
+  * SESSION_LOG_EXE
+  * SESSION_INC_SMIB
+  * SESSION_INC_DES
+  * OBS_FEE[n][p]
+  * OBS_ASP_FLT[n]
+  * OBS_ASP_AT1[n]
+  * OBS_ASP_AT2[n]
+  * OBS_ASP_ATS[n]
+  * OBS_TBN_GAIN
+  * OBS_DRX_GAIN
+  * OBS_BEAM_DELAY[n][p]
+  * BEAM_GAIN[n][p][q][r]
+Thus, stepped observations using OBS_STP_B[n] = SPEC_DELAYS_GAINS is not supported.
+"""
+
+import copy
 import math
 import pytz
 import ephem
@@ -48,7 +72,7 @@ from lsl.reader.drx import FrameSize as DRXSize
 
 __version__ = '0.1'
 __revision__ = '$ Revision: 2 $'
-__all__ = ['Observer', 'Project', 'Session', 'Observation', 'TBW', 'TBN', 'DRX', 'Solar', 'Jovian', 'Stepped', 'BeamStep', '__version__', '__revision__', '__all__']
+__all__ = ['Observer', 'Project', 'Session', 'Observation', 'TBW', 'TBN', 'DRX', 'Solar', 'Jovian', 'Stepped', 'BeamStep', 'parse', '__version__', '__revision__', '__all__']
 
 _UTC = pytz.utc
 _nStands = 256
@@ -62,16 +86,27 @@ class Observer(object):
 		self.id = int(id)
 
 
+class ProjectOffice(object):
+	"""Class to hold comments from the LWA object office.  This class isn't really 
+	needed to create SD files, but it is helpful for parsing SD files."""
+	
+	def __init__(self, project=None, sessions=[], observations=[]):
+		self.project = project
+		self.sessions = sessions
+		self.observations = observations
+
+
 class Project(object):
 	"""Class to hold all the information about a specific session for a 
 	project/proposal."""
 	
-	def __init__(self, observer, name, id, sessions=[], comments=None):
+	def __init__(self, observer, name, id, sessions=[], comments=None, projectOffice=ProjectOffice()):
 		self.observer = observer
 		self.name = name
 		self.id = id
 		self.comments = comments
 		self.sessions = sessions
+		self.projectOffice = projectOffice
 		
 	def validate(self):
 		failures = 0
@@ -181,7 +216,7 @@ class Observation(object):
 			utc = _UTC.localize(datetime.strptime(self.start, "UTC %Y %b %d %H:%M:%S.%f"))
 			utcMidnight = _UTC.localize(datetime.strptime(self.start[0:15], "UTC %Y %b %d"))
 		diff = utc - utcMidnight
-		return int((diff.seconds + diff.microseconds/1000000.0)*1000.0)
+		return int(round((diff.seconds + diff.microseconds/1000000.0)*1000.0))
 
 	def getDuration(self):
 		"""Parse the self.duration string with the format of HH:MM:SS.SSS to return the
@@ -197,7 +232,7 @@ class Observation(object):
 			out += float(fields[1])
 		else:
 			out = float(fields[0])
-		return int(out*1000.0)
+		return int(round(out*1000.0))
 
 	def getFrequency1(self):
 		"""Return the number of "tuning words" corresponding to the first frequency."""
@@ -494,7 +529,293 @@ class BeamStep(object):
 			return 1
 		else:
 			return 0
+
+
+def __parseCreateObsObject(obsTemp, beamTemps=[]):
+	"""Given a obsTemp dictionary of observation parameters and, optionally, a list of
+	beamTemp step parametes, return a complete Observation object corresponding to 
+	those values."""
+	
+	# If the observation ID is 0, do nothing.
+	if obsTemp['id'] == 0:
+		return None
+	
+	# Create a time string for the start time in UTC
+	start = Time(obsTemp['mjd'] + obsTemp['mpm'] / 1000.0 / 3600.0 / 24.0, format='MJD')
+	utcString = start.utc_py_date.strftime("UTC %Y %m %d %H:%M:%S.%f")
+	fields = utcString.split(':')
+	seconds = float(fields[-1])
+	fields[-1] = "%06.3f" % seconds
+	utcString = ':'.join(fields)
+	
+	# Build up a string representing the observation duration.  For TBW observations 
+	# this needs to be wrapped in a try...expect statement to catch errors.
+	try:
+		dur = obsTemp['dur']
+		dur = float(dur) / 1000.0
+		durString = '%02i:%02i:%06.3f' % (dur/3600, (dur%3600)/60, dur%60)
+	except:
+		pass
+	
+	# Convert the frequencies from "tuning words" to Hz
+	f1 = obsTemp['freq1']*fS / 2**32
+	f2 = obsTemp['freq2']*fS / 2**32
+	
+	# Get the mode and run through the various cases
+	mode = obsTemp['mode']
+	print "Obs %i is mode %s" % (obsTemp['id'], mode)
+	if mode == 'TBW':
+		obsOut = TBW(obsTemp['name'], obsTemp['target'], utcString, 12000000, comments=obsTemp['comments'])
+	elif mode == 'TBN':
+		obsOut = TBN(obsTemp['name'], obsTemp['target'], utcString, durString, f1, obsTemp['filter'], comments=obsTemp['comments'])
+	elif mode == 'TRK_RADEC':
+		obsOut = DRX(obsTemp['name'], obsTemp['target'], utcString, durString, obsTemp['ra'], obsTemp['dec'], f1, f2, obsTemp['filter'], MaxSNR=obsTemp['MaxSNR'], comments=obsTemp['comments'])
+	elif mode == 'TRK_SOL':
+		obsOut = Solar(obsTemp['name'], obsTemp['target'], utcString, durString, f1, f2, obsTemp['filter'], MaxSNR=obsTemp['MaxSNR'], comments=obsTemp['comments'])
+	elif mode == 'TRK_JOV':
+		obsOut = Jovian(obsTemp['name'], obsTemp['target'], utcString, durString, f1, f2, obsTemp['filter'], MaxSNR=obsTemp['MaxSNR'], comments=obsTemp['comments'])
+	else:
+		obsOut = Stepped(obsTemp['name'], obsTemp['target'], utcString, obsTemp['filter'], comments=obsTemp['comments'])
+		for beamTemp in beamTemps:
+			f1 = beamTemp['freq1']*fS / 2**32
+			f2 = beamTemp['freq2']*fS / 2**32
+			obsOut.steps.append( BeamStep(beamTemp['c1'], beamTemp['c2'], beamTemp['start'], f1, f2, beamTemp['MaxSNR']) )
+
+	# Return the newly created Observation object
+	return obsOut
+
+
+def parse(fh):
+	"""Given a open filehandle, read in the file and create Project object that describes it."""
+	
+	# Create empty objects to get things started.  Values will get filled in as they
+	# are found in the file
+	po = ProjectOffice()
+	observer = Observer('observer_name', 0)
+	project = Project(observer, 'project_name', 'project_id', projectOffice=po)
+	session = Session('session_name', 0)
+	project.sessions = [session,]
+	
+	# Loop over the file
+	obsTemp = {'id': 0, 'name': '', 'target': '', 'ra': 0.0, 'dec': 0.0, 'start': '', 'duration': '', 'mode': '', 
+				'freq1': 0, 'freq2': 0, 'filter': 0, 'MaxSNR': False, 'comments': None, 
+				'stpRADec': True, }
+	beamTemp = {'id': 0, 'c1': 0.0, 'c2': 0.0, 'start': 0, 'freq1': 0, 'freq2': 0, 'MaxSNR': False}
+	beamTemps = []
+	sessionBits = 12
+	sessionSamples = 12000000
+	for line in fh:
+		# Trim off the newline character and skip blank lines
+		line = line.replace('\n', '')
+		if len(line) == 0:
+			continue
+
+		# Split into a keyword, value pair and skip over the observer comment lines
+		# (denoted by a plus sign at the end)
+		keyword, value = line.split(None, 1)
+		if keyword[-1] == '+':
+			continue
+		
+		# Observer Info
+		if keyword == 'PI_ID':
+			project.observer.id = int(value)
+			continue
+		if keyword == 'PI_NAME':
+			project.observer.name = value
+			continue
+		
+		# Project/Proposal Info
+		if keyword == 'PROJECT_ID':
+			project.id = value
+			continue
+		if keyword == 'PROJECT_TITLE':
+			project.name = value
+			continue
+		if keyword == 'PROJECT_REMPI':
+			project.comments = value
+			continue
+		if keyword == 'PROJECT_REMPO':
+			project.projectOffice.project = value
+			continue
+		
+		# Session Info
+		if keyword == 'SESSION_ID':
+			project.sessions[0].id = int(value)
+			continue
+		if keyword == 'SESSION_TITLE':
+			project.sessions[0].name = value
+			continue
+		if keyword == 'SESSION_REMPI':
+			project.sessions[0].comments = value
+			continue
+		if keyword == 'SESSION_REMPO':
+			project.projectOffice.sessions.append( '' )
+			project.projectOffice.sessions[0] = value
+			continue
+		
+		# Observation Info
+		if keyword == 'OBS_ID':
+			if obsTemp['id'] != 0:
+				project.sessions[0].observations.append( __parseCreateObsObject(obsTemp, beamTemps=beamTemps) )
+				beamTemps = []
+			obsTemp['id'] = int(value)
+			print "Start obs %i" % int(value)
+			continue
+		if keyword == 'OBS_TITLE':
+			obsTemp['name'] = value
+			continue
+		if keyword == 'OBS_TARGET':
+			obsTemp['target'] = value
+			continue
+		if keyword == 'OBS_REMPI':
+			obsTemp['comments'] = value
+			continue
+		if keyword == 'OBS_REMPO':
+			project.projectOffice.observations.append( [] )
+			project.projectOffice.observations[0].append( value )
+			continue
+		if keyword == 'OBS_START_MJD':
+			obsTemp['mjd'] = int(value)
+			continue
+		if keyword == 'OBS_START_MPM':
+			obsTemp['mpm'] = int(value)
+			continue
+		if keyword == 'OBS_DUR':
+			obsTemp['dur'] = int(value)
+			continue
+		if keyword == 'OBS_MODE':
+			obsTemp['mode'] = value
+			continue
+		if keyword == 'OBS_RA':
+			obsTemp['ra'] = float(value)
+			continue
+		if keyword == 'OBS_DEC':
+			obsTemp['dec'] = float(value)
+			continue
+		if keyword == 'OBS_B':
+			if value != 'SIMPLE':
+				obsTemp['MaxSNR'] = True
+			continue
+		if keyword == 'OBS_FREQ1':
+			obsTemp['freq1'] = int(value)
+			continue
+		if keyword == 'OBS_FREQ2':
+			obsTemp['freq2'] = int(value)
+			continue
+		if keyword == 'OBS_BW':
+			obsTemp['filter'] = int(value)
+			continue
+		if keyword == 'OBS_STP_RADEC':
+			obsTemp['stpRADec'] = bool(int(value))
+			continue
 			
+		# Individual Stepped Beam Observations - This is a bit messy because of
+		# trying to keep up when a new step is encountered.  This adds in some 
+		# overhead to all of the steps.
+		if keyword[0:10] == 'OBS_STP_C1':
+			stepID = int(keyword[10:])
+			if len(tempSteps) == 0:
+				tempBeams.append( copy.deepcopy(tempBeam) )
+				tempBeams[-1]['id'] = stepID
+				tempBeams[-1]['c1'] = float(value)
+			else:
+				if tempBeams[-1]['id'] != stepID:
+					tempBeams.append( copy.deepcopy(tempBeams[-1]) )
+					tempBeams[-1]['id'] = stepID
+					tempBeams[-1]['c1'] = float(value)
+			continue
+				
+		if keyword[0:10] == 'OBS_STP_C2':
+			stepID = int(keyword[10:])
+			if len(tempSteps) == 0:
+				tempBeams.append( copy.deepcopy(tempBeam) )
+				tempBeams[-1]['id'] = stepID
+				tempBeams[-1]['c2'] = float(value)
+			else:
+				if tempBeams[-1]['id'] != stepID:
+					tempBeams.append( copy.deepcopy(tempBeams[-1]) )
+					tempBeams[-1]['id'] = stepID
+					tempBeams[-1]['c2'] = float(value)
+			continue
+			
+		if keyword[0:9] == 'OBS_STP_T':
+			stepID = int(keyword[9:])
+			if len(tempSteps) == 0:
+				tempBeams.append( copy.deepcopy(tempBeam) )
+				tempBeams[-1]['id'] = stepID
+				tempBeams[-1]['start'] = int(value)
+			else:
+				if tempBeams[-1]['id'] != stepID:
+					tempBeams.append( copy.deepcopy(tempBeams[-1]) )
+					tempBeams[-1]['id'] = stepID
+					tempBeams[-1]['start'] = int(value)
+			continue
+				
+		if keyword[0:13] == 'OBS_STP_FREQ1':
+			stepID = int(keyword[13:])
+			if len(tempSteps) == 0:
+				tempBeams.append( copy.deepcopy(tempBeam) )
+				tempBeams[-1]['id'] = stepID
+				tempBeams[-1]['freq1'] = int(value)
+			else:
+				if tempBeams[-1]['id'] != stepID:
+					tempBeams.append( copy.deepcopy(tempBeams[-1]) )
+					tempBeams[-1]['id'] = stepID
+					tempBeams[-1]['freq1'] = int(value)
+			continue
+					
+		if keyword[0:13] == 'OBS_STP_FREQ2':
+			stepID = int(keyword[13:])
+			if len(tempSteps) == 0:
+				tempBeams.append( copy.deepcopy(tempBeam) )
+				tempBeams[-1]['id'] = stepID
+				tempBeams[-1]['freq2'] = int(value)
+			else:
+				if tempBeams[-1]['id'] != stepID:
+					tempBeams.append( copy.deepcopy(tempBeams[-1]) )
+					tempBeams[-1]['id'] = stepID
+					tempBeams[-1]['freq2'] = int(value)
+			continue
+					
+		if keyword[0:9] == 'OBS_STP_B':
+			stepID = int(keyword[9:])
+			if len(tempSteps) == 0:
+				tempBeams.append( copy.deepcopy(tempBeam) )
+				tempBeams[-1]['id'] = stepID
+				if value == 'MAX_SNR':
+					tempBeams[-1]['MaxSNR'] = True
+			else:
+				if tempBeams[-1]['id'] != stepID:
+					tempBeams.append( copy.deepcopy(tempBeams[-1]) )
+					tempBeams[-1]['id'] = stepID
+					if value == 'MAX_SNR':
+						tempBeams[-1]['MaxSNR'] = True
+			continue
+		
+		# Session wide settings at the end of the observations
+		if keyword == 'OBS_TBW_BITS':
+			sessionBits = int(value)
+			continue
+		if keyword == 'OBS_TBW_SAMPLES':
+			sessionSamples = int(value)
+			continue
+	
+	# Create the final observation
+	if obsTemp['id'] != 0:
+		project.sessions[0].observations.append( __parseCreateObsObject(obsTemp, beamTemps=beamTemps) )
+		beamTemps = []
+		
+	# Apply session-wide observation values to the individual observations
+	if project.sessions[0].observations[-1].mode == 'TBW':
+		for obs in project.sessions[0].observations:
+			obs.bits = sessionBits
+			obs.samples = int(sessionSamples)
+			obs.dur = (int(obs.samples) / 196000 + 1)*1100
+			obs.duration = str(obs.dur / 1000.0)
+
+	# Return the project
+	return project
+
 
 _SDFTemplate = Template("""
 {%- macro renderBW(obs) -%}
@@ -504,38 +825,38 @@ _SDFTemplate = Template("""
 PI_ID           {{ project.observer.id }}
 PI_NAME         {{ project.observer.name }}
 
+{% set poComment = project.projectOffice.project|default('None', boolean=True) -%}
 PROJECT_ID      {{ project.id }}
 PROJECT_TITLE   {{ project.name }}
 PROJECT_REMPI   {{ project.comments|default('None provided', boolean=True)|truncate(4090, killwords=True) }}
-PROJECT_REMPO   None
+PROJECT_REMPO   {{ poComment }}
 
 {% set session = project.sessions[whichSession] -%}
+{% set poComment = project.projectOffice.sessions[whichSession]|default('None', boolean=True) -%}
 SESSION_ID      {{ session.id }}
 SESSION_TITLE   {{ session.name|default('None provided', boolean=True) }}
 SESSION_REMPI   {{ session.comments|default('None provided', boolean=True)|truncate(4090, killwords=True) }}
-SESSION_REMPO   Requested data return method is {{ session.dataReturnMethod }}
+SESSION_REMPO   {{ "Requested data return method is %s"|format(session.dataReturnMethod) if poComment == 'None' else poComment }}
 
 {% for obs in session.observations -%}
+{% set poComment = project.projectOffice.observations[whichSession][loop.index0]|default('None', boolean=True) -%}
 OBS_ID          {{ loop.index }}
 OBS_TITLE       {{ obs.name|default('None provided', boolean=True) }}
 OBS_TARGET      {{ obs.target|default('None provided', boolean=True) }}
 OBS_REMPI       {{ obs.comments|default('None provided', boolean=True)|truncate(4090, killwords=True) }}
-OBS_REMPO       Estimated data volume for this observation is {{ obs.dataVolume|filesizeformat }}
+OBS_REMPO       {{ "Estimated data volume for this observation is %s"|format(obs.dataVolume|filesizeformat) if poComment == 'None' else poComment }}
 OBS_START_MJD   {{ obs.mjd }}
 OBS_START_MPM   {{ obs.mpm }}
 OBS_START       {{ obs.start }}
 OBS_DUR         {{ "%i"|format(obs.dur) }}
 OBS_DUR+        {{ "%.1f ms + estimated read-out time"|format(obs.samples / 196000) if obs.mode == 'TBW' else obs.duration }}
 OBS_MODE        {{ obs.mode }}
-{%- if obs.mode == 'TBN' -%}
-\n
+{% if obs.mode == 'TBN' -%}
 OBS_FREQ1       {{ obs.freq1 }}
 OBS_FREQ1+      {{ "%.9f MHz"|format(obs.frequency1/1000000) }}
 OBS_BW          {{ obs.filter }}
 OBS_BW+         {{ renderBW(obs) }}
-{%- endif %}
-{%- if obs.mode == 'TRK_RADEC' -%}
-\n
+{% elif obs.mode == 'TRK_RADEC' -%}
 OBS_RA          {{ obs.ra }}
 OBS_DEC         {{ obs.dec }}
 OBS_B           {{ obs.beam }}
@@ -545,9 +866,7 @@ OBS_FREQ2       {{ obs.freq2 }}
 OBS_FREQ2+      {{ "%.9f MHz"|format(obs.frequency2/1000000) }}
 OBS_BW          {{ obs.filter }}
 OBS_BW+         {{ renderBW(obs) }}
-{%- endif %}
-{%- if obs.mode == 'TRK_SOL' -%}
-\n
+{% elif obs.mode == 'TRK_SOL' -%}
 OBS_B           {{ obs.beam }}
 OBS_FREQ1       {{ obs.freq1 }}
 OBS_FREQ1+      {{ "%.9f MHz"|format(obs.frequency1/1000000) }}
@@ -555,9 +874,7 @@ OBS_FREQ2       {{ obs.freq2 }}
 OBS_FREQ2+      {{ "%.9f MHz"|format(obs.frequency2/1000000) }}
 OBS_BW          {{ obs.filter }}
 OBS_BW+         {{ renderBW(obs) }}
-{%- endif %}
-{%- if obs.mode == 'TRK_JOV' -%}
-\n
+{% elif obs.mode == 'TRK_JOV' -%}
 OBS_B           {{ obs.beam }}
 OBS_FREQ1       {{ obs.freq1 }}
 OBS_FREQ1+      {{ "%.9f MHz"|format(obs.frequency1/1000000) }}
@@ -565,9 +882,7 @@ OBS_FREQ2       {{ obs.freq2 }}
 OBS_FREQ2+      {{ "%.9f MHz"|format(obs.frequency2/1000000) }}
 OBS_BW          {{ obs.filter }}
 OBS_BW+         {{ renderBW(obs) }}
-{%- endif %}
-{%- if obs.mode == 'STEPPED' -%}
-\n
+{% elif obs.mode == 'STEPPED' -%}
 OBS_STP_N       {{ obs.steps|length }}
 OBS_STP_RADEC   {{ "%i"|format(obs.stepRADec) }}
 {%- for step in obs.steps -%}
@@ -581,7 +896,6 @@ OBS_STP_FREQ2{{ loop.index }}+  {{ "%.9f MHz"|format(step.frequency2/1000000) }}
 OBS_STP_B{{ loop.index }}       {{ step.beam }}
 {%- endfor %}
 {%- endif %}
-
 {% endfor %}
 
 {%- set obs = session.observations|first -%}
