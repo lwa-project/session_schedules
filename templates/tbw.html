@@ -5,7 +5,7 @@
 
 	<script language="javascript">
 
-	numObs = 0;
+	numObs = {{ observations|length }}
 
 	function validateSamples(fieldID, bitsID) {
 		nSamples = fieldID.value;
@@ -26,7 +26,7 @@
 		currSet += 'Observation ID: '+numObs.toString()+'<br />';
 		currSet += 'Title: <input type="text" name="obsName'+numObs.toString()+'" /><br />';
 		currSet += 'Target: <input type="text" name="obsTarget'+numObs.toString()+'" value="All-Sky" /><br />';
-		currSet += 'Start (UTC YYYY MM DD HH:MM:SS.SSS): <input type="txt" name="obsStart'+numObs.toString()+'" /><br />';
+		currSet += 'Start (UTC YYYY MM DD HH:MM:SS.SSS): <input type="text" name="obsStart'+numObs.toString()+'" /><br />';
 		currSet += 'Comments:<br /><textarea rows="5" cols="75" name="obsComments'+numObs.toString()+'"></textarea><br />';
 
 		newEntry = document.createElement('div');
@@ -69,7 +69,7 @@
 	</script>
 </head>
 
-<body onload="addTBW();">
+<body {{ 'onload="addTBW();"' if observations|length == 0 }}>
 <a id="logo" href="http://lwa.unm.edu/"><img src="/lwa/logo.png" alt="The Long Wavelength Array Software Page" /></a>
 <h2>LWA Session Definition File</h2>
 
@@ -78,22 +78,15 @@
 	<p>
 		Observer ID: {{ projectInfo['observerID'] }}<br />
 		Proposal ID: {{ projectInfo['projectID'] }}<br />
-		<input type="hidden" name="firstName" value="{{ projectInfo['firstName'] }}" />
-		<input type="hidden" name="lastName" value="{{ projectInfo['lastName'] }}" />
-		<input type="hidden" name="observerID" value="{{ projectInfo['observerID'] }}" />
-		<input type="hidden" name="projectName" value="{{ projectInfo['projectName'] }}" />
-		<input type="hidden" name="projectID" value="{{ projectInfo['projectID'] }}" />
-		<input type="hidden" name="projectComments" value="{{ projectInfo['projectComments'] }}" />
-		<input type="hidden" name="sessionMode" value="{{ projectInfo['sessionMode'] }}" />
 	</p>
 
 	<h3>Session Information</h3>
 	<p>
-		Session Title: <input type="text" name="sessionName" size="65" /><br />
-		Session ID: <input type="text" name="sessionID" value="1"/><br />
+		Session Title: <input type="text" name="sessionName" size="65" value="{{ sessionInfo.sessionName }}" /><br />
+		Session ID: <input type="text" name="sessionID" value="{{ sessionInfo.sessionID|default("1", boolean=True) }}" /><br />
 		Data Return: <input type="radio" name="dataReturnMethod" value="DRSU" checked/>DRSU <input type="radio" name="dataReturnMethod" value="USBHD" />USB Harddrives (max. 4)<br />
 		Comments:<br />
-		<textarea rows="10" cols="75" name="sessionComments"></textarea><br />
+		<textarea rows="10" cols="75" name="sessionComments">{{ sessionInfo.sessionComments }}</textarea><br />
 	</p>
 
 	<h3>TBW Observations</h3>
@@ -108,11 +101,22 @@
 
 	<h4>Observations</h4>
 	<a id="addTBWObservation" href="#" onClick="addTBW();">Add TBW Observation</a>
-	<div id="observations"></div>
+	<div id="observations">
+	{% for obs in observations %}
+		<div class="obs" id="obs{{ loop.index }}">
+			Observation ID: {{ loop.index }}<br />
+			Title: <input type="text" name="obsName{{ loop.index }}" value="{{ obs.name }}" /><br />
+			Target: <input type="text" name="obsTarget{{ loop.index }}" value="{{ obs.target }}" /><br />
+			Start (UTC YYYY MM DD HH:MM:SS.SSS): <input type="text" name="obsStart{{ loop.index }}" value="{{ obs.start }}"/><br />
+			Comments:<br />
+			<textarea rows="5" cols="75" name="obsComments{{ loop.index }}">{{ obs.comments }}</textarea><br />
+		</div>
+	{% endfor %}
+	</div>
 	<div style="float: left;">
 	<input type="hidden" name="mode" value="definitions" />
 	<input type="button" value="Validate" onClick="validateTBW(this.form);" />
-	<input type="submit" name="Create" />
+	<input type="submit" name="Create" value="Create SDF" />
 	</div>
 </form>
 

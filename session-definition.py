@@ -16,7 +16,7 @@ def index(req):
 	path = os.path.join(os.path.dirname(__file__), 'templates')
 	env = Environment(loader=FileSystemLoader(path))
 
-	if pageMode == 'observations':
+	if pageMode == 'observations' and not sess.is_new():
 		# Stage 2:  Observation Definitions
 		sessionMode = req.form.getfirst('sessionMode', 'DRX')
 		projectInfo = {}
@@ -33,17 +33,21 @@ def index(req):
 			template = env.get_template('tbn.html')
 		else:
 			template = env.get_template('drx.html')
-		return template.render(projectInfo=projectInfo)
+			
+		try:
+			sessionInfo = sess['sessionInfo']
+		except:
+			sessionInfo = None
+		try:
+			observations = sess['observations']
+		except:
+			observations = []
+		return template.render(projectInfo=projectInfo, sessionInfo=sessionInfo, observations=observations)
 	
-	elif pageMode == 'definitions':
+	elif pageMode == 'definitions' and not sess.is_new():
 		# Stage 3:  Session Definition File Creation
-		projectInfo = {}
-		for keyword in ['firstName', 'lastName', 'observerID', 'projectName', 'projectID', 'projectComments', 'sessionMode']:
-			projectInfo[keyword] = req.form.getfirst(keyword, None)
-		
-		sessionInfo = {}
-		for keyword in ['sessionName', 'sessionID', 'sessionComments', 'dataReturnMethod']:
-			sessionInfo[keyword] = req.form.getfirst(keyword, None)
+		projectInfo = sess['projectInfo']
+		sessionInfo = sess['sessionInfo']
 		
 		observer = Observer(projectInfo['lastName']+', '+projectInfo['firstName'], projectInfo['observerID'])
 		project = Project(observer, projectInfo['projectName'], projectInfo['projectID'], comments=projectInfo['projectComments'])
@@ -51,6 +55,7 @@ def index(req):
 		
 		numObs = 1
 		observations = []
+		observationsSimple = []
 		while req.form.getfirst('obsName%i' % numObs, None) is not None:
 			obsName = req.form.getfirst('obsName%i' % numObs, None)
 			obsTarget = req.form.getfirst('obsTarget%i' % numObs, None)
@@ -60,12 +65,15 @@ def index(req):
 				obsBits = int(req.form.getfirst('bits', 12))
 				obsSamples = int(req.form.getfirst('samples', 12000000))
 				observations.append( TBW(obsName, obsTarget, obsStart, obsSamples, bits=obsBits, comments=obsComments) )
+				observationsSimple.append( {'id': numObs, 'name': obsName, 'target': obsTarget, 'start': obsStart, 'comments': obsComments} )
 				
 			if projectInfo['sessionMode'] == 'TBN':
 				obsDur = req.form.getfirst('obsDuration%i' % numObs, '00:00:00.000')
 				obsFreq = float(req.form.getfirst('obsFrequency%i' % numObs, 38.0))*1e6
 				obsFilter = int(req.form.getfirst('obsFilter%i' % numObs, 7))
 				observations.append( TBN(obsName, obsTarget, obsStart, obsDur, obsFreq, obsFilter, comments=obsComments) )
+				observationsSimple.append( {'id': numObs, 'name': obsName, 'target': obsTarget, 'start': obsStart, 
+										'duration': obsDur, 'frequency': obsFreq, 'filter': obsFilter, 'comments': obsComments} )
 				
 			if projectInfo['sessionMode'] == 'DRX':
 				obsMode = req.form.getfirst('obsMode%i' % numObs, 'TRK_RADEC')
@@ -98,19 +106,21 @@ def index(req):
 		session.observations = observations
 		project.sessions = [session,]
 		
-		sess['sessionInfo'] = sessionInfo
-		sess['form'] = req.form
+		sess['observations'] = observationsSimple
 		sess.save()
 		
-		# Set the output content type and suggested file name
+		# Set the output content type and create file
 		req.headers_out["Content-type"] = 'text/plain'
-		#req.headers_out["Content-Disposition"] = ';filename=%s_%i.txt' % (project.id, project.sessions[0].id)
-		
-		#template = env.get_template('session_def.tmpl')
-		#return template.render(project=project)
 		return project.render()
 		
 	else:
 		# Stage 1:  Observer and Proposal Information; DP Output Mode
+		sess.set_timeout(300)
 		template = env.get_template('session.html')
-		return template.render()
+		
+		try:
+			projectInfo = sess['projectInfo']
+		except:
+			projectInfo = None
+		return template.render(projectInfo=projectInfo)
+		

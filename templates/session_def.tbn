@@ -1,9 +1,0 @@
-{%- if obs.mode == 'TBN' -%}
-OBS_DUR         {{ obs.dur }}
-OBS_DUR+        {{ obs.duration }}
-OBS_MODE        {{ obs.mode }}
-OBS_FREQ1       {{ obs.freq1 }}
-OBS_FREQ1+      {{ "%.9f MHz"|format(obs.frequency1/1000000) }}
-OBS_BW          {{ obs.filter }}
-OBS_BW+         {{ "%.3f kHz"|format(obs.filterCodes[obs.filter]/1000) }}
-{% endif %}

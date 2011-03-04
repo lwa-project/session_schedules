@@ -237,13 +237,6 @@
 	<p>
 		Observer ID: {{ projectInfo['observerID'] }}<br />
 		Proposal ID: {{ projectInfo['projectID'] }}<br />
-		<input type="hidden" name="firstName" value="{{ projectInfo['firstName'] }}" />
-		<input type="hidden" name="lastName" value="{{ projectInfo['lastName'] }}" />
-		<input type="hidden" name="observerID" value="{{ projectInfo['observerID'] }}" />
-		<input type="hidden" name="projectName" value="{{ projectInfo['projectName'] }}" />
-		<input type="hidden" name="projectID" value="{{ projectInfo['projectID'] }}" />
-		<input type="hidden" name="projectComments" value="{{ projectInfo['projectComments'] }}" />
-		<input type="hidden" name="sessionMode" value="{{ projectInfo['sessionMode'] }}" />
 	</p>
 
 	<h3>Session Information</h3>
@@ -261,7 +254,7 @@
 	</div>
 	<input type="hidden" name="mode" value="definitions" />
 	<input type="button" value="Validate" onClick="validateDRX(this.form);" />
-	<input type="submit" name="Create" />
+	<input type="submit" name="Create" value="Create SDF" />
 </form>
 
 </body>

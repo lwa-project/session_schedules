@@ -261,8 +261,7 @@ class TBW(Observation):
 	def __init__(self, name, target, start, samples, bits=12, comments=None):
 		self.samples = samples
 		self.bits = bits
-		duration = int(samples) / 196000 + 1
-		duration *= 1100 / 1000.0
+		duration = (int(samples) / 196000 + 1)*1100 / 1000.0
 		Observation.__init__(self, name, target, start, str(duration), 'TBW', 0.0, 0.0, 0.0, 0.0, 1, comments=comments)
 
 	def estimateBytes(self):
@@ -497,7 +496,12 @@ class BeamStep(object):
 			return 0
 			
 
-_SDFTemplate = Template("""PI_ID           {{ project.observer.id }}
+_SDFTemplate = Template("""
+{%- macro renderBW(obs) -%}
+	{{ "%.3f MHz"|format(obs.filterCodes[obs.filter]/1000000) if obs.filterCodes[obs.filter] > 1000000 else "%.3f kHz"|format(obs.filterCodes[obs.filter]/1000) }}
+{%- endmacro -%}
+
+PI_ID           {{ project.observer.id }}
 PI_NAME         {{ project.observer.name }}
 
 PROJECT_ID      {{ project.id }}
@@ -519,25 +523,19 @@ OBS_REMPI       {{ obs.comments|default('None provided', boolean=True)|truncate(
 OBS_REMPO       Estimated data volume for this observation is {{ obs.dataVolume|filesizeformat }}
 OBS_START_MJD   {{ obs.mjd }}
 OBS_START_MPM   {{ obs.mpm }}
-OBS_START       {{ obs.start~'\n' }}
-{%- if obs.mode == 'TBW' -%}
+OBS_START       {{ obs.start }}
 OBS_DUR         {{ "%i"|format(obs.dur) }}
-OBS_DUR+        {{ "%.1f ms"|format(obs.samples / 196000) }} + estimated read-out time
+OBS_DUR+        {{ "%.1f ms + estimated read-out time"|format(obs.samples / 196000) if obs.mode == 'TBW' else obs.duration }}
 OBS_MODE        {{ obs.mode }}
-{%- endif %}
 {%- if obs.mode == 'TBN' -%}
-OBS_DUR         {{ obs.dur }}
-OBS_DUR+        {{ obs.duration }}
-OBS_MODE        {{ obs.mode }}
+\n
 OBS_FREQ1       {{ obs.freq1 }}
 OBS_FREQ1+      {{ "%.9f MHz"|format(obs.frequency1/1000000) }}
 OBS_BW          {{ obs.filter }}
-OBS_BW+         {{ "%.3f kHz"|format(obs.filterCodes[obs.filter]/1000) }}
-{% endif %}
+OBS_BW+         {{ renderBW(obs) }}
+{%- endif %}
 {%- if obs.mode == 'TRK_RADEC' -%}
-OBS_DUR         {{ obs.dur }}
-OBS_DUR+        {{ obs.duration }}
-OBS_MODE        {{ obs.mode }}
+\n
 OBS_RA          {{ obs.ra }}
 OBS_DEC         {{ obs.dec }}
 OBS_B           {{ obs.beam }}
@@ -546,36 +544,48 @@ OBS_FREQ1+      {{ "%.9f MHz"|format(obs.frequency1/1000000) }}
 OBS_FREQ2       {{ obs.freq2 }}
 OBS_FREQ2+      {{ "%.9f MHz"|format(obs.frequency2/1000000) }}
 OBS_BW          {{ obs.filter }}
-OBS_BW+         {{ "%.3f MHz"|format(obs.filterCodes[obs.filter]/1000000) if obs.filterCodes[obs.filter] > 1000000 else "%.3f kHz"|format(obs.filterCodes[obs.filter]/1000) }}
-{% endif %}
+OBS_BW+         {{ renderBW(obs) }}
+{%- endif %}
 {%- if obs.mode == 'TRK_SOL' -%}
-OBS_DUR         {{ obs.dur }}
-OBS_DUR+        {{ obs.duration }}
-OBS_MODE        {{ obs.mode }}
+\n
 OBS_B           {{ obs.beam }}
 OBS_FREQ1       {{ obs.freq1 }}
 OBS_FREQ1+      {{ "%.9f MHz"|format(obs.frequency1/1000000) }}
 OBS_FREQ2       {{ obs.freq2 }}
 OBS_FREQ2+      {{ "%.9f MHz"|format(obs.frequency2/1000000) }}
 OBS_BW          {{ obs.filter }}
-OBS_BW+         {{ "%.3f MHz"|format(obs.filterCodes[obs.filter]/1000000) if obs.filterCodes[obs.filter] > 1000000 else "%.3f kHz"|format(obs.filterCodes[obs.filter]/1000) }}
-{% endif %}
+OBS_BW+         {{ renderBW(obs) }}
+{%- endif %}
 {%- if obs.mode == 'TRK_JOV' -%}
-OBS_DUR         {{ obs.dur }}
-OBS_DUR+        {{ obs.duration }}
-OBS_MODE        {{ obs.mode }}
+\n
 OBS_B           {{ obs.beam }}
 OBS_FREQ1       {{ obs.freq1 }}
 OBS_FREQ1+      {{ "%.9f MHz"|format(obs.frequency1/1000000) }}
 OBS_FREQ2       {{ obs.freq2 }}
 OBS_FREQ2+      {{ "%.9f MHz"|format(obs.frequency2/1000000) }}
 OBS_BW          {{ obs.filter }}
-OBS_BW+         {{ "%.3f MHz"|format(obs.filterCodes[obs.filter]/1000000) if obs.filterCodes[obs.filter] > 1000000 else "%.3f kHz"|format(obs.filterCodes[obs.filter]/1000) }}
-{% endif %}
+OBS_BW+         {{ renderBW(obs) }}
+{%- endif %}
+{%- if obs.mode == 'STEPPED' -%}
+\n
+OBS_STP_N       {{ obs.steps|length }}
+OBS_STP_RADEC   {{ "%i"|format(obs.stepRADec) }}
+{%- for step in obs.steps -%}
+OBS_STP_C1{{ loop.index }}      {{ step.c1 }}
+OBS_STP_C2{{ loop.index }}      {{ step.c2 }}
+OBS_STP_C2{{ loop.index }}      {{ step.start }}
+OBS_STP_FREQ1{{ loop.index }}   {{ step.freq1 }}
+OBS_STP_FREQ1{{ loop.index }}+  {{ "%.9f MHz"|format(step.frequency1/1000000) }}
+OBS_STP_FREQ2{{ loop.index }}   {{ step.freq2 }}
+OBS_STP_FREQ2{{ loop.index }}+  {{ "%.9f MHz"|format(step.frequency2/1000000) }}
+OBS_STP_B{{ loop.index }}       {{ step.beam }}
+{%- endfor %}
+{%- endif %}
+
 {% endfor %}
 
 {%- set obs = session.observations|first -%}
-{%- if obs.mode == 'TBW' -%}
+{% if obs.mode == 'TBW' -%}
 OBS_TBW_BITS    {{ obs.bits }}
 OBS_TBW_SAMPLES {{ obs.samples }}
 {% endif %}

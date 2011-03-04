@@ -11,16 +11,16 @@
 <form action="session-definition.py" method="POST">
 	<h3>Observer Information</h3>
 	<p>
-		Name:  First <input type="text" name="firstName" />  Last <input type="text" name="lastName" /><br />
-		Observer ID: <input type="text" name="observerID" /><br />
+		Name:  First <input type="text" name="firstName" value="{{ projectInfo.firstName }}" />  Last <input type="text" name="lastName" value="{{ projectInfo.lastName }}" /><br />
+		Observer ID: <input type="text" name="observerID" value="{{ projectInfo.observerID }}" /><br />
 	</p>
 
 	<h3>Proposal Information</h3>
 	<p>
-		Project Title: <input type="text" name="projectName" size="65" /><br />
-		Project ID: <input type="text" name="projectID" /><br />
+		Project Title: <input type="text" name="projectName" size="65" value="{{ projectInfo.projectName }}" /><br />
+		Project ID: <input type="text" name="projectID" value="{{ projectInfo.projectID }}" /><br />
 		Comments:<br />
-		<textarea rows="10" cols="75" name="projectComments"></textarea><br />
+		<textarea rows="10" cols="75" name="projectComments">{{ projectInfo.projectComments }}</textarea><br />
 	</p>
 
 	<h3>Session Information</h3>
@@ -34,7 +34,7 @@
 	</p>
 
 	<input type="hidden" name="mode" value="observations" />
-	<input type="submit" name="Continue" />
+	<input type="submit" name="Continue" value="Define Observations"/>
 </form>
 
 
