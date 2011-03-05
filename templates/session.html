@@ -27,14 +27,15 @@
 	<p>
 		Principle DP Output:
 		<select name="sessionMode">
-			<option value="TBW">TBW </option>
-			<option value="TBN">TBN</option>
-			<option value="DRX" selected="selected">DRX </option>
+			{% set mode = projectInfo.sessionMode|default("DRX", boolean=True) -%}
+			<option value="TBW" {{ 'selected="selected"' if mode == 'TBW' }}>TBW </option>
+			<option value="TBN" {{ 'selected="selected"' if mode == 'TBN' }}>TBN</option>
+			<option value="DRX" {{ 'selected="selected"' if mode == 'DRX' }}>DRX </option>
 		</select>
 	</p>
 
 	<input type="hidden" name="mode" value="observations" />
-	<input type="submit" name="Continue" value="Define Observations"/>
+	<input type="submit" name="Continue" value="Define Observations" />
 </form>
 
 

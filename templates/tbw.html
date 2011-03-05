@@ -5,7 +5,7 @@
 
 	<script language="javascript">
 
-	numObs = {{ observations|length }}
+	var numObs = {{ observations|length }};
 
 	function validateSamples(fieldID, bitsID) {
 		nSamples = fieldID.value;
@@ -82,9 +82,10 @@
 
 	<h3>Session Information</h3>
 	<p>
+		{% set dmeth = sessionInfo.dataReturnMethod|default("DRSU", boolean=True) -%}
 		Session Title: <input type="text" name="sessionName" size="65" value="{{ sessionInfo.sessionName }}" /><br />
 		Session ID: <input type="text" name="sessionID" value="{{ sessionInfo.sessionID|default("1", boolean=True) }}" /><br />
-		Data Return: <input type="radio" name="dataReturnMethod" value="DRSU" checked/>DRSU <input type="radio" name="dataReturnMethod" value="USBHD" />USB Harddrives (max. 4)<br />
+		Data Return: <input type="radio" name="dataReturnMethod" value="DRSU" {{ 'checked' if dmeth == 'DRSU' }} />DRSU <input type="radio" name="dataReturnMethod" value="USBHD" {{ 'checked' if dmeth == 'USBHD' }} />USB Harddrives (max. 4)<br />
 		Comments:<br />
 		<textarea rows="10" cols="75" name="sessionComments">{{ sessionInfo.sessionComments }}</textarea><br />
 	</p>
@@ -92,11 +93,14 @@
 	<h3>TBW Observations</h3>
 	<h4>Global Settings</h4>
 	<p>
+		{%- set obs = observations|first|default(None, boolean=True) -%}
+		{%- set bits = obs.bits|default(12, boolean=True) -%}
+		{%- set samples = obs.samples|default(12000000, boolean=True) -%}
 		Data Bits: <select name="bits">
-			<option value="4">4-bit</option>
-			<option value="12" selected="selected">12-bit</option>
+			<option value="4" {{ 'selected="selected"' if bits == 4 }}>4-bit</option>
+			<option value="12" {{ 'selected="selected"' if bits == 12 }}>12-bit</option>
 		</select><br />
-		Maximum Samples: <input type="text" name="samples" value="12000000" size="9"/><br />
+		Maximum Samples: <input type="text" name="samples" value="{{ samples }}" size="9"/><br />
 	</p>
 
 	<h4>Observations</h4>
@@ -107,7 +111,7 @@
 			Observation ID: {{ loop.index }}<br />
 			Title: <input type="text" name="obsName{{ loop.index }}" value="{{ obs.name }}" /><br />
 			Target: <input type="text" name="obsTarget{{ loop.index }}" value="{{ obs.target }}" /><br />
-			Start (UTC YYYY MM DD HH:MM:SS.SSS): <input type="text" name="obsStart{{ loop.index }}" value="{{ obs.start }}"/><br />
+			Start (UTC YYYY MM DD HH:MM:SS.SSS): <input type="text" name="obsStart{{ loop.index }}" value="{{ obs.start }}" /><br />
 			Comments:<br />
 			<textarea rows="5" cols="75" name="obsComments{{ loop.index }}">{{ obs.comments }}</textarea><br />
 		</div>

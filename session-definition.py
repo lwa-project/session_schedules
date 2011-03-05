@@ -16,7 +16,7 @@ def index(req):
 	path = os.path.join(os.path.dirname(__file__), 'templates')
 	env = Environment(loader=FileSystemLoader(path))
 
-	if pageMode == 'observations' and not sess.is_new():
+	if pageMode == 'observations':
 		# Stage 2:  Observation Definitions
 		sessionMode = req.form.getfirst('sessionMode', 'DRX')
 		projectInfo = {}
@@ -44,10 +44,12 @@ def index(req):
 			observations = []
 		return template.render(projectInfo=projectInfo, sessionInfo=sessionInfo, observations=observations)
 	
-	elif pageMode == 'definitions' and not sess.is_new():
+	elif pageMode == 'definitions':
 		# Stage 3:  Session Definition File Creation
 		projectInfo = sess['projectInfo']
-		sessionInfo = sess['sessionInfo']
+		sessionInfo = {}
+		for keyword in ['sessionName', 'sessionID', 'sessionComments', 'dataReturnMethod']:
+			sessionInfo[keyword] = req.form.getfirst(keyword, None)
 		
 		observer = Observer(projectInfo['lastName']+', '+projectInfo['firstName'], projectInfo['observerID'])
 		project = Project(observer, projectInfo['projectName'], projectInfo['projectID'], comments=projectInfo['projectComments'])
@@ -65,7 +67,8 @@ def index(req):
 				obsBits = int(req.form.getfirst('bits', 12))
 				obsSamples = int(req.form.getfirst('samples', 12000000))
 				observations.append( TBW(obsName, obsTarget, obsStart, obsSamples, bits=obsBits, comments=obsComments) )
-				observationsSimple.append( {'id': numObs, 'name': obsName, 'target': obsTarget, 'start': obsStart, 'comments': obsComments} )
+				observationsSimple.append( {'id': numObs, 'name': obsName, 'target': obsTarget, 'start': obsStart, 'comments': obsComments, 
+										'bits': obsBits, 'samples': obsSamples} )
 				
 			if projectInfo['sessionMode'] == 'TBN':
 				obsDur = req.form.getfirst('obsDuration%i' % numObs, '00:00:00.000')
@@ -105,7 +108,10 @@ def index(req):
 					
 		session.observations = observations
 		project.sessions = [session,]
+		project.projectOffice.sessions = []
+		project.projectOffice.observations.append([])
 		
+		sess['sessionInfo'] = sessionInfo
 		sess['observations'] = observationsSimple
 		sess.save()
 		
@@ -115,7 +121,8 @@ def index(req):
 		
 	else:
 		# Stage 1:  Observer and Proposal Information; DP Output Mode
-		sess.set_timeout(300)
+		if sess.is_new():
+			sess.set_timeout(300)
 		template = env.get_template('session.html')
 		
 		try:

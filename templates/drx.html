@@ -232,7 +232,6 @@
 <h2>LWA Session Definition File</h2>
 
 <form action="session-definition.py" method="POST">
-	<input type="hidden" name="pickledProject" value="{{ pickledProject }}" />
 	<h3>Project Information</h3>
 	<p>
 		Observer ID: {{ projectInfo['observerID'] }}<br />
@@ -241,11 +240,12 @@
 
 	<h3>Session Information</h3>
 	<p>
-		Session Title: <input type="text" name="sessionName" size="65" /><br />
-		Session ID: <input type="text" name="sessionID" value="1"/><br />
-		Data Return: <input type="radio" name="dataReturnMethod" value="DRSU" checked/>DRSU <input type="radio" name="dataReturnMethod" value="USBHD" />USB Harddrives (max. 4)<br />
+		{% set dmeth = sessionInfo.dataReturnMethod|default("DRSU", boolean=True) -%}
+		Session Title: <input type="text" name="sessionName" size="65" value="{{ sessionInfo.sessionName }}" /><br />
+		Session ID: <input type="text" name="sessionID" value="{{ sessionInfo.sessionID|default("1", boolean=True) }}" /><br />
+		Data Return: <input type="radio" name="dataReturnMethod" value="DRSU" {{ 'checked' if dmeth == 'DRSU' }} />DRSU <input type="radio" name="dataReturnMethod" value="USBHD" {{ 'checked' if dmeth == 'USBHD' }} />USB Harddrives (max. 4)<br />
 		Comments:<br />
-		<textarea rows="10" cols="75" name="sessionComments"></textarea><br />
+		<textarea rows="10" cols="75" name="sessionComments">{{ sessionInfo.sessionComments }}</textarea><br />
 	</p>
 
 	<h3>DRX Observations</h3>

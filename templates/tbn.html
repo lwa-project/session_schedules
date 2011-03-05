@@ -5,7 +5,7 @@
 
 	<script language="javascript">
 
-	numObs = 0;
+	var numObs = {{ observations|length }};
 
 	function addTBN() {
 		numObs = numObs + 1;
@@ -60,12 +60,11 @@
 	</script>
 </head>
 
-<body onload="addTBN();">
+<body {{ 'onload="addTBW();"' if observations|length == 0 }}>
 <a id="logo" href="http://lwa.unm.edu/"><img src="/lwa/logo.png" alt="The Long Wavelength Array Software Page" /></a>
 <h2>LWA Session Definition File</h2>
 
 <form action="session-definition.py" method="POST">
-	<input type="hidden" name="pickledProject" value="{{ pickledProject }}" />
 	<h3>Project Information</h3>
 	<p>
 		Observer ID: {{ projectInfo['observerID'] }}<br />
@@ -74,16 +73,38 @@
 
 	<h3>Session Information</h3>
 	<p>
-		Session Title: <input type="text" name="sessionName" size="65" /><br />
-		Session ID: <input type="text" name="sessionID" value="1"/><br />
-		Data Return: <input type="radio" name="dataReturnMethod" value="DRSU" checked/>DRSU <input type="radio" name="dataReturnMethod" value="USBHD" />USB Harddrives (max. 4)<br />
+		{% set dmeth = sessionInfo.dataReturnMethod|default("DRSU", boolean=True) -%}
+		Session Title: <input type="text" name="sessionName" size="65" value="{{ sessionInfo.sessionName }}" /><br />
+		Session ID: <input type="text" name="sessionID" value="{{ sessionInfo.sessionID|default("1", boolean=True) }}" /><br />
+		Data Return: <input type="radio" name="dataReturnMethod" value="DRSU" {{ 'checked' if dmeth == 'DRSU' }} />DRSU <input type="radio" name="dataReturnMethod" value="USBHD" {{ 'checked' if dmeth == 'USBHD' }} />USB Harddrives (max. 4)<br />
 		Comments:<br />
-		<textarea rows="10" cols="75" name="sessionComments"></textarea><br />
+		<textarea rows="10" cols="75" name="sessionComments">{{ sessionInfo.sessionComments }}</textarea><br />
 	</p>
 
 	<h3>TBN Observations</h3>
 	<a id="addTBNObservation" href="#" onClick="addTBN();">Add TBN Observation</a>
 	<div id="observations">
+	{% for obs in observations %}
+		<div class="obs" id="obs{{ loop.index }}">
+			Observation ID: {{ loop.index }}<br />
+			Title: <input type="text" name="obsName{{ loop.index }}" value="{{ obs.name }}" /><br />
+			Target: <input type="text" name="obsTarget{{ loop.index }}" value="{{ obs.target }}" /><br />
+			Start (UTC YYYY MM DD HH:MM:SS.SSS): <input type="text" name="obsStart{{ loop.index }}" value="{{ obs.start }}" /><br />
+			Duration (HH:MM:SS.SSS): <input type="text" name="obsDuration{{ loop.index }}" value="{{ obs.duration }}" /><br />
+			Tuning Frequency (MHz): <input type="text" name="obsFrequency{{ loop.index }}" value="{{ obs.frequency / 1000000 }}" /><br />
+			Filter: <select name="obsFilter{{ loop.index }}">
+				<option value="1" {{ 'selected="selected"' if obs.filter == 1 }}>1 kHz</option>
+				<option value="2" {{ 'selected="selected"' if obs.filter == 2 }}>3.125 kHz</option>
+				<option value="3" {{ 'selected="selected"' if obs.filter == 3 }}>6.25 kHz</option>
+				<option value="4" {{ 'selected="selected"' if obs.filter == 4 }}>12.5 kHz</option>
+				<option value="5" {{ 'selected="selected"' if obs.filter == 5 }}>25 kHz</option>
+				<option value="6" {{ 'selected="selected"' if obs.filter == 6 }}>50 kHz</option>
+				<option value="7" {{ 'selected="selected"' if obs.filter == 7 }}>100 kHz</option>
+			</select>
+			Comments:<br />
+			<textarea rows="5" cols="75" name="obsComments{{ loop.index }}">{{ obs.comments }}</textarea><br />
+		</div>
+	{% endfor %}
 	</div>
 	<input type="hidden" name="mode" value="definitions" />
 	<input type="button" value="Validate" onClick="validateTBN(this.form);" />
