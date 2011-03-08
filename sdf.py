@@ -50,6 +50,7 @@ includes:
 Thus, stepped observations using OBS_STP_B[n] = SPEC_DELAYS_GAINS is not supported.
 """
 
+import os
 import copy
 import math
 import pytz
@@ -109,6 +110,10 @@ class Project(object):
 		self.projectOffice = projectOffice
 		
 	def validate(self):
+		"""Examine all of the sessions and all of their observations to check
+		for validity.  If everything is valid, return True.  Otherwise, return
+		False."""
+		
 		failures = 0
 		for session in self.sessions:
 			failures += session.validate()
@@ -119,12 +124,17 @@ class Project(object):
 			return False
 			
 	def render(self, session=0):
+		"""Create a session definition file that corresponds to the specified 
+		session.  Returnes the SD file's contents as a string."""
+		
 		if not self.validate() :
 			raise RuntimeError("Invalid session/observation parameters.  Aborting.")
 		if session >= len(self.sessions):
 			raise IndexError("Invalid session index")
 		
 		self.sessions[session].observations.sort()
+		for obs in self.sessions[session].observations:
+			obs.dur = obs.getDuration()
 		return _SDFTemplate.render(project=self, whichSession=session)
 
 
@@ -139,6 +149,10 @@ class Session(object):
 		self.comments = comments
 		
 	def validate(self):
+		"""Examine all of the observations associated with the session to check
+		for validity.  If everything is valid, return True.  Otherwise, return
+		False."""
+		
 		failures = 0
 		totalData = 0.0
 		for obs in self.observations:
@@ -168,7 +182,7 @@ class Session(object):
 
 class Observation(object):
 	"""Class to hold the specifics of an observations.  It currently
-	handles TBW, TBN, TRK_RADEC, TRK_SOL, TRK_JOV."""
+	handles TBW, TBN, TRK_RADEC, TRK_SOL, TRK_JOV, and Stepped"""
 	
 	id = 1
 
@@ -193,6 +207,9 @@ class Observation(object):
 		self.freq2 = self.getFrequency2()
 		self.beam = self.getBeamType()
 		self.dataVolume = self.estimateBytes()
+		
+		# For future use
+		self.gain = -1
 
 	def getMJD(self):
 		"""Return the modified Julian Date corresponding to the date/time of the
@@ -270,14 +287,14 @@ class Observation(object):
 		return None
 	
 	def computeVisibility(self, station=lwa1()):
-		"""Return the fractional visibility of the target during the observation 
-		period."""
+		"""Place holder for functions that return the fractional visibility of the 
+		target during the observation period."""
 		
 		return 1.0
 	
 	def validate(self):
-		"""Evaluate the observation and return True if it is valid, False
-		otherwise."""
+		"""Place holder for functions that evaluate the observation and return True 
+		if it is valid, False otherwise."""
 		
 		pass
 	
@@ -293,6 +310,21 @@ class Observation(object):
 
 
 class TBW(Observation):
+	"""Sub-class of Observation specifically for TBW observations.  It features a
+	reduced number of parameters needed to setup the observation and provides extra
+	information about the number of data bits and the number of samples.
+	
+	Required Arguments:
+	  * observation name
+	  * observation target
+	  * observation start date/time (UTC YYYY/MM/DD HH:MM:SS.SSS string)
+	  * integer number of samples
+	  
+	Optional Keywords:
+	  * bits - number of data bits (4 or 12)
+	  * comments - comments about the observation
+	"""
+	
 	def __init__(self, name, target, start, samples, bits=12, comments=None):
 		self.samples = samples
 		self.bits = bits
@@ -300,6 +332,12 @@ class TBW(Observation):
 		Observation.__init__(self, name, target, start, str(duration), 'TBW', 0.0, 0.0, 0.0, 0.0, 1, comments=comments)
 
 	def estimateBytes(self):
+		"""Estimate the data volume for the specified type and duration of 
+		observations.  For TBW:
+		
+			bytes = samples / samplesPerFrame * 1224 bytes * 260 stands
+		"""
+		
 		SamplesPerFrame = 400
 		if self.bits == 4:
 			SamplesPerFrame = 1200
@@ -308,8 +346,13 @@ class TBW(Observation):
 		return nBytes
 		
 	def validate(self):
+		"""Evaluate the observation and return True if it is valid, False
+		otherwise."""
+		
 		failures = 0
 		# Basic - Sample size and data bits agreement
+		if self.bits not in [4, 12]:
+			failures += 1
 		if self.bits == 12 and self.samples > 12000000:
 			failures += 1
 		if self.bits == 4 and self.samples > 36000000:
@@ -325,16 +368,40 @@ class TBW(Observation):
 
 
 class TBN(Observation):
+	"""Sub-class of Observation specifically for TBN observations.   It features a
+	reduced number of parameters needed to setup the observation.
+	
+	Required Arguments:
+	  * observation name
+	  * observation target
+	  * observation start date/time (UTC YYYY/MM/DD HH:MM:SS.SSS string)
+	  * observation duration (HH:MM:SS.SSS string)
+	  * observation frequency (Hz)
+	  * integer filter code
+	  
+	Optional Keywords:
+	  * comments - comments about the observation
+	"""
+	
 	def __init__(self, name, target, start, duration, frequency, filter, comments=None):
 		self.filterCodes = TBNFilters
 		Observation.__init__(self, name, target, start, duration, 'TBN', 0.0, 0.0, frequency, 0.0, filter, comments=comments)
 
 	def estimateBytes(self):
-		nFrames = self.getDuration()/1000.0 * TBNFilters[self.filter] / 512
+		"""Estimate the data volume for the specified type and duration of 
+		observations.  For TBN:
+		
+			bytes = duration * sampleRate / 512 * 1048 bytes * 260 stands * 2 pols.
+		"""
+		
+		nFrames = self.getDuration()/1000.0 * self.filterCodes[self.filter] / 512
 		nBytes = nFrames * TBNSize * _nStands * 2
 		return nBytes
 		
 	def validate(self):
+		"""Evaluate the observation and return True if it is valid, False
+		otherwise."""
+		
 		failures = 0
 	     # Basic - Frequency and filter code values
 		if self.freq1 < 219130984 or self.freq1 > 1928352663:
@@ -351,12 +418,37 @@ class TBN(Observation):
 			return False
 
 class DRX(Observation):
+	"""Sub-class of Observation specifically for DRX observations.
+	
+	Required Arguments:
+	  * observation name
+	  * observation target
+	  * observation start date/time (UTC YYYY/MM/DD HH:MM:SS.SSS string)
+	  * observation duration (HH:MM:SS.SSS string)
+	  * observation RA in hours, J2000.0
+	  * observation Dec in degrees, J2000.0
+	  * observation tuning frequency 1 (Hz)
+	  * observation tuning frequency 1 (Hz)
+	  * integer filter code
+	  
+	Optional Keywords:
+	  * MaxSNR - specifies if maximum signal-to-noise beam forming is to be used
+	    (default = False)
+	  * comments - comments about the observation
+	"""
+	
 	def __init__(self, name, target, start, duration, ra, dec, frequency1, frequency2, filter, MaxSNR=False, comments=None):
 		self.filterCodes = DRXFilters
 		Observation.__init__(self, name, target, start, duration, 'TRK_RADEC', ra, dec, frequency1, frequency2, filter, MaxSNR=MaxSNR, comments=comments)
 
 	def estimateBytes(self):
-		nFrames = self.getDuration()/1000.0 * DRXFilters[self.filter] / 4096
+		"""Estimate the data volume for the specified type and duration of 
+		observations.  For DRX:
+		
+			bytes = duration * sampleRate / 4096 * 4128 bytes * 2 tunings * 2 pols.
+		"""
+		
+		nFrames = self.getDuration()/1000.0 * self.filterCodes[self.filter] / 4096
 		nBytes = nFrames * DRXSize * 4
 		return nBytes
 		
@@ -393,6 +485,9 @@ class DRX(Observation):
 		return float(vis)/float(cnt)
 		
 	def validate(self):
+		"""Evaluate the observation and return True if it is valid, False
+		otherwise."""
+		
 		failures = 0
 	     # Basic - Frequency and filter code values
 		if self.freq1 < 219130984 or self.freq1 > 1928352663:
@@ -402,8 +497,12 @@ class DRX(Observation):
 		if self.filter not in [1,2,3,4,5,6,7]:
 			failures += 1
 		# Advanced - Target Visibility
+		if self.ra < 0 or self.ra >=24:
+			failures += 1
+		if self.dec < -90 or self.dec > 90:
+			failures += 1
 		if self.computeVisibility() < 1.0:
-			failues += 1
+			failures += 1
 		# Advanced - Data Volume
 		if self.dataVolume >= (5*1024**4):
 			failures += 1
@@ -415,7 +514,26 @@ class DRX(Observation):
 
 
 class Solar(DRX):
+	"""Sub-class of DRX specifically for Solar DRX observations.   It features a
+	reduced number of parameters needed to setup the observation.
+	
+	Required Arguments:
+	  * observation name
+	  * observation target
+	  * observation start date/time (UTC YYYY/MM/DD HH:MM:SS.SSS string)
+	  * observation duration (HH:MM:SS.SSS string)
+	  * observation tuning frequency 1 (Hz)
+	  * observation tuning frequency 1 (Hz)
+	  * integer filter code
+	  
+	Optional Keywords:
+	  * MaxSNR - specifies if maximum signal-to-noise beam forming is to be used
+	    (default = False)
+	  * comments - comments about the observation
+	"""
+	
 	def __init__(self, name, target, start, duration, frequency1, frequency2, filter, MaxSNR=False, comments=None):
+		self.filterCodes = DRXFilters
 		Observation.__init__(self, name, target, start, duration, 'TRK_SOL', 0.0, 0.0, frequency1, frequency2, filter, MaxSNR=MaxSNR, comments=comments)
 		
 	def getFixedBody(self):
@@ -426,7 +544,26 @@ class Solar(DRX):
 
 
 class Jovian(DRX):
+	"""Sub-class of DRX specifically for Jovian DRX observations.   It features a
+	reduced number of parameters needed to setup the observation.
+	
+	Required Arguments:
+	  * observation name
+	  * observation target
+	  * observation start date/time (UTC YYYY/MM/DD HH:MM:SS.SSS string)
+	  * observation duration (HH:MM:SS.SSS string)
+	  * observation tuning frequency 1 (Hz)
+	  * observation tuning frequency 1 (Hz)
+	  * integer filter code
+	  
+	Optional Keywords:
+	  * MaxSNR - specifies if maximum signal-to-noise beam forming is to be used
+	    (default = False)
+	  * comments - comments about the observation
+	"""
+	
 	def __init__(self, name, target, start, duration, frequency1, frequency2, filter, MaxSNR=False, comments=None):
+		self.filterCodes = DRXFilters
 		Observation.__init__(self, name, target, start, duration, 'TRK_JOV', 0.0, 0.0, frequency1, frequency2, filter, MaxSNR=MaxSNR, comments=comments)
 
 	def getFixedBody(self):
@@ -437,29 +574,101 @@ class Jovian(DRX):
 
 
 class Stepped(Observation):
-	def __init__(self, name, target, start, filter, RADec=True, MaxSNR=False, comments=None):
-		self.RADec = bool(RADec)
-		self.steps = []
+	"""Sub-class of Observation for dealing with STEPPED-mode observations.  It 
+	features a reduced number of parameters needed to setup the observation and added
+	support for the individual steps.
+	
+	Required Arguments:
+	  * observation name
+	  * observation target
+	  * observation start date/time (UTC YYYY/MM/DD HH:MM:SS.SSS string)
+	  * integer filter code
+	  
+	Optional Keywords:
+	  * steps - array of BeamStep objects that specify the different steps
+	  * comments - comments about the observation
+	"""
+	
+	def __init__(self, name, target, start, filter, steps=[], comments=None):
+		self.steps = steps
 		self.filterCodes = DRXFilters
-		Observation.__init__(self, name, target, start, 0, 'STEPPED', 0.0, 0.0, 0.0, 0.0, filter, MaxSNR=MaxSNR, comments=comments)
+		Observation.__init__(self, name, target, start, 0, 'STEPPED', 0.0, 0.0, 0.0, 0.0, filter, MaxSNR=False, comments=comments)
+		
+	def getDuration(self):
+		"""Parse the list of BeamStep objects to get the total observation 
+		duration as the number of milliseconds in that period."""
+		
+		duration = 0
+		for step in self.steps:
+			duration += step.dur
+		
+		return duration
 		
 	def append(self, newStep):
+		"""Add a new BeamStep step to the list of steps."""
+		
 		self.steps.append(newStep)
 		
 	def estimateBytes(self):
-		nFrames = self.getDuration()/1000.0 * DRXFilters[self.filter] / 4096
+		"""Estimate the data volume for the specified type and duration of 
+		observations.  For DRX:
+		
+			bytes = duration * sampleRate / 4096 * 4128 bytes * 2 tunings * 2 pols.
+		"""
+		
+		nFrames = self.getDuration()/1000.0 * self.filterCodes[self.filter] / 4096
 		nBytes = nFrames * DRXSize * 4
 		return nBytes
 		
+	def computeVisibility(self, station=lwa1()):
+		"""Return the fractional visibility of the target during the observation 
+		period."""
+		
+		lwa = station.getObserver()
+		pnt = self.getFixedBody()
+		
+		vis = 0
+		cnt = 0
+		relStart = 0
+		for step in self.steps:
+			if step.RADec:
+				pnt = step.getFixedBody()
+				
+				dt = 0.0
+				while dt <= self.dur/1000.0:
+					lwa.date = self.mjd + (relStart/1000.0 + self.mpm/1000.0 + dt)/3600/24.0 + MJD_OFFSET - DJD_OFFSET
+					pnt.compute(lwa)
+					
+					cnt += 1
+					if pnt.alt > 0:
+						vis += 1
+						
+					dt += 300.0
+			else:
+				cnt += 1
+				if step.c2 > 0:
+					vis += 1
+			
+			relStart += step.dur
+			
+		return float(vis)/float(cnt)
+		
 	def validate(self):
+		"""Evaluate the observation and return True if it is valid, False
+		otherwise."""
+		
 		failures = 0
+		# Basic - filter setup
+		if self.filter not in [1,2,3,4,5,6,7]:
+			failures += 1
+		# Basic - steps
 		for step in self.steps:
 			stepValid = step.validate()
 			if not stepValid:
 				failures += 1
 		# Advanced - Target Visibility
 		if self.computeVisibility() < 1.0:
-			failues += 1
+			failures += 1
 		# Advanced - Data Volume
 		if self.dataVolume >= (5*1024**4):
 			failures += 1
@@ -471,16 +680,55 @@ class Stepped(Observation):
 
 
 class BeamStep(object):
-	def __init__(self, c1, c2, start, frequency1, frequency2, MaxSNR=False):
+	"""Class for holding all of the information (pointing center, tuning frequencies, 
+	etc.)associated with a particular step.  
+	
+	Required Keywords:
+	  * pointing coordinate 1 (RA or azimuth)
+	  * pointing coorindate 2 (dec or elevation/altitiude)\
+	  * observation duration (HH:MM.SS.SSS string)
+	  * observation tuning frequency 1 (Hz)
+	  * observation tuning frequency 1 (Hz)
+	  
+	Optional Keywords:
+	  * RADec - whether the coordinates are in RA/Dec or Az/El pairs (default=RA/Dec)
+	  * MaxSNR - specifies if maximum signal-to-noise beam forming is to be used
+	    (default = False)
+	"""
+	
+	def __init__(self, c1, c2, duration, frequency1, frequency2, RADec=True, MaxSNR=False):
+		self.RADec = bool(RADec)
 		self.c1 = float(c1)
 		self.c2 = float(c2)
-		self.start = int(start)
+		self.duration = duration
 		self.frequency1 = float(frequency1)
-		self.frequnecy2 = float(frequency2)
+		self.frequency2 = float(frequency2)
+		self.MaxSNR = bool(MaxSNR)
 		
+		self.dur = self.getDuration()
 		self.freq1 = self.getFrequency1()
 		self.freq2 = self.getFrequency2()
 		self.beam = self.getBeamType()
+		
+	def getDuration(self):
+		"""Parse the self.duration string with the format of HH:MM:SS.SSS to return the
+		number of milliseconds in that period."""
+		
+		if type(self.duration).__name__ == 'int':
+			return self.duration
+		else:
+			
+			fields = self.duration.split(':')
+			if len(fields) == 3:
+				out = int(fields[0])*3600.0
+				out += int(fields[1])*60.0
+				out += float(fields[2])
+			elif len(fields) == 2:
+				out = int(fields[0])*60.0
+				out += float(fields[1])
+			else:
+				out = float(fields[0])
+			return int(round(out*1000.0))
 		
 	def getFrequency1(self):
 		"""Return the number of "tuning words" corresponding to the first frequency."""
@@ -505,30 +753,49 @@ class BeamStep(object):
 		else:
 			return 'SIMPLE'
 			
+	def getFixedBody(self):
+		"""Return an ephem.Body object corresponding to where the observation is 
+		pointed.  None if the observation mode is either TBN or TBW."""
+		
+		if self.RADec:
+			pnt = ephem.FixedBody()
+			pnt._ra = self.c1 / 12.0 * math.pi
+			pnt._dec = self.c2 / 180 * math.pi
+			pnt._epoch = '2000'
+			
+		else:
+			pnt = None
+			
+		return pnt
+			
 	def validate(self):
+		"""Evaluate the step and return True if it is valid, False otherwise."""
+		
 		failures = 0
+		# Basic - Observation time
+		if self.dur < 5:
+			failures += 1
 	     # Basic - Frequency and filter code values
 		if self.freq1 < 219130984 or self.freq1 > 1928352663:
 			failures += 1
 		if self.freq2 < 219130984 or self.freq2 > 1928352663:
 			failures += 1
-		if self.filter not in [1,2,3,4,5,6,7]:
-			failures += 1
+		# Advanced - Target Visibility via RA/Dec & Az/El ranging
+		if self.RADec:
+			if self.c1 < 0 or self.c1 >=24:
+				failures += 1
+			if self.c2 < -90 or self.c2 > 90:
+				failures += 1
+		else:
+			if self.c1 < 0 or self.c1 > 360:
+				failures += 1
+			if self.c2 < 0 or self.c2 > 90:
+				failures += 1
 		# Any failures indicates a bad observation
 		if failures == 0:
 			return True
 		else:
 			return False
-			
-	def __cmp__(self, other):
-		startSelf = self.start
-		startOther = other.start
-		if startSelf < startOther:
-			return -1
-		elif startSelf > startOther:
-			return 1
-		else:
-			return 0
 
 
 def __parseCreateObsObject(obsTemp, beamTemps=[]):
@@ -563,7 +830,7 @@ def __parseCreateObsObject(obsTemp, beamTemps=[]):
 	
 	# Get the mode and run through the various cases
 	mode = obsTemp['mode']
-	print "Obs %i is mode %s" % (obsTemp['id'], mode)
+	print "[%i] Obs %i is mode %s" % (os.getpid(), obsTemp['id'], mode)
 	if mode == 'TBW':
 		obsOut = TBW(obsTemp['name'], obsTemp['target'], utcString, 12000000, comments=obsTemp['comments'])
 	elif mode == 'TBN':
@@ -575,11 +842,12 @@ def __parseCreateObsObject(obsTemp, beamTemps=[]):
 	elif mode == 'TRK_JOV':
 		obsOut = Jovian(obsTemp['name'], obsTemp['target'], utcString, durString, f1, f2, obsTemp['filter'], MaxSNR=obsTemp['MaxSNR'], comments=obsTemp['comments'])
 	else:
+		print "[%i] -> found %i steps" % (os.getpid(), len(beamTemps))
 		obsOut = Stepped(obsTemp['name'], obsTemp['target'], utcString, obsTemp['filter'], comments=obsTemp['comments'])
 		for beamTemp in beamTemps:
 			f1 = beamTemp['freq1']*fS / 2**32
 			f2 = beamTemp['freq2']*fS / 2**32
-			obsOut.steps.append( BeamStep(beamTemp['c1'], beamTemp['c2'], beamTemp['start'], f1, f2, beamTemp['MaxSNR']) )
+			obsOut.steps.append( BeamStep(beamTemp['c1'], beamTemp['c2'], beamTemp['duration'], f1, f2, obsTemp['stpRADec'], beamTemp['MaxSNR']) )
 
 	# Return the newly created Observation object
 	return obsOut
@@ -600,7 +868,7 @@ def parse(fh):
 	obsTemp = {'id': 0, 'name': '', 'target': '', 'ra': 0.0, 'dec': 0.0, 'start': '', 'duration': '', 'mode': '', 
 				'freq1': 0, 'freq2': 0, 'filter': 0, 'MaxSNR': False, 'comments': None, 
 				'stpRADec': True, }
-	beamTemp = {'id': 0, 'c1': 0.0, 'c2': 0.0, 'start': 0, 'freq1': 0, 'freq2': 0, 'MaxSNR': False}
+	beamTemp = {'id': 0, 'c1': 0.0, 'c2': 0.0, 'duration': 0, 'freq1': 0, 'freq2': 0, 'MaxSNR': False}
 	beamTemps = []
 	sessionBits = 12
 	sessionSamples = 12000000
@@ -613,7 +881,7 @@ def parse(fh):
 		# Split into a keyword, value pair and skip over the observer comment lines
 		# (denoted by a plus sign at the end)
 		keyword, value = line.split(None, 1)
-		if keyword[-1] == '+':
+		if keyword.find('+') != -1:
 			continue
 		
 		# Observer Info
@@ -659,7 +927,7 @@ def parse(fh):
 				project.sessions[0].observations.append( __parseCreateObsObject(obsTemp, beamTemps=beamTemps) )
 				beamTemps = []
 			obsTemp['id'] = int(value)
-			print "Start obs %i" % int(value)
+			print "[%i] Started obs %i" % (os.getpid(), int(value))
 			continue
 		if keyword == 'OBS_TITLE':
 			obsTemp['name'] = value
@@ -713,83 +981,83 @@ def parse(fh):
 		# trying to keep up when a new step is encountered.  This adds in some 
 		# overhead to all of the steps.
 		if keyword[0:10] == 'OBS_STP_C1':
-			stepID = int(keyword[10:])
-			if len(tempSteps) == 0:
-				tempBeams.append( copy.deepcopy(tempBeam) )
-				tempBeams[-1]['id'] = stepID
-				tempBeams[-1]['c1'] = float(value)
+			stepID = int(keyword[11:-1])
+			if len(beamTemps) == 0:
+				beamTemps.append( copy.deepcopy(beamTemp) )
+				beamTemps[-1]['id'] = stepID
+				beamTemps[-1]['c1'] = float(value)
 			else:
-				if tempBeams[-1]['id'] != stepID:
-					tempBeams.append( copy.deepcopy(tempBeams[-1]) )
-					tempBeams[-1]['id'] = stepID
-					tempBeams[-1]['c1'] = float(value)
+				if beamTemps[-1]['id'] != stepID:
+					beamTemps.append( copy.deepcopy(beamTemps[-1]) )
+					beamTemps[-1]['id'] = stepID
+				beamTemps[-1]['c1'] = float(value)
 			continue
 				
 		if keyword[0:10] == 'OBS_STP_C2':
-			stepID = int(keyword[10:])
-			if len(tempSteps) == 0:
-				tempBeams.append( copy.deepcopy(tempBeam) )
-				tempBeams[-1]['id'] = stepID
-				tempBeams[-1]['c2'] = float(value)
+			stepID = int(keyword[11:-1])
+			if len(beamTemps) == 0:
+				beamTemps.append( copy.deepcopy(beamTemp) )
+				beamTemps[-1]['id'] = stepID
+				beamTemps[-1]['c2'] = float(value)
 			else:
-				if tempBeams[-1]['id'] != stepID:
-					tempBeams.append( copy.deepcopy(tempBeams[-1]) )
-					tempBeams[-1]['id'] = stepID
-					tempBeams[-1]['c2'] = float(value)
+				if beamTemps[-1]['id'] != stepID:
+					beamTemps.append( copy.deepcopy(beamTemps[-1]) )
+					beamTemps[-1]['id'] = stepID
+				beamTemps[-1]['c2'] = float(value)
 			continue
 			
 		if keyword[0:9] == 'OBS_STP_T':
-			stepID = int(keyword[9:])
-			if len(tempSteps) == 0:
-				tempBeams.append( copy.deepcopy(tempBeam) )
-				tempBeams[-1]['id'] = stepID
-				tempBeams[-1]['start'] = int(value)
+			stepID = int(keyword[10:-1])
+			if len(beamTemps) == 0:
+				beamTemps.append( copy.deepcopy(beamTemp) )
+				beamTemps[-1]['id'] = stepID
+				beamTemps[-1]['duration'] = int(value)
 			else:
-				if tempBeams[-1]['id'] != stepID:
-					tempBeams.append( copy.deepcopy(tempBeams[-1]) )
-					tempBeams[-1]['id'] = stepID
-					tempBeams[-1]['start'] = int(value)
+				if beamTemps[-1]['id'] != stepID:
+					beamTemps.append( copy.deepcopy(beamTemps[-1]) )
+					beamTemps[-1]['id'] = stepID
+				beamTemps[-1]['duration'] = int(value)
 			continue
 				
 		if keyword[0:13] == 'OBS_STP_FREQ1':
-			stepID = int(keyword[13:])
-			if len(tempSteps) == 0:
-				tempBeams.append( copy.deepcopy(tempBeam) )
-				tempBeams[-1]['id'] = stepID
-				tempBeams[-1]['freq1'] = int(value)
+			stepID = int(keyword[14:-1])
+			if len(beamTemps) == 0:
+				beamTemps.append( copy.deepcopy(beamTemp) )
+				beamTemps[-1]['id'] = stepID
+				beamTemps[-1]['freq1'] = int(value)
 			else:
-				if tempBeams[-1]['id'] != stepID:
-					tempBeams.append( copy.deepcopy(tempBeams[-1]) )
-					tempBeams[-1]['id'] = stepID
-					tempBeams[-1]['freq1'] = int(value)
+				if beamTemps[-1]['id'] != stepID:
+					beamTemps.append( copy.deepcopy(beamTemps[-1]) )
+					beamTemps[-1]['id'] = stepID
+				beamTemps[-1]['freq1'] = int(value)
 			continue
 					
 		if keyword[0:13] == 'OBS_STP_FREQ2':
-			stepID = int(keyword[13:])
-			if len(tempSteps) == 0:
-				tempBeams.append( copy.deepcopy(tempBeam) )
-				tempBeams[-1]['id'] = stepID
-				tempBeams[-1]['freq2'] = int(value)
+			stepID = int(keyword[14:-1])
+			if len(beamTemps) == 0:
+				beamTemps.append( copy.deepcopy(beamTemp) )
+				beamTemps[-1]['id'] = stepID
+				beamTemps[-1]['freq2'] = int(value)
 			else:
-				if tempBeams[-1]['id'] != stepID:
-					tempBeams.append( copy.deepcopy(tempBeams[-1]) )
-					tempBeams[-1]['id'] = stepID
-					tempBeams[-1]['freq2'] = int(value)
+				if beamTemps[-1]['id'] != stepID:
+					beamTemps.append( copy.deepcopy(beamTemps[-1]) )
+					beamTemps[-1]['id'] = stepID
+				beamTemps[-1]['freq2'] = int(value)
 			continue
 					
 		if keyword[0:9] == 'OBS_STP_B':
-			stepID = int(keyword[9:])
-			if len(tempSteps) == 0:
-				tempBeams.append( copy.deepcopy(tempBeam) )
-				tempBeams[-1]['id'] = stepID
+			stepID = int(keyword[10:-1])
+			if len(beamTemps) == 0:
+				beamTemps.append( copy.deepcopy(beamTemp) )
+				beamTemps[-1]['id'] = stepID
 				if value == 'MAX_SNR':
-					tempBeams[-1]['MaxSNR'] = True
+					beamTemps[-1]['MaxSNR'] = True
 			else:
-				if tempBeams[-1]['id'] != stepID:
-					tempBeams.append( copy.deepcopy(tempBeams[-1]) )
-					tempBeams[-1]['id'] = stepID
-					if value == 'MAX_SNR':
-						tempBeams[-1]['MaxSNR'] = True
+				if beamTemps[-1]['id'] != stepID:
+					beamTemps.append( copy.deepcopy(beamTemps[-1]) )
+					beamTemps[-1]['id'] = stepID
+				if value == 'MAX_SNR':
+					beamTemps[-1]['MaxSNR'] = True
 			continue
 		
 		# Session wide settings at the end of the observations
@@ -883,18 +1151,20 @@ OBS_FREQ2+      {{ "%.9f MHz"|format(obs.frequency2/1000000) }}
 OBS_BW          {{ obs.filter }}
 OBS_BW+         {{ renderBW(obs) }}
 {% elif obs.mode == 'STEPPED' -%}
+OBS_BW          {{ obs.filter }}
+OBS_BW+         {{ renderBW(obs) }}
 OBS_STP_N       {{ obs.steps|length }}
-OBS_STP_RADEC   {{ "%i"|format(obs.stepRADec) }}
-{%- for step in obs.steps -%}
-OBS_STP_C1{{ loop.index }}      {{ step.c1 }}
-OBS_STP_C2{{ loop.index }}      {{ step.c2 }}
-OBS_STP_C2{{ loop.index }}      {{ step.start }}
-OBS_STP_FREQ1{{ loop.index }}   {{ step.freq1 }}
-OBS_STP_FREQ1{{ loop.index }}+  {{ "%.9f MHz"|format(step.frequency1/1000000) }}
-OBS_STP_FREQ2{{ loop.index }}   {{ step.freq2 }}
-OBS_STP_FREQ2{{ loop.index }}+  {{ "%.9f MHz"|format(step.frequency2/1000000) }}
-OBS_STP_B{{ loop.index }}       {{ step.beam }}
-{%- endfor %}
+OBS_STP_RADEC   {{ "%i"|format(obs.steps[0].RADec) }}
+{% for step in obs.steps -%}
+OBS_STP_C1[{{ loop.index }}]      {{ step.c1 }}
+OBS_STP_C2[{{ loop.index }}]      {{ step.c2 }}
+OBS_STP_T[{{ loop.index }}]       {{ step.dur }}
+OBS_STP_FREQ1[{{ loop.index }}]   {{ step.freq1 }}
+OBS_STP_FREQ1+[{{ loop.index }}]  {{ "%.9f MHz"|format(step.frequency1/1000000) }}
+OBS_STP_FREQ2[{{ loop.index }}]   {{ step.freq2 }}
+OBS_STP_FREQ2+[{{ loop.index }}]  {{ "%.9f MHz"|format(step.frequency2/1000000) }}
+OBS_STP_B[{{ loop.index }}]       {{ step.beam }}
+{% endfor %}
 {%- endif %}
 {% endfor %}
 

@@ -94,15 +94,60 @@ def index(req):
 					obsRA = float(req.form.getfirst('obsRA%i' % numObs, 0.000000))
 					obsDec = float(req.form.getfirst('obsDec%i' % numObs, 0.000000))
 					observations.append( DRX(obsName, obsTarget, obsStart, obsDur, obsRA, obsDec, obsFreq1, obsFreq2, obsFilter, MaxSNR=MaxSNR, comments=obsComments) )
+					observationsSimple.append( {'id': numObs, 'name': obsName, 'target': obsTarget, 'start': obsStart, 
+										'duration': obsDur, 'frequency1': obsFreq1, 'frequency2': obsFreq2, 'filter': obsFilter, 
+										'ra': obsRA, 'dec': obsDec, 'MaxSNR': MaxSNR, 'comments': obsComments, 'mode': obsMode} )
 					
 				if obsMode == 'TRK_SOL':
 					observations.append( Solar(obsName, obsTarget, obsStart, obsDur, obsFreq1, obsFreq2, obsFilter, MaxSNR=MaxSNR, comments=obsComments) )
+					observationsSimple.append( {'id': numObs, 'name': obsName, 'target': obsTarget, 'start': obsStart, 
+										'duration': obsDur, 'frequency1': obsFreq1, 'frequency2': obsFreq2, 'filter': obsFilter, 
+										'MaxSNR': MaxSNR, 'comments': obsComments, 'mode': obsMode} )
 					
 				if obsMode == 'TRK_JOV':
 					observations.append( Jovian(obsName, obsTarget, obsStart, obsDur, obsFreq1, obsFreq2, obsFilter, MaxSNR=MaxSNR, comments=obsComments) )
+					observationsSimple.append( {'id': numObs, 'name': obsName, 'target': obsTarget, 'start': obsStart, 
+										'duration': obsDur, 'frequency1': obsFreq1, 'frequency2': obsFreq2, 'filter': obsFilter, 
+										'MaxSNR': MaxSNR, 'comments': obsComments, 'mode': obsMode} )
 					
 				if obsMode == 'STEPPED':
-					pass
+					obsRADec = req.form.getfirst('obsCoords%i' % numObs, 'RADec')
+					if obsRADec == 'RADec':
+						obsRADec = True
+					else:
+						obsRADec = False
+					
+					steps = []
+					numStp = 1
+					while req.form.getfirst('obs%istpDuration%i' % (numObs, numStp), None) is not None:
+						stpDur = req.form.getfirst('obs%istpDuration%i' % (numObs, numStp), None)
+						stpFreq1 = float(req.form.getfirst('obs%istpFrequency%i-1' % (numObs, numStp), 38.0))*1e6
+						stpFreq2 = float(req.form.getfirst('obs%istpFrequency%i-2' % (numObs, numStp), 38.0))*1e6
+						stpC1 = float(req.form.getfirst('obs%istpC%i-1' % (numObs, numStp), 0.0))
+						stpC2 = float(req.form.getfirst('obs%istpC%i-2' % (numObs, numStp), 0.0))
+						stpBeam = req.form.getfirst('obs%istpBeam%i' % (numObs, numStp), 'SIMPLE')
+						if stpBeam == 'SIMPLE':
+							stpMaxSNR = False
+						else:
+							stpMaxSNR = True
+							
+						fields = stpDur.split(':')
+						if len(fields) == 3:
+							out = int(fields[0])*3600.0
+							out += int(fields[1])*60.0
+							out += float(fields[2])
+						elif len(fields) == 2:
+							out = int(fields[0])*60.0
+							out += float(fields[1])
+						else:
+							out = float(fields[0])
+						stpDur = int(round(out*1000.0))
+							
+						steps.append( BeamStep(stpC1, stpC2, stpDur, stpFreq1, stpFreq2, RADec=obsRADec, MaxSNR=stpMaxSNR) )
+						
+						numStp = numStp + 1
+						
+					observations.append( Stepped(obsName, obsTarget, obsStart, obsFilter, steps=steps, comments=obsComments) )
 					
 			numObs = numObs + 1
 					
