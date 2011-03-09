@@ -6,7 +6,13 @@
 	<script language="javascript">
 
 	var numObs = {{ observations|length }};
-	var numStp = 0;
+	var numStp = new Array();
+	numStp[0] = -1;
+	{% for obs in observations -%}
+		{% if obs.mode == 'STEPPED' %}
+		numStp[{{ obs.id }}] = {{ obs.steps|length }};
+		{% endif %}
+	{%- endfor %}
 	var xmlhttp;
 
 	function resolve(nameField, raField, decField) {
@@ -136,8 +142,9 @@
 
 	function addStepped() {
 		numObs = numObs + 1;
+		numStp[numObs] = 0;
 		
-		currSet = '';
+		var currSet = '';
 		currSet += 'Observation ID: '+numObs.toString()+'<br />';
 		currSet += '<input type="hidden" name="obsMode'+numObs.toString()+'" value="STEPPED" />';
 		currSet += 'Title: <input type="text" name="obsName'+numObs.toString()+'" /><br />';
@@ -158,7 +165,7 @@
 		currSet += '<div id="obsSteps'+numObs.toString()+'"></div>';
 		currSet += 'Comments:<br /><textarea rows="5" cols="75" name="obsComments'+numObs.toString()+'"></textarea><br />';
 
-		newEntry = document.createElement('div');
+		var newEntry = document.createElement('div');
 		newEntry.setAttribute('id', 'obs'+numObs.toString());
 		newEntry.setAttribute('class', 'obs');
 		newEntry.innerHTML = currSet;
@@ -167,20 +174,20 @@
 	}
 
 	function addStep(obsID) {
-		numStp = numStp + 1;
+		numStp[obsID] = numStp[obsID] + 1;
 		
-		currSet = '';
-		currSet += 'Step: '+numStp.toString()+'<br />';
-		currSet += 'Duration (HH:MM:SS.SSS): <input type="text" name="obs'+obsID.toString()+'stpDuration'+numStp.toString()+'" /><br />';
-		currSet += 'Tuning 1 Frequency (MHz): <input type="text" name="obs'+obsID.toString()+'stpFrequency'+numStp.toString()+'-1" /><br />';
-		currSet += 'Tuning 2 Frequency (MHz): <input type="text" name="obs'+obsID.toString()+'stpFrequency'+numStp.toString()+'-2" /><br />';
-		currSet += 'Coordinate 1: <input type="text" name="obs'+obsID.toString()+'stpC'+numStp.toString()+'-1" /><br />';
-		currSet += 'Coordinate 2: <input type="text" name="obs'+obsID.toString()+'stpC'+numStp.toString()+'-2" /><br />';
-		currSet += 'Beam-forming Mode: <input type="radio" name="obs'+numObs.toString()+'stpBeam'+numStp.toString()+'" value="SIMPLE" checked> Simple';
-		currSet += '<input type="radio" name="obs'+numObs.toString()+'stpBeam'+numStp.toString()+'" value="MAX_SNR">Maximum S/N<br />';
+		var currSet = '';
+		currSet += 'Step: '+numStp[obsID].toString()+'<br />';
+		currSet += 'Duration (HH:MM:SS.SSS): <input type="text" name="obs'+obsID.toString()+'stpDuration'+numStp[obsID].toString()+'" /><br />';
+		currSet += 'Tuning 1 Frequency (MHz): <input type="text" name="obs'+obsID.toString()+'stpFrequency'+numStp[obsID].toString()+'-1" /><br />';
+		currSet += 'Tuning 2 Frequency (MHz): <input type="text" name="obs'+obsID.toString()+'stpFrequency'+numStp[obsID].toString()+'-2" /><br />';
+		currSet += 'Coordinate 1: <input type="text" name="obs'+obsID.toString()+'stpC'+numStp[obsID].toString()+'-1" /><br />';
+		currSet += 'Coordinate 2: <input type="text" name="obs'+obsID.toString()+'stpC'+numStp[obsID].toString()+'-2" /><br />';
+		currSet += 'Beam-forming Mode: <input type="radio" name="obs'+numObs.toString()+'stpBeam'+numStp[obsID].toString()+'" value="SIMPLE" checked> Simple';
+		currSet += '<input type="radio" name="obs'+numObs.toString()+'stpBeam'+numStp[obsID].toString()+'" value="MAX_SNR">Maximum S/N<br />';
 
-		newEntry = document.createElement('div');
-		newEntry.setAttribute('id', 'stp'+obsID.toString());
+		var newEntry = document.createElement('div');
+		newEntry.setAttribute('id', 'obs'+obsID.toString()+'-stp'+numStp[obsID].toString());
 		newEntry.setAttribute('class', 'stp');
 		newEntry.innerHTML = currSet;
 
@@ -223,7 +230,7 @@
 			}
 
 			if(fields[i].name.search('Duration') != -1) {
-				var temp = fields.value.split(':');
+				var temp = fields[i].value.split(':');
 				var dur = 0;
 				if( temp.length == 3 ) {
 					dur = parseInt(temp[0])*3600 + parseInt(temp[1])*60.0 + parseFloat(temp[2]);
@@ -282,9 +289,11 @@
 			<input type="button" value="Resolve" onClick="resolve(this.form.obsTarget{{ loop.index }}, this.form.obsRA{{ loop.index }}, this.form.obsDec{{ loop.index }})" />
 			{%- endif %}<br />
 			Start (UTC YYYY MM DD HH:MM:SS.SSS): <input type="text" name="obsStart{{ loop.index }}" value="{{ obs.start }}" /><br />
+			{% if obs.mode != 'STEPPED' -%}
 			Duration (HH:MM:SS.SSS): <input type="text" name="obsDuration{{ loop.index }}" value="{{ obs.duration }}" /><br />
 			Tuning 1 Frequency (MHz): <input type="text" name="obsFrequency{{ loop.index }}-1" value="{{ obs.frequency1 / 1000000 }}" /><br />
 			Tuning 2 Frequency (MHz): <input type="text" name="obsFrequency{{ loop.index }}-2" value="{{ obs.frequency2 / 1000000 }}" /><br />
+			{%- endif %}
 			Filter: <select name="obsFilter{{ loop.index }}">
 				<option value="1" {{ 'selected="selected"' if obs.filter == 1 }}>250 kHz</option>
 				<option value="2" {{ 'selected="selected"' if obs.filter == 2 }}>500 kHz</option>
@@ -294,11 +303,34 @@
 				<option value="6" {{ 'selected="selected"' if obs.filter == 6 }}>9.8 MHz</option>
 				<option value="7" {{ 'selected="selected"' if obs.filter == 7 }}>19.6 MHz</option>
 			</select><br />
+			{% if obs.mode != 'STEPPED' -%}
 			Beam-forming Mode: <input type="radio" name="obsBeam{{ loop.index }}" value="SIMPLE" {{ "checked" if not obs.MaxSNR }}> Simple
 			<input type="radio" name="obsBeam{{ loop.index }}" value="MAX_SNR" {{ "checked" if obs.MaxSNR }}>Maximum S/N<br />
+			{%- endif %}
 			{% if obs.mode == 'TRK_RADEC' -%}
 			RA (HH.HHHHH, J2000): <input type="text" name="obsRA{{ loop.index }}" value="{{ obs.ra }}"/><br />
 			Dec (DD.DDDDD, J2000): <input type="text" name="obsDec{{ loop.index }}" value="{{ obs.dec }}" /><br />
+			{%- endif %}
+			{%- if obs.mode == 'STEPPED' -%}
+			Coordinate Mode: <input type="radio" name="obsCoords{{ loop.index }}" value="RADec" {{ "checked" if obs.steps[0].RADec }} > RA/Dec.
+			<input type="radio" name="obsCoords{{ loop.index }}" value="AzAlt" {{ "checked" if not obs.steps[0].RADec }} >Az./Alt.<br />
+			<input type="button" value="Add Step" onClick="addStep({{ loop.index }});" />
+			<div id="obsSteps{{ loop.index }}">
+			{%- set obsID = loop.index -%}
+			{% for step in obs.steps -%}
+				{%- set stpID = loop.index -%}
+				<div class="stp" id="stp{{ stpID }}">
+				Step: {{ loop.index }}<br />
+				Duration (HH:MM:SS.SSS): <input type="text" name="obs{{ obsID }}stpDuration{{ stpID }}" value="{{ step.duration }}" /><br />
+				Tuning 1 Frequency (MHz): <input type="text" name="obs{{ obsID }}stpFrequency{{ stpID }}-1" value="{{ step.frequency1 / 1000000 }}" /><br />
+				Tuning 2 Frequency (MHz): <input type="text" name="obs{{ obsID }}stpFrequency{{ stpID }}-2" value="{{ step.frequency2 / 1000000 }}" /><br />
+				Coordinate 1: <input type="text" name="obs{{ obsID }}stpC{{ stpID }}-1" value="{{ step.c1 }}" /><br />
+				Coordinate 2: <input type="text" name="obs{{ obsID }}stpC{{ stpID }}-2" value="{{ step.c2 }}" /><br />
+				Beam-forming Mode: <input type="radio" name="obs{{ obsID }}stpBeam{{ stpID }}" value="SIMPLE" {{ "checked" if not step.MaxSNR }} > Simple
+				<input type="radio" name="obs{{ obsID }}stpBeam{{ stpID }}" value="MAX_SNR" {{ "checked" if step.MaxSNR }} >Maximum S/N<br />
+				</div>
+			{%- endfor %}
+			</div>
 			{%- endif %}
 			Comments:<br />
 			<textarea rows="5" cols="75" name="obsComments{{ loop.index }}">{{ obs.comments }}</textarea><br />
@@ -311,6 +343,8 @@
 	<input type="button" value="Validate" onClick="validateDRX(this.form);" />
 	<input type="submit" name="Create" value="Create SDF" />
 </form>
+
+{{ to }}
 
 </body>
 </html>

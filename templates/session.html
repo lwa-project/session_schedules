@@ -37,6 +37,14 @@
 	<input type="hidden" name="mode" value="observations" />
 	<input type="submit" name="Continue" value="Define Observations" />
 </form>
+<br />or<br />
+
+<form action="session-definition.py" method="POST">
+	<h3>Initialize from Previous SD File</h3>
+	SD File: <input type="file" name="file" size="40"><br /><br />
+	<input type="hidden" name="mode" value="prevfile" />
+	<input type="submit" name="Upload" value="Upload File" />
+</form>
 
 
 </body>

@@ -55,7 +55,7 @@ import copy
 import math
 import pytz
 import ephem
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from jinja2 import Template
 
@@ -71,8 +71,8 @@ from lsl.reader.tbn import FrameSize as TBNSize
 from lsl.reader.drx import FrameSize as DRXSize
 
 
-__version__ = '0.1'
-__revision__ = '$ Revision: 2 $'
+__version__ = '0.3'
+__revision__ = '$ Revision: 11 $'
 __all__ = ['Observer', 'Project', 'Session', 'Observation', 'TBW', 'TBN', 'DRX', 'Solar', 'Jovian', 'Stepped', 'BeamStep', 'parse', '__version__', '__revision__', '__all__']
 
 _UTC = pytz.utc
@@ -394,7 +394,10 @@ class TBN(Observation):
 			bytes = duration * sampleRate / 512 * 1048 bytes * 260 stands * 2 pols.
 		"""
 		
-		nFrames = self.getDuration()/1000.0 * self.filterCodes[self.filter] / 512
+		try:
+			nFrames = self.getDuration()/1000.0 * self.filterCodes[self.filter] / 512
+		except KeyError:
+			nFrames = 0
 		nBytes = nFrames * TBNSize * _nStands * 2
 		return nBytes
 		
@@ -448,7 +451,10 @@ class DRX(Observation):
 			bytes = duration * sampleRate / 4096 * 4128 bytes * 2 tunings * 2 pols.
 		"""
 		
-		nFrames = self.getDuration()/1000.0 * self.filterCodes[self.filter] / 4096
+		try:
+			nFrames = self.getDuration()/1000.0 * self.filterCodes[self.filter] / 4096
+		except KeyError:
+			nFrames = 0
 		nBytes = nFrames * DRXSize * 4
 		return nBytes
 		
@@ -601,6 +607,9 @@ class Stepped(Observation):
 		duration = 0
 		for step in self.steps:
 			duration += step.dur
+			
+		# Update the actual duration string
+		self.duration = '%02i:%02i:%06.3f' % (int(duration/1000.0)/3600, int(duration/1000.0)%3600/60, duration/1000.0%60)
 		
 		return duration
 		
@@ -616,7 +625,10 @@ class Stepped(Observation):
 			bytes = duration * sampleRate / 4096 * 4128 bytes * 2 tunings * 2 pols.
 		"""
 		
-		nFrames = self.getDuration()/1000.0 * self.filterCodes[self.filter] / 4096
+		try:
+			nFrames = self.getDuration()/1000.0 * self.filterCodes[self.filter] / 4096
+		except KeyError:
+			nFrames = 0
 		nBytes = nFrames * DRXSize * 4
 		return nBytes
 		
@@ -807,20 +819,19 @@ def __parseCreateObsObject(obsTemp, beamTemps=[]):
 	if obsTemp['id'] == 0:
 		return None
 	
-	# Create a time string for the start time in UTC
-	start = Time(obsTemp['mjd'] + obsTemp['mpm'] / 1000.0 / 3600.0 / 24.0, format='MJD')
-	utcString = start.utc_py_date.strftime("UTC %Y %m %d %H:%M:%S.%f")
-	fields = utcString.split(':')
-	seconds = float(fields[-1])
-	fields[-1] = "%06.3f" % seconds
-	utcString = ':'.join(fields)
+	# Create a time string for the start time in UTC.  This is a little tricky 
+	# because of the rounding to the nearest millisecond which has to be done
+	# to the datetime object.
+	start = Time(obsTemp['mjd'] + obsTemp['mpm'] / 1000.0 / 3600.0 / 24.0, format='MJD').utc_py_date
+	start += timedelta(microseconds=(int(round(start.microsecond/1000.0)*1000.0)-start.microsecond))
+	utcString = start.strftime("UTC %Y %m %d %H:%M:%S.%f")
 	
 	# Build up a string representing the observation duration.  For TBW observations 
 	# this needs to be wrapped in a try...expect statement to catch errors.
 	try:
 		dur = obsTemp['dur']
 		dur = float(dur) / 1000.0
-		durString = '%02i:%02i:%06.3f' % (dur/3600, (dur%3600)/60, dur%60)
+		durString = '%02i:%02i:%06.3f' % (dur/3600.0, (dur%3600.0)/60.0, dur%60.0)
 	except:
 		pass
 	
@@ -843,11 +854,11 @@ def __parseCreateObsObject(obsTemp, beamTemps=[]):
 		obsOut = Jovian(obsTemp['name'], obsTemp['target'], utcString, durString, f1, f2, obsTemp['filter'], MaxSNR=obsTemp['MaxSNR'], comments=obsTemp['comments'])
 	else:
 		print "[%i] -> found %i steps" % (os.getpid(), len(beamTemps))
-		obsOut = Stepped(obsTemp['name'], obsTemp['target'], utcString, obsTemp['filter'], comments=obsTemp['comments'])
+		obsOut = Stepped(obsTemp['name'], obsTemp['target'], utcString, obsTemp['filter'], steps=[], comments=obsTemp['comments'])
 		for beamTemp in beamTemps:
 			f1 = beamTemp['freq1']*fS / 2**32
 			f2 = beamTemp['freq2']*fS / 2**32
-			obsOut.steps.append( BeamStep(beamTemp['c1'], beamTemp['c2'], beamTemp['duration'], f1, f2, obsTemp['stpRADec'], beamTemp['MaxSNR']) )
+			obsOut.append( BeamStep(beamTemp['c1'], beamTemp['c2'], beamTemp['duration'], f1, f2, obsTemp['stpRADec'], beamTemp['MaxSNR']) )
 
 	# Return the newly created Observation object
 	return obsOut
@@ -861,7 +872,7 @@ def parse(fh):
 	po = ProjectOffice()
 	observer = Observer('observer_name', 0)
 	project = Project(observer, 'project_name', 'project_id', projectOffice=po)
-	session = Session('session_name', 0)
+	session = Session('session_name', 0, observations=[])
 	project.sessions = [session,]
 	
 	# Loop over the file
@@ -925,6 +936,7 @@ def parse(fh):
 		if keyword == 'OBS_ID':
 			if obsTemp['id'] != 0:
 				project.sessions[0].observations.append( __parseCreateObsObject(obsTemp, beamTemps=beamTemps) )
+				beamTemp = {'id': 0, 'c1': 0.0, 'c2': 0.0, 'duration': 0, 'freq1': 0, 'freq2': 0, 'MaxSNR': False}
 				beamTemps = []
 			obsTemp['id'] = int(value)
 			print "[%i] Started obs %i" % (os.getpid(), int(value))

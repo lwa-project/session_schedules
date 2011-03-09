@@ -3,6 +3,7 @@
 
 import os
 import math
+import time
 from jinja2 import Environment, FileSystemLoader
 
 from mod_python import Session as PySession
@@ -42,7 +43,7 @@ def index(req):
 			observations = sess['observations']
 		except:
 			observations = []
-		return template.render(projectInfo=projectInfo, sessionInfo=sessionInfo, observations=observations)
+		return template.render(projectInfo=projectInfo, sessionInfo=sessionInfo, observations=observations, to=(time.time() - sess.last_accessed()))
 	
 	elif pageMode == 'definitions':
 		# Stage 3:  Session Definition File Creation
@@ -119,6 +120,7 @@ def index(req):
 					
 					steps = []
 					numStp = 1
+					stepsSimple = []
 					while req.form.getfirst('obs%istpDuration%i' % (numObs, numStp), None) is not None:
 						stpDur = req.form.getfirst('obs%istpDuration%i' % (numObs, numStp), None)
 						stpFreq1 = float(req.form.getfirst('obs%istpFrequency%i-1' % (numObs, numStp), 38.0))*1e6
@@ -141,14 +143,18 @@ def index(req):
 							out += float(fields[1])
 						else:
 							out = float(fields[0])
-						stpDur = int(round(out*1000.0))
+						stpDurn = int(round(out*1000.0))
 							
-						steps.append( BeamStep(stpC1, stpC2, stpDur, stpFreq1, stpFreq2, RADec=obsRADec, MaxSNR=stpMaxSNR) )
+						steps.append( BeamStep(stpC1, stpC2, stpDurn, stpFreq1, stpFreq2, RADec=obsRADec, MaxSNR=stpMaxSNR) )
+						stepsSimple.append( {'id': numStp, 'c1': stpC1, 'c2': stpC2, 'duration': stpDur, 
+											'frequency1': stpFreq1, 'frequency2': stpFreq2, 'RADec': obsRADec, 'MaxSNR': stpMaxSNR} )
 						
 						numStp = numStp + 1
 						
 					observations.append( Stepped(obsName, obsTarget, obsStart, obsFilter, steps=steps, comments=obsComments) )
-					
+					observationsSimple.append( {'id': numObs, 'name': obsName, 'target': obsTarget, 'start': obsStart, 
+										'filter': obsFilter, 'steps': stepsSimple, 'comments': obsComments, 'mode': obsMode} )
+										
 			numObs = numObs + 1
 					
 		session.observations = observations
@@ -166,13 +172,12 @@ def index(req):
 		
 	else:
 		# Stage 1:  Observer and Proposal Information; DP Output Mode
-		if sess.is_new():
-			sess.set_timeout(300)
+		sess.set_timeout(3600)
 		template = env.get_template('session.html')
 		
 		try:
 			projectInfo = sess['projectInfo']
 		except:
 			projectInfo = None
-		return template.render(projectInfo=projectInfo)
+		return template.render(projectInfo=projectInfo, to=(time.time() - sess.last_accessed()))
 		
