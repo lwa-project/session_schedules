@@ -2,12 +2,16 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
 	<title>LWA Session Definition File</title>
+
+	<link rel="stylesheet" href="schedule.css" type="text/css" />
+
 </head>
 
 <body>
 <a id="logo" href="http://lwa.unm.edu/"><img src="/lwa/logo.png" alt="The Long Wavelength Array Software Page" /></a>
 <h2>LWA Session Definition File</h2>
 
+<div class="obs">
 <form action="session-definition.py" method="POST">
 	<h3>Observer Information</h3>
 	<p>
@@ -35,17 +39,25 @@
 	</p>
 
 	<input type="hidden" name="mode" value="observations" />
+	{% if uploaded -%}
+	<i>Found {{ numObs }} observations in the uploaded file.  They will be displayed on the next screen.</i><br /><br />
+	{%- endif %}
 	<input type="submit" name="Continue" value="Define Observations" />
 </form>
-<br />or<br />
+</div>
 
-<form action="session-definition.py" method="POST">
+{% if not uploaded -%}
+<br /><center><i>or</i></center><br />
+
+<div class="obs">
+<form action="session-definition.py" method="POST" enctype="multipart/form-data">
 	<h3>Initialize from Previous SD File</h3>
 	SD File: <input type="file" name="file" size="40"><br /><br />
 	<input type="hidden" name="mode" value="prevfile" />
 	<input type="submit" name="Upload" value="Upload File" />
 </form>
-
+</div>
+{%- endif %}
 
 </body>
 </html>

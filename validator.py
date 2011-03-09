@@ -28,7 +28,7 @@ def index(req):
 		template = env.get_template('validator.html')
 		return template.render()
 		
-	tmpDir = tempfile.mkdtemp(suffix='.sdf', prefix='validate-')
+	tmpDir = tempfile.mkdtemp(prefix='validate-')
 	tmpFile = os.path.join(tmpDir, 'sdf.txt')
 	fh = open(tmpFile, 'wb')
 	fh.write(sdfData.file.read())

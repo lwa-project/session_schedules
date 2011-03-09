@@ -13,6 +13,12 @@ from sdf import *
 def index(req):
 	sess = PySession.Session(req)
 	pageMode = req.form.getfirst('mode', None)
+	#reset = req.form.getfirst('Reset', None)
+	#if reset is not None:
+		#pass
+		#pageMode = None
+		#sess.invalidate()
+		#sess = PySession.Session(req)
 
 	path = os.path.join(os.path.dirname(__file__), 'templates')
 	env = Environment(loader=FileSystemLoader(path))
@@ -170,6 +176,92 @@ def index(req):
 		req.headers_out["Content-type"] = 'text/plain'
 		return project.render()
 		
+	if pageMode == 'prevfile':
+		# Stage 0.5:  Initialize everything from an old SD file that has been uploaded
+		import tempfile
+		
+		# Get the SD file's contents and save it to a temporary file in a temporary 
+		# directory.  This is all done in binary mode so the file will have to be
+		# re-opened later to work on it.
+		sdfData = req.form['file']
+		tmpDir = tempfile.mkdtemp(prefix='session-definition-')
+		tmpFile = os.path.join(tmpDir, 'uploaded-sdf.txt')
+		fh = open(tmpFile, 'wb')
+		fh.write(sdfData.file.read())
+		fh.close()
+		
+		# Run the file through the parser
+		fh = open(tmpFile, 'r')
+		project = parse(fh)
+		fh.close()
+		
+		# Cleanup the temporary file and directory
+		os.unlink(tmpFile)
+		os.rmdir(tmpDir)
+		
+		projectInfo = {}
+		projectInfo['firstName'] = project.observer.name.split(',')[1]
+		projectInfo['lastName'] = project.observer.name.split(',')[0]
+		projectInfo['observerID'] = project.observer.id
+		projectInfo['projectID'] = project.id
+		projectInfo['projectName'] = project.name
+		projectInfo['projectComments'] = project.comments
+		if project.sessions[0].observations[0].mode in ['TBW', 'TBN']:
+			projectInfo['sessionMode'] = project.sessions[0].observations[0].mode
+		else:
+			projectInfo['sessionMode'] = 'DRX'
+		
+		sess['projectInfo'] = projectInfo
+		
+		
+		sessionInfo = {}
+		sessionInfo['sessionName'] = project.sessions[0].name
+		sessionInfo['sessionID'] = project.sessions[0].id
+		sessionInfo['sessionComments'] = project.sessions[0].comments
+		sess['sessionInfo'] = sessionInfo
+		
+		numObs = 1
+		observationsSimple = []
+		for obs in project.sessions[0].observations:
+			if obs.mode == 'TBW':
+				observationsSimple.append( {'id': numObs, 'name': obs.name, 'target': obs.target, 'start': obs.start, 'comments': obs.comments, 
+										'bits': obs.bits, 'samples': obs.samples} )
+			elif obs.mode == 'TBN':
+				observationsSimple.append( {'id': numObs, 'name': obs.name, 'target': obs.target, 'start': obs.start, 
+										'duration': obs.duration, 'frequency': obs.frequency1, 'filter': obs.filter, 'comments': obs.comments} )	
+			elif obs.mode == 'TRK_RADEC':
+				observationsSimple.append( {'id': numObs, 'name': obs.name, 'target': obs.target, 'start': obs.start, 
+									'duration': obs.duration, 'frequency1': obs.frequency1, 'frequency2': obs.frequency2, 'filter': obs.filter, 
+									'ra': obs.ra, 'dec': obs.dec, 'MaxSNR': obs.MaxSNR, 'comments': obs.comments, 'mode': obs.mode} )	
+			elif obs.mode == 'TRK_SOL':
+				observationsSimple.append( {'id': numObs, 'name': obs.name, 'target': obs.target, 'start': obs.start, 
+									'duration': obs.duration, 'frequency1': obs.frequency1, 'frequency2': obs.frequency2, 'filter': obs.filter, 
+									'MaxSNR': obs.MaxSNR, 'comments': obs.comments, 'mode': obs.mode} )	
+			elif obs.mode == 'TRK_JOV':
+				observationsSimple.append( {'id': numObs, 'name': obs.name, 'target': obs.target, 'start': obs.start, 
+									'duration': obs.duration, 'frequency1': obs.frequency1, 'frequency2': obs.frequency2, 'filter': obs.filter, 
+									'MaxSNR': obs.MaxSNR, 'comments': obs.comments, 'mode': obs.mode} )
+			elif obs.mode == 'STEPPED':
+				steps = []
+				numStp = 1
+				stepsSimple = []
+				for step in obs.steps:
+					stepsSimple.append( {'id': numStp, 'c1': step.c1, 'c2': step.c2, 'duration': step.duration, 
+										'frequency1': step.frequency1, 'frequency2': step.frequency2, 'RADec': step.RADec, 'MaxSNR': step.MaxSNR} )
+					numStp = numStp + 1
+					
+				observationsSimple.append( {'id': numObs, 'name': obs.name, 'target': obs.target, 'start': obs.start, 
+										'filter': obs.filter, 'steps': stepsSimple, 'comments': obs.comments, 'mode': obs.mode} )
+			else:
+				raise RuntimeError("Unknown observation mode '%s' for observation %i" % (obs.mode, numObs))
+										
+			numObs = numObs + 1
+		sess['observations'] = observationsSimple
+		sess.save()
+		
+		template = env.get_template('session.html')
+		return template.render(projectInfo=projectInfo, uploaded=True, numObs=len(observationsSimple), to=(time.time() - sess.last_accessed()))
+		
 	else:
 		# Stage 1:  Observer and Proposal Information; DP Output Mode
 		sess.set_timeout(3600)
@@ -179,5 +271,5 @@ def index(req):
 			projectInfo = sess['projectInfo']
 		except:
 			projectInfo = None
-		return template.render(projectInfo=projectInfo, to=(time.time() - sess.last_accessed()))
+		return template.render(projectInfo=projectInfo, uploaded=False, numObs=0, to=(time.time() - sess.last_accessed()))
 		
