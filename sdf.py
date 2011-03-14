@@ -51,6 +51,7 @@ Thus, stepped observations using OBS_STP_B[n] = SPEC_DELAYS_GAINS is not support
 """
 
 import os
+import re
 import copy
 import math
 import pytz
@@ -75,8 +76,70 @@ __version__ = '0.3'
 __revision__ = '$ Revision: 11 $'
 __all__ = ['Observer', 'Project', 'Session', 'Observation', 'TBW', 'TBN', 'DRX', 'Solar', 'Jovian', 'Stepped', 'BeamStep', 'parse', '__version__', '__revision__', '__all__']
 
+_dtRE = re.compile(r'((?P<tz>[A-Z]{2,3}) )?(?P<year>\d{4})[ -]((?P<month>\d{1,2})|(?P<mname>[a-z]{3}))[ -](?P<day>\d{1,2})[ T](?P<hour>\d{1,2}):(?P<minute>\d{1,2}):(?P<second>\d{1,2}(\.\d{1,6})?)')
 _UTC = pytz.utc
 _nStands = 256
+
+
+def parseTimeString(s):
+	"""Given a string in the format of (UTC) YYYY MM DD HH:MM:SS.SSS, return
+	the corresponding datetime object.  This function goes a little beyond what
+	datetime.strptime does in the since that it handle both interger and float
+	seconds as well as does the appropriate rounding to get millisecond precission."""
+	
+	mtch = _dtRE.match(s)
+	if mtch is None:
+		raise ValueError("Unparsable time string: '%s'" % s)
+	else:
+		if mtch.group('tz') is None:
+			tz = _UTC
+		else:
+			tzName = mtch.group('tz')
+			if tzName == 'UT' or tzName == 'UTC':
+				tz = _UTC
+			else:
+				raise ValueError("Unknown time zone: '%s'" % tzName)
+		
+		year = int(mtch.group('year'))
+		day = int(mtch.group('day'))
+		
+		hour = int(mtch.group('hour'))
+		minute = int(mtch.group('minute'))
+		second = math.floor(float(mtch.group('second')))
+		microsecond = int(round((float(mtch.group('second')) - second)*1000)*1000)
+		
+		if mtch.group('mname') is None:
+			month = int(mtch.group('month'))
+		else:
+			monthName = mtch.group('mname')
+			if monthName == 'jan':
+				month = 1
+			elif monthName == 'feb':
+				month = 2
+			elif monthName == 'mar':
+				month = 3
+			elif monthName == 'apr':
+				month = 4
+			elif monthName == 'may':
+				month = 5
+			elif monthName == 'jun':
+				month = 6
+			elif monthName == 'jul':
+				month = 7
+			elif monthName == 'aug':
+				month = 8
+			elif monthName == 'sep':
+				month = 9
+			elif monthName == 'oct':
+				month = 10
+			elif monthName == 'nov':
+				month = 11
+			elif monthName == 'dec':
+				month == 12
+			else:
+				raise ValueError("Unknown month abbreviation: '%s'" % monthName)
+			
+		return datetime(year, month, day, hour, minute, second, microsecond, tzinfo=tz)
 
 
 class Observer(object):
@@ -215,10 +278,7 @@ class Observation(object):
 		"""Return the modified Julian Date corresponding to the date/time of the
 		self.start string."""
 		
-		try:
-			utc = _UTC.localize(datetime.strptime(self.start, "UTC %Y %m %d %H:%M:%S.%f"))
-		except ValueError:
-			utc = _UTC.localize(datetime.strptime(self.start, "UTC %Y %b %d %H:%M:%S.%f"))
+		utc = parseTimeString(self.start)
 		utc = Time(utc, format=Time.FORMAT_PY_DATE)
 		return int(utc.utc_mjd)
 
@@ -226,12 +286,8 @@ class Observation(object):
 		"""Return the number of milliseconds between the date/time specified in the
 		self.start string and the previous UT midnight."""
 		
-		try:
-			utc = _UTC.localize(datetime.strptime(self.start, "UTC %Y %m %d %H:%M:%S.%f"))
-			utcMidnight = _UTC.localize(datetime.strptime(self.start[0:14], "UTC %Y %m %d"))
-		except ValueError:
-			utc = _UTC.localize(datetime.strptime(self.start, "UTC %Y %b %d %H:%M:%S.%f"))
-			utcMidnight = _UTC.localize(datetime.strptime(self.start[0:15], "UTC %Y %b %d"))
+		utc = parseTimeString(self.start)
+		utcMidnight = datetime(utc.year, utc.month, utc.day, 0, 0, 0, tzinfo=_UTC)
 		diff = utc - utcMidnight
 		return int(round((diff.seconds + diff.microseconds/1000000.0)*1000.0))
 
@@ -867,6 +923,10 @@ def __parseCreateObsObject(obsTemp, beamTemps=[]):
 def parse(fh):
 	"""Given a open filehandle, read in the file and create Project object that describes it."""
 	
+	# Create the keyword regular expression to deal with various indicies included 
+	# in the keywords
+	kwdRE = re.compile(r'(?P<keyword>[A-Z_0-9\+]+)(\[(?P<id1>[0-9]+?)\])?(\[(?P<id2>[0-9]+?)\])?(\[(?P<id3>[0-9]+?)\])?(\[(?P<id4>[0-9]+?)\])?')
+	
 	# Create empty objects to get things started.  Values will get filled in as they
 	# are found in the file
 	po = ProjectOffice()
@@ -886,13 +946,26 @@ def parse(fh):
 	for line in fh:
 		# Trim off the newline character and skip blank lines
 		line = line.replace('\n', '')
-		if len(line) == 0:
+		if len(line) == 0 or line.isspace():
 			continue
 
-		# Split into a keyword, value pair and skip over the observer comment lines
-		# (denoted by a plus sign at the end)
-		keyword, value = line.split(None, 1)
-		if keyword.find('+') != -1:
+		# Split into a keyword, value pair and run it through the regular expression
+		# to deal with any indicies present
+		keywordSection, value = line.split(None, 1)
+		
+		mtch = kwdRE.match(keywordSection)
+		keyword = mtch.group('keyword')
+		
+		ids = [-1, -1, -1, -1]
+		for i in xrange(4):
+			try:
+				ids[i] = int(mtch.group('id%i' % (i+1)))
+			except TypeError:
+				pass
+			
+		# Skip over the observer comment lines (denoted by a plus sign at the end) 
+		# of the keyword
+		if keyword[-1] == '+':
 			continue
 		
 		# Observer Info
@@ -992,82 +1065,76 @@ def parse(fh):
 		# Individual Stepped Beam Observations - This is a bit messy because of
 		# trying to keep up when a new step is encountered.  This adds in some 
 		# overhead to all of the steps.
-		if keyword[0:10] == 'OBS_STP_C1':
-			stepID = int(keyword[11:-1])
+		if keyword == 'OBS_STP_C1':
 			if len(beamTemps) == 0:
 				beamTemps.append( copy.deepcopy(beamTemp) )
-				beamTemps[-1]['id'] = stepID
+				beamTemps[-1]['id'] = ids[0]
 				beamTemps[-1]['c1'] = float(value)
 			else:
-				if beamTemps[-1]['id'] != stepID:
+				if beamTemps[-1]['id'] != ids[0]:
 					beamTemps.append( copy.deepcopy(beamTemps[-1]) )
-					beamTemps[-1]['id'] = stepID
+					beamTemps[-1]['id'] = ids[0]
 				beamTemps[-1]['c1'] = float(value)
 			continue
 				
-		if keyword[0:10] == 'OBS_STP_C2':
-			stepID = int(keyword[11:-1])
+		if keyword == 'OBS_STP_C2':
 			if len(beamTemps) == 0:
 				beamTemps.append( copy.deepcopy(beamTemp) )
-				beamTemps[-1]['id'] = stepID
+				beamTemps[-1]['id'] = ids[0]
 				beamTemps[-1]['c2'] = float(value)
 			else:
-				if beamTemps[-1]['id'] != stepID:
+				if beamTemps[-1]['id'] != ids[0]:
 					beamTemps.append( copy.deepcopy(beamTemps[-1]) )
-					beamTemps[-1]['id'] = stepID
+					beamTemps[-1]['id'] = ids[0]
 				beamTemps[-1]['c2'] = float(value)
 			continue
 			
-		if keyword[0:9] == 'OBS_STP_T':
-			stepID = int(keyword[10:-1])
+		if keyword == 'OBS_STP_T':
 			if len(beamTemps) == 0:
 				beamTemps.append( copy.deepcopy(beamTemp) )
-				beamTemps[-1]['id'] = stepID
+				beamTemps[-1]['id'] = ids[0]
 				beamTemps[-1]['duration'] = int(value)
 			else:
-				if beamTemps[-1]['id'] != stepID:
+				if beamTemps[-1]['id'] != ids[0]:
 					beamTemps.append( copy.deepcopy(beamTemps[-1]) )
-					beamTemps[-1]['id'] = stepID
+					beamTemps[-1]['id'] = ids[0]
 				beamTemps[-1]['duration'] = int(value)
 			continue
 				
-		if keyword[0:13] == 'OBS_STP_FREQ1':
-			stepID = int(keyword[14:-1])
+		if keyword == 'OBS_STP_FREQ1':
 			if len(beamTemps) == 0:
 				beamTemps.append( copy.deepcopy(beamTemp) )
-				beamTemps[-1]['id'] = stepID
+				beamTemps[-1]['id'] = ids[0]
 				beamTemps[-1]['freq1'] = int(value)
 			else:
-				if beamTemps[-1]['id'] != stepID:
+				if beamTemps[-1]['id'] != ids[0]:
 					beamTemps.append( copy.deepcopy(beamTemps[-1]) )
-					beamTemps[-1]['id'] = stepID
+					beamTemps[-1]['id'] = ids[0]
 				beamTemps[-1]['freq1'] = int(value)
 			continue
 					
-		if keyword[0:13] == 'OBS_STP_FREQ2':
-			stepID = int(keyword[14:-1])
+		if keyword == 'OBS_STP_FREQ2':
 			if len(beamTemps) == 0:
 				beamTemps.append( copy.deepcopy(beamTemp) )
-				beamTemps[-1]['id'] = stepID
+				beamTemps[-1]['id'] = ids[0]
 				beamTemps[-1]['freq2'] = int(value)
 			else:
-				if beamTemps[-1]['id'] != stepID:
+				if beamTemps[-1]['id'] != ids[0]:
 					beamTemps.append( copy.deepcopy(beamTemps[-1]) )
-					beamTemps[-1]['id'] = stepID
+					beamTemps[-1]['id'] = ids[0]
 				beamTemps[-1]['freq2'] = int(value)
 			continue
 					
-		if keyword[0:9] == 'OBS_STP_B':
-			stepID = int(keyword[10:-1])
+		if keyword == 'OBS_STP_B':
 			if len(beamTemps) == 0:
 				beamTemps.append( copy.deepcopy(beamTemp) )
-				beamTemps[-1]['id'] = stepID
+				beamTemps[-1]['id'] = ids[0]
 				if value == 'MAX_SNR':
 					beamTemps[-1]['MaxSNR'] = True
 			else:
-				if beamTemps[-1]['id'] != stepID:
+				if beamTemps[-1]['id'] != ids[0]:
 					beamTemps.append( copy.deepcopy(beamTemps[-1]) )
-					beamTemps[-1]['id'] = stepID
+					beamTemps[-1]['id'] = ids[0]
 				if value == 'MAX_SNR':
 					beamTemps[-1]['MaxSNR'] = True
 			continue
