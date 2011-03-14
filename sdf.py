@@ -32,12 +32,6 @@ this module also includes a simple parser for SD file.  It is mostly complete bu
 not currently support some of the extended session/observation parameters.  This 
 includes:
   * SESSION_DRX_BEAM
-  * SESSION_MRP_sss
-  * SESSION_MUP_sss
-  * SESSION_LOG_SCH
-  * SESSION_LOG_EXE
-  * SESSION_INC_SMIB
-  * SESSION_INC_DES
   * OBS_FEE[n][p]
   * OBS_ASP_FLT[n]
   * OBS_ASP_AT1[n]
@@ -211,6 +205,48 @@ class Session(object):
 		self.dataReturnMethod = dataReturnMethod
 		self.comments = comments
 		
+		self.cra = 0
+		
+		self.recordMIB = {'ASP': -1, 'DP_': -1, 'DR1': -1, 'DR2': -1, 'DR3': -1, 'DR4': -1, 'DR5': -1, 'SHL': -1, 'MCS': -1}
+		self.updateMIB = {'ASP': -1, 'DP_': -1, 'DR1': -1, 'DR2': -1, 'DR3': -1, 'DR4': -1, 'DR5': -1, 'SHL': -1, 'MCS': -1}
+		
+		self.logScheduler = True
+		self.logExecutive = True
+		
+		self.includeStationStatic= False
+		self.includeDesign = False
+	
+	def setConfigurationAuthority(self, value):
+		"""Set the configuration request authority to a particular value in the range of
+		0 to 65,535.  Higher values provide higher authority to set FEE and ASP 
+		parameters."""
+		
+		self.cra = int(value)
+	
+	def setMIBRecordInterval(self, component, interval):
+		"""Set the record interval for one of the level-1 subsystems (ASP, DP_, etc.) to
+		a particular value in minutes.  A KeyError is raised if an invalid sub-system is
+		specified.
+		
+		Special Values are:
+		  * -1 = use the MCS default interval
+		  * 0 = never record the MIB entries (the entries are still updated, however)
+		"""
+		
+		self.recordMIB[component] = int(interval)
+		
+	def setMIBUpdateInterval(self, component, interval):
+		"""Set the update interval for one of the level-1 subsystems (ASP, DP_, etc.) to 
+		a particular value in minutes.  A KeyError is raised if an invalid sub-system is
+		specified.
+		
+		Special Values are:
+		  * -1 = use the MCS default interval
+		  * 0 = request no updates to the MIB entries
+		"""
+		
+		self.updateMIB[component] = int(interval)
+		
 	def validate(self):
 		"""Examine all of the observations associated with the session to check
 		for validity.  If everything is valid, return True.  Otherwise, return
@@ -218,6 +254,13 @@ class Session(object):
 		
 		failures = 0
 		totalData = 0.0
+		if self.cra < 0 or self.cra > 65535:
+			failues += 1
+		for key in self.recordMIB.keys():
+			if self.recordMIB[key] < -1:
+				failures += 1
+			if self.updateMIB[key] < -1:
+				failures += 1
 		for obs in self.observations:
 			failures += obs.validate()
 			totalData += obs.dataVolume
@@ -1004,6 +1047,29 @@ def parse(fh):
 			project.projectOffice.sessions.append( '' )
 			project.projectOffice.sessions[0] = value
 			continue
+		if keyword == 'SESSION_CRA':
+			project.sessions[0].cra = int(value)
+			continue
+		if keyword[0:12] == 'SESSION_MRP_':
+			component = keyword[12:]
+			project.sessions[0].recordMIB[component] = int(value)
+			continue
+		if keyword[0:12] == 'SESSION_MUP_':
+			component = keyword[12:]
+			project.sessions[0].updateMIB[component] = int(value)
+			continue
+		if keyword == 'SESSION_LOG_SCH':
+			project.sesssions[0].logScheduler = bool(value)
+			continue
+		if keyword == 'SESSION_LOG_EXE':
+			project.sesssions[0].logExecutive = bool(value)
+			continue
+		if keyword == 'SESSION_INC_SMIB':
+			project.sessions[0].includeStationStatic = bool(value)
+			continue
+		if keyword == 'SESSION_INC_DES':
+			project.sessions[0].includeDesign = bool(value)
+			continue
 		
 		# Observation Info
 		if keyword == 'OBS_ID':
@@ -1169,71 +1235,82 @@ _SDFTemplate = Template("""
 	{{ "%.3f MHz"|format(obs.filterCodes[obs.filter]/1000000) if obs.filterCodes[obs.filter] > 1000000 else "%.3f kHz"|format(obs.filterCodes[obs.filter]/1000) }}
 {%- endmacro -%}
 
-PI_ID           {{ project.observer.id }}
-PI_NAME         {{ project.observer.name }}
+PI_ID            {{ project.observer.id }}
+PI_NAME          {{ project.observer.name }}
 
 {% set poComment = project.projectOffice.project|default('None', boolean=True) -%}
-PROJECT_ID      {{ project.id }}
-PROJECT_TITLE   {{ project.name }}
-PROJECT_REMPI   {{ project.comments|default('None provided', boolean=True)|truncate(4090, killwords=True) }}
-PROJECT_REMPO   {{ poComment }}
+PROJECT_ID       {{ project.id }}
+PROJECT_TITLE    {{ project.name }}
+PROJECT_REMPI    {{ project.comments|default('None provided', boolean=True)|truncate(4090, killwords=True) }}
+PROJECT_REMPO    {{ poComment }}
 
 {% set session = project.sessions[whichSession] -%}
 {% set poComment = project.projectOffice.sessions[whichSession]|default('None', boolean=True) -%}
-SESSION_ID      {{ session.id }}
-SESSION_TITLE   {{ session.name|default('None provided', boolean=True) }}
-SESSION_REMPI   {{ session.comments|default('None provided', boolean=True)|truncate(4090, killwords=True) }}
-SESSION_REMPO   {{ "Requested data return method is %s"|format(session.dataReturnMethod) if poComment == 'None' else poComment }}
+SESSION_ID       {{ session.id }}
+SESSION_TITLE    {{ session.name|default('None provided', boolean=True) }}
+SESSION_REMPI    {{ session.comments|default('None provided', boolean=True)|truncate(4090, killwords=True) }}
+SESSION_REMPO    {{ "Requested data return method is %s"|format(session.dataReturnMethod) if poComment == 'None' else poComment }}
+{{- "\nSESSION_CRA      %i"|format(session.cra) if session.cra != 0 }}
+{%- for component in ['ASP', 'DP_', 'DR1', 'DR2', 'DR3', 'DR4', 'DR5', 'SHL', 'MCS'] -%}
+{{- "\nSESSION_MRP_%s  %i"|format(component, session.recordMIB[component]) if session.recordMIB[component] != -1 }}
+{%- endfor %}
+{%- for component in ['ASP', 'DP_', 'DR1', 'DR2', 'DR3', 'DR4', 'DR5', 'SHL', 'MCS'] -%}
+{{- "\nSESSION_MUP_%s  %i"|format(component, session.updateMIB[component]) if session.updateMIB[component] != -1 }}
+{%- endfor %}
+{{- "\nSESSION_LOG_SCH  %i"|format(session.logScheduler) if not session.logScheduler }}
+{{- "\nSESSION_LOG_EXE  %i"|format(session.logExecutive) if not session.logExecutive }}
+{{- "\nSESSION_INC_SMIB %i"|format(session.includeStationStatic) if session.includeStationStatic }}
+{{- "\nSESSION_INC_DES  %i"|format(session.includeDesign) if session.includeDesign }}
 
 {% for obs in session.observations -%}
 {% set poComment = project.projectOffice.observations[whichSession][loop.index0]|default('None', boolean=True) -%}
-OBS_ID          {{ loop.index }}
-OBS_TITLE       {{ obs.name|default('None provided', boolean=True) }}
-OBS_TARGET      {{ obs.target|default('None provided', boolean=True) }}
-OBS_REMPI       {{ obs.comments|default('None provided', boolean=True)|truncate(4090, killwords=True) }}
-OBS_REMPO       {{ "Estimated data volume for this observation is %s"|format(obs.dataVolume|filesizeformat) if poComment == 'None' else poComment }}
-OBS_START_MJD   {{ obs.mjd }}
-OBS_START_MPM   {{ obs.mpm }}
-OBS_START       {{ obs.start }}
-OBS_DUR         {{ "%i"|format(obs.dur) }}
-OBS_DUR+        {{ "%.1f ms + estimated read-out time"|format(obs.samples / 196000) if obs.mode == 'TBW' else obs.duration }}
-OBS_MODE        {{ obs.mode }}
+OBS_ID           {{ loop.index }}
+OBS_TITLE        {{ obs.name|default('None provided', boolean=True) }}
+OBS_TARGET       {{ obs.target|default('None provided', boolean=True) }}
+OBS_REMPI        {{ obs.comments|default('None provided', boolean=True)|truncate(4090, killwords=True) }}
+OBS_REMPO        {{ "Estimated data volume for this observation is %s"|format(obs.dataVolume|filesizeformat) if poComment == 'None' else poComment }}
+OBS_START_MJD    {{ obs.mjd }}
+OBS_START_MPM    {{ obs.mpm }}
+OBS_START        {{ obs.start }}
+OBS_DUR          {{ "%i"|format(obs.dur) }}
+OBS_DUR+         {{ "%.1f ms + estimated read-out time"|format(obs.samples / 196000) if obs.mode == 'TBW' else obs.duration }}
+OBS_MODE         {{ obs.mode }}
 {% if obs.mode == 'TBN' -%}
-OBS_FREQ1       {{ obs.freq1 }}
-OBS_FREQ1+      {{ "%.9f MHz"|format(obs.frequency1/1000000) }}
-OBS_BW          {{ obs.filter }}
-OBS_BW+         {{ renderBW(obs) }}
+OBS_FREQ1        {{ obs.freq1 }}
+OBS_FREQ1+       {{ "%.9f MHz"|format(obs.frequency1/1000000) }}
+OBS_BW           {{ obs.filter }}
+OBS_BW+          {{ renderBW(obs) }}
 {% elif obs.mode == 'TRK_RADEC' -%}
-OBS_RA          {{ obs.ra }}
-OBS_DEC         {{ obs.dec }}
-OBS_B           {{ obs.beam }}
-OBS_FREQ1       {{ obs.freq1 }}
-OBS_FREQ1+      {{ "%.9f MHz"|format(obs.frequency1/1000000) }}
-OBS_FREQ2       {{ obs.freq2 }}
-OBS_FREQ2+      {{ "%.9f MHz"|format(obs.frequency2/1000000) }}
-OBS_BW          {{ obs.filter }}
-OBS_BW+         {{ renderBW(obs) }}
+OBS_RA           {{ obs.ra }}
+OBS_DEC          {{ obs.dec }}
+OBS_B            {{ obs.beam }}
+OBS_FREQ1        {{ obs.freq1 }}
+OBS_FREQ1+       {{ "%.9f MHz"|format(obs.frequency1/1000000) }}
+OBS_FREQ2        {{ obs.freq2 }}
+OBS_FREQ2+       {{ "%.9f MHz"|format(obs.frequency2/1000000) }}
+OBS_BW           {{ obs.filter }}
+OBS_BW+          {{ renderBW(obs) }}
 {% elif obs.mode == 'TRK_SOL' -%}
-OBS_B           {{ obs.beam }}
-OBS_FREQ1       {{ obs.freq1 }}
-OBS_FREQ1+      {{ "%.9f MHz"|format(obs.frequency1/1000000) }}
-OBS_FREQ2       {{ obs.freq2 }}
-OBS_FREQ2+      {{ "%.9f MHz"|format(obs.frequency2/1000000) }}
-OBS_BW          {{ obs.filter }}
-OBS_BW+         {{ renderBW(obs) }}
+OBS_B            {{ obs.beam }}
+OBS_FREQ1        {{ obs.freq1 }}
+OBS_FREQ1+       {{ "%.9f MHz"|format(obs.frequency1/1000000) }}
+OBS_FREQ2        {{ obs.freq2 }}
+OBS_FREQ2+       {{ "%.9f MHz"|format(obs.frequency2/1000000) }}
+OBS_BW           {{ obs.filter }}
+OBS_BW+          {{ renderBW(obs) }}
 {% elif obs.mode == 'TRK_JOV' -%}
-OBS_B           {{ obs.beam }}
-OBS_FREQ1       {{ obs.freq1 }}
-OBS_FREQ1+      {{ "%.9f MHz"|format(obs.frequency1/1000000) }}
-OBS_FREQ2       {{ obs.freq2 }}
-OBS_FREQ2+      {{ "%.9f MHz"|format(obs.frequency2/1000000) }}
-OBS_BW          {{ obs.filter }}
-OBS_BW+         {{ renderBW(obs) }}
+OBS_B            {{ obs.beam }}
+OBS_FREQ1        {{ obs.freq1 }}
+OBS_FREQ1+       {{ "%.9f MHz"|format(obs.frequency1/1000000) }}
+OBS_FREQ2        {{ obs.freq2 }}
+OBS_FREQ2+       {{ "%.9f MHz"|format(obs.frequency2/1000000) }}
+OBS_BW           {{ obs.filter }}
+OBS_BW+          {{ renderBW(obs) }}
 {% elif obs.mode == 'STEPPED' -%}
-OBS_BW          {{ obs.filter }}
-OBS_BW+         {{ renderBW(obs) }}
-OBS_STP_N       {{ obs.steps|length }}
-OBS_STP_RADEC   {{ "%i"|format(obs.steps[0].RADec) }}
+OBS_BW           {{ obs.filter }}
+OBS_BW+          {{ renderBW(obs) }}
+OBS_STP_N        {{ obs.steps|length }}
+OBS_STP_RADEC    {{ "%i"|format(obs.steps[0].RADec) }}
 {% for step in obs.steps -%}
 OBS_STP_C1[{{ loop.index }}]      {{ step.c1 }}
 OBS_STP_C2[{{ loop.index }}]      {{ step.c2 }}
@@ -1249,8 +1326,8 @@ OBS_STP_B[{{ loop.index }}]       {{ step.beam }}
 
 {%- set obs = session.observations|first -%}
 {% if obs.mode == 'TBW' -%}
-OBS_TBW_BITS    {{ obs.bits }}
-OBS_TBW_SAMPLES {{ obs.samples }}
+OBS_TBW_BITS     {{ obs.bits }}
+OBS_TBW_SAMPLES  {{ obs.samples }}
 {% endif %}
 
 """)
