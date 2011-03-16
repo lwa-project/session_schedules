@@ -139,32 +139,52 @@ def parseTimeString(s):
 class Observer(object):
 	"""Class to hold information about an observer."""
 	
-	def __init__(self, name, id):
+	def __init__(self, name, id, first=None, last=None):
 		self.name = name
+		self.first = first
+		self.last = last
 		self.id = int(id)
+
+	def joinName(self):
+		self.name = ', '.join([self.last, self.first])
+		
+	def splitName(self):
+		self.last, self.first = self.name.split(', ', 1)
 
 
 class ProjectOffice(object):
 	"""Class to hold comments from the LWA object office.  This class isn't really 
 	needed to create SD files, but it is helpful for parsing SD files."""
 	
-	def __init__(self, project=None, sessions=[], observations=[]):
+	def __init__(self, project=None, sessions=None, observations=None):
 		self.project = project
-		self.sessions = sessions
-		self.observations = observations
+		if sessions is None:
+			self.sessions = []
+		else:
+			self.sessions = sessions
+		if observations is None:
+			self.observations = []
+		else:
+			self.observations = observations
 
 
 class Project(object):
 	"""Class to hold all the information about a specific session for a 
 	project/proposal."""
 	
-	def __init__(self, observer, name, id, sessions=[], comments=None, projectOffice=ProjectOffice()):
+	def __init__(self, observer, name, id, sessions=None, comments=None, projectOffice=None):
 		self.observer = observer
 		self.name = name
 		self.id = id
 		self.comments = comments
-		self.sessions = sessions
-		self.projectOffice = projectOffice
+		if sessions is None:
+			self.sessions = []
+		else:
+			self.sessions = sessions
+		if projectOffice is None:
+			self.projectOffice = ProjectOffice()
+		else:
+			self.projectOffice = projectOffice
 		
 	def validate(self):
 		"""Examine all of the sessions and all of their observations to check
@@ -198,10 +218,13 @@ class Project(object):
 class Session(object):
 	"""Class to hold all of the observations in a session."""
 	
-	def __init__(self, name, id, observations=[], dataReturnMethod='DRSU', comments=None):
+	def __init__(self, name, id, observations=None, dataReturnMethod='DRSU', comments=None):
 		self.name = name
 		self.id = int(id)
-		self.observations = observations
+		if observations is None:
+			self.observations = None
+		else:
+			self.observations = observations
 		self.dataReturnMethod = dataReturnMethod
 		self.comments = comments
 		
@@ -1017,6 +1040,7 @@ def parse(fh):
 			continue
 		if keyword == 'PI_NAME':
 			project.observer.name = value
+			project.observer.splitName()
 			continue
 		
 		# Project/Proposal Info
