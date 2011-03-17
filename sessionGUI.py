@@ -24,6 +24,8 @@ ID_QUIT = 14
 ID_INFO = 21
 ID_ADD = 22
 ID_REMOVE = 23
+ID_VALIDATE = 24
+ID_ADVANCED = 25
 
 ID_HELP = 31
 ID_ABOUT = 32
@@ -77,10 +79,15 @@ class SDFCreator(wx.Frame):
 		# Observer menu items
 		info = wx.MenuItem(obsMenu, ID_INFO, '&Observer/Project Info.')
 		obsMenu.AppendItem(info)
-		add = wx.MenuItem(obsMenu, ID_ADD, '&Add Observation')
+		add = wx.MenuItem(obsMenu, ID_ADD, '&Add')
 		obsMenu.AppendItem(add)
-		remove = wx.MenuItem(obsMenu, ID_REMOVE, '&Remove Selected Observations')
+		remove = wx.MenuItem(obsMenu, ID_REMOVE, '&Remove Selected')
 		obsMenu.AppendItem(remove)
+		validate = wx.MenuItem(obsMenu, ID_VALIDATE, '&Validate All')
+		obsMenu.AppendItem(validate)
+		obsMenu.AppendSeparator()
+		advanced = wx.MenuItem(obsMenu, ID_ADVANCED, '&Advanced Settings')
+		obsMenu.AppendItem(advanced)
 		
 		# Help menu items
 		about = wx.MenuItem(helpMenu, ID_ABOUT, '&About')
@@ -110,6 +117,8 @@ class SDFCreator(wx.Frame):
 		self.Bind(wx.EVT_MENU, self.onInfo, id=ID_INFO)
 		self.Bind(wx.EVT_MENU, self.onAdd, id=ID_ADD)
 		self.Bind(wx.EVT_MENU, self.onRemove, id=ID_REMOVE)
+		self.Bind(wx.EVT_MENU, self.onValidate, id=ID_VALIDATE)
+		self.Bind(wx.EVT_MENU, self.onAdvanced, id=ID_ADVANCED)
 		
 		# Help menu events
 		self.Bind(wx.EVT_MENU, self.onAbout, id=ID_ABOUT)
@@ -159,6 +168,12 @@ class SDFCreator(wx.Frame):
 		for i in bad:
 			self.listControl.DeleteItem(i)
 			del self.project.sessions[0].observations[i]
+	
+	def onValidate(self, event):
+		pass
+	
+	def onAdvanced(self, event):
+		pass
 	
 	def onAbout(self, event):
 		wx.MessageBox('GUI interface for session definition file creation.', 'About')
