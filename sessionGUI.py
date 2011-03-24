@@ -5,11 +5,15 @@ import os
 import sys
 import sdf
 
+from lsl.common.dp import fS
+
 import wx
 from wx.lib.mixins.listctrl import TextEditMixin, CheckListCtrlMixin
 
 
 class ObservationListCtrl(wx.ListCtrl, TextEditMixin, CheckListCtrlMixin):
+	"""Class that compiles a editable list with check boxes"""
+	
 	def __init__(self, parent):
 		wx.ListCtrl.__init__(self, parent, -1, style=wx.LC_REPORT)
 		TextEditMixin.__init__(self)
@@ -22,19 +26,31 @@ ID_SAVE = 13
 ID_QUIT = 14
 
 ID_INFO = 21
-ID_ADD = 22
-ID_REMOVE = 23
-ID_VALIDATE = 24
-ID_ADVANCED = 25
+ID_ADD_TBW = 22
+ID_ADD_TBN = 23
+ID_ADD_DRX_RADEC = 24
+ID_ADD_DRX_SOLAR = 25
+ID_ADD_DRX_JOVIAN = 26
+ID_ADD_STEPPED = 27
+ID_REMOVE = 28
+ID_VALIDATE = 29
+ID_ADVANCED = 30
 
-ID_HELP = 31
-ID_ABOUT = 32
+ID_DATA_RETURN = 41
+ID_DATA_VOLUME = 42
+
+ID_HELP = 51
+ID_ABOUT = 52
 
 class SDFCreator(wx.Frame):
 	def __init__(self, parent, title, args=[]):
 		wx.Frame.__init__(self, parent, title=title, size=(750,500))
 		
 		self.dirname = ''
+		self.toolbar = None
+		self.statusbar = None
+		self.obsmenu = {}
+		self.obsbutton = {}
 		
 		self.initSDF()
 		
@@ -45,10 +61,13 @@ class SDFCreator(wx.Frame):
 		
 		if len(args) > 0:
 			self.parseFile(args[0])
+		else:
+			self.setMenuButtons('None')
 		
 	def initSDF(self):
-		# Create empty objects to get things started.  Values will get filled in as they
-		# are found in the file
+		""" Create an empty sdf.project instance to store all of the actual
+		observations."""
+		
 		po = sdf.ProjectOffice()
 		observer = sdf.Observer('', 0, first='', last='')
 		project = sdf.Project(observer, '', '', projectOffice=po)
@@ -58,7 +77,14 @@ class SDFCreator(wx.Frame):
 		self.project = project
 		self.mode = ''
 		
+		self.project.sessions[0].tbwBits = 12
+		self.project.sessions[0].tbwSamples = 12000000
+		self.project.sessions[0].tbnGain = -1
+		self.project.sessions[0].drxGain = -1
+		
 	def initUI(self):
+		"""Start the user interface"""
+		
 		menubar = wx.MenuBar()
 		
 		fileMenu = wx.Menu()
@@ -79,8 +105,21 @@ class SDFCreator(wx.Frame):
 		# Observer menu items
 		info = wx.MenuItem(obsMenu, ID_INFO, '&Observer/Project Info.')
 		obsMenu.AppendItem(info)
-		add = wx.MenuItem(obsMenu, ID_ADD, '&Add')
-		obsMenu.AppendItem(add)
+		add = wx.Menu()
+		addTBW = wx.MenuItem(add, ID_ADD_TBW, 'TBW')
+		add.AppendItem(addTBW)
+		addTBN = wx.MenuItem(add, ID_ADD_TBN, 'TBN')
+		add.AppendItem(addTBN)
+		add.AppendSeparator()
+		addDRXR = wx.MenuItem(add, ID_ADD_DRX_RADEC, 'DRX - RA/Dec')
+		add.AppendItem(addDRXR)
+		addDRXS = wx.MenuItem(add, ID_ADD_DRX_SOLAR, 'DRX - Solar')
+		add.AppendItem(addDRXS)
+		addDRXJ = wx.MenuItem(add, ID_ADD_DRX_JOVIAN, 'DRX - Jovian')
+		add.AppendItem(addDRXJ)
+		addStepped = wx.MenuItem(add, ID_ADD_STEPPED, 'DRX - Stepped')
+		add.AppendItem(addStepped)
+		obsMenu.AppendMenu(-1, 'Add', add)
 		remove = wx.MenuItem(obsMenu, ID_REMOVE, '&Remove Selected')
 		obsMenu.AppendItem(remove)
 		validate = wx.MenuItem(obsMenu, ID_VALIDATE, '&Validate All')
@@ -88,6 +127,15 @@ class SDFCreator(wx.Frame):
 		obsMenu.AppendSeparator()
 		advanced = wx.MenuItem(obsMenu, ID_ADVANCED, '&Advanced Settings')
 		obsMenu.AppendItem(advanced)
+		
+		# Save menu items and disable stepped observations (for now)
+		self.obsmenu['tbn'] = addTBN
+		self.obsmenu['tbw'] = addTBW
+		self.obsmenu['drx-radec'] = addDRXR
+		self.obsmenu['drx-solar'] = addDRXS
+		self.obsmenu['drx-jovian'] = addDRXJ
+		self.obsmenu['stepped'] = addStepped
+		addStepped.Enable(False)
 		
 		# Help menu items
 		about = wx.MenuItem(helpMenu, ID_ABOUT, '&About')
@@ -98,6 +146,44 @@ class SDFCreator(wx.Frame):
 		menubar.Append(helpMenu, '&Help')
 		self.SetMenuBar(menubar)
 		
+		# Toolbar
+		self.toolbar = self.CreateToolBar()
+		self.toolbar.AddLabelTool(ID_NEW, '', wx.Bitmap('icons/new.png'), shortHelp='New', 
+								longHelp='Clear the existing setup and start a new project/session')
+		self.toolbar.AddLabelTool(ID_OPEN, '', wx.Bitmap('icons/open.png'), shortHelp='Open', 
+								longHelp='Open and load an existing SD file')
+		self.toolbar.AddLabelTool(ID_SAVE, '', wx.Bitmap('icons/save.png'), shortHelp='Save', 
+								longHelp='Save the current setup to a SD file')
+		self.toolbar.AddLabelTool(ID_QUIT, '', wx.Bitmap('icons/exit.png'), shortHelp='Quit', 
+								longHelp='Quit (without saving)')
+		self.toolbar.AddSeparator()
+		self.toolbar.AddLabelTool(ID_ADD_TBW, 'tbw', wx.Bitmap('icons/tbw.png'), shortHelp='Add TBW', 
+								longHelp='Add a new all-sky TBW observation to the list')
+		self.toolbar.AddLabelTool(ID_ADD_TBN, 'tbn', wx.Bitmap('icons/tbn.png'), shortHelp='Add TBN', 
+								longHelp='Add a new all-sky TBN observation to the list')
+		self.toolbar.AddLabelTool(ID_ADD_DRX_RADEC,  'drx-radec',  wx.Bitmap('icons/drx-radec.png'),  shortHelp='Add DRX - RA/Dec', 
+								longHelp='Add a new beam forming DRX observation that tracks the sky (ra/dec)')
+		self.toolbar.AddLabelTool(ID_ADD_DRX_SOLAR,  'drx-solar',  wx.Bitmap('icons/drx-solar.png'),  shortHelp='Add DRX - Solar', 
+								longHelp='Add a new beam forming DRX observation that tracks the Sun')
+		self.toolbar.AddLabelTool(ID_ADD_DRX_JOVIAN, 'drx-jovian', wx.Bitmap('icons/drx-jovian.png'), shortHelp='Add DRX - Jovian', 
+								longHelp='Add a new beam forming DRX observation that tracks Jupiter')
+		self.toolbar.AddLabelTool(ID_ADD_STEPPED,  'stepped', wx.Bitmap('icons/stepped.png'), shortHelp='Add DRX - Stepped', 
+								longHelp='Add a new beam forming DRX observation with custom position and frequency stepping')
+		self.toolbar.AddLabelTool(ID_REMOVE, '', wx.Bitmap('icons/remove.png'), shortHelp='Remove Selected', 
+								longHelp='Remove the selected observations from the list')
+		self.toolbar.AddLabelTool(ID_VALIDATE, '', wx.Bitmap('icons/validate.png'), shortHelp='Validate Observations', 
+								longHelp='Display a brief help message for this program')
+		self.toolbar.AddSeparator()
+		self.toolbar.AddLabelTool(ID_ABOUT, '', wx.Bitmap('icons/help.png'), shortHelp='Help')
+		self.toolbar.Realize()
+		
+		# Disable stepped observations (for now)
+		self.toolbar.EnableTool(ID_ADD_STEPPED, False)
+		
+		# Status bar
+		self.statusbar = self.CreateStatusBar()
+		
+		# Observation list
 		hbox = wx.BoxSizer(wx.HORIZONTAL)
 		panel = wx.Panel(self, -1)
 		
@@ -107,6 +193,8 @@ class SDFCreator(wx.Frame):
 		panel.SetSizer(hbox)
 	
 	def initEvents(self):
+		"""Set all of the various events in the main window"""
+		
 		# File menu events
 		self.Bind(wx.EVT_MENU, self.onNew, id=ID_NEW)
 		self.Bind(wx.EVT_MENU, self.onLoad, id=ID_OPEN)
@@ -115,7 +203,12 @@ class SDFCreator(wx.Frame):
 		
 		# Observer menu events
 		self.Bind(wx.EVT_MENU, self.onInfo, id=ID_INFO)
-		self.Bind(wx.EVT_MENU, self.onAdd, id=ID_ADD)
+		self.Bind(wx.EVT_MENU, self.onAddTBW, id=ID_ADD_TBW)
+		self.Bind(wx.EVT_MENU, self.onAddTBN, id=ID_ADD_TBN)
+		self.Bind(wx.EVT_MENU, self.onAddDRXR, id=ID_ADD_DRX_RADEC)
+		self.Bind(wx.EVT_MENU, self.onAddDRXS, id=ID_ADD_DRX_SOLAR)
+		self.Bind(wx.EVT_MENU, self.onAddDRXJ, id=ID_ADD_DRX_JOVIAN)
+		self.Bind(wx.EVT_MENU, self.onAddStepped, id=ID_ADD_STEPPED)
 		self.Bind(wx.EVT_MENU, self.onRemove, id=ID_REMOVE)
 		self.Bind(wx.EVT_MENU, self.onValidate, id=ID_VALIDATE)
 		self.Bind(wx.EVT_MENU, self.onAdvanced, id=ID_ADVANCED)
@@ -124,25 +217,28 @@ class SDFCreator(wx.Frame):
 		self.Bind(wx.EVT_MENU, self.onAbout, id=ID_ABOUT)
 	
 	def onNew(self, event):
+		"""Create a new SD session"""
+		
+		self.setMenuButtons('None')
 		self.listControl.DeleteAllItems()
 		self.listControl.DeleteAllColumns()
 		self.initSDF()
 		ObserverInfo(self)
 	
 	def onLoad(self, event):
+		"""Load an existing SD file"""
+		
 		dialog = wx.FileDialog(self, "Select a SD File", self.dirname, '', 'Text Files (*.txt)|*.txt|All Files (*.*)|*.*', wx.OPEN)
 		
 		if dialog.ShowModal() == wx.ID_OK:
 			self.dirname = dialog.GetDirectory()
 			self.parseFile(dialog.GetPath())
 		dialog.Destroy()
-		
-	def onOK(self, event):
-		self.parent.parseFile(self.filenameEntry.GetValue())
-		self.Close()
 
 	def onSave(self, event):
-		dialog = wx.FileDialog(self, "Select Output File", self.dirname, '', 'Text Files (*.txt)|*.txt|All Files (*.*)|*.*', wx.SAVE)
+		"""Save the current observation to a SD file"""
+		
+		dialog = wx.FileDialog(self, "Select Output File", self.dirname, '', 'Text Files (*.txt)|*.txt|All Files (*.*)|*.*', wx.SAVE|wx.FD_OVERWRITE_PROMPT)
 		
 		if dialog.ShowModal() == wx.ID_OK:
 			self.dirname = dialog.GetDirectory()
@@ -154,12 +250,64 @@ class SDFCreator(wx.Frame):
 		dialog.Destroy()
 	
 	def onInfo(self, event):
+		"""Open up the observer/project information window"""
+		
 		ObserverInfo(self)
 		
-	def onAdd(self, event):
+	def onAddTBW(self, event):
+		"""Add a TBW observation to the list and update the main window"""
+		
+		id = self.listControl.GetItemCount() + 1
+		bits = self.project.sessions[0].tbwBits
+		samples = self.project.sessions[0].tbwSamples
+		self.project.sessions[0].observations.append( sdf.TBW('tbw-%i' % id, 'All-Sky', '2011-01-01 00:00:00.000', samples, bits=bits) )
+		self.addObservation(self.project.sessions[0].observations[-1], id)
+		
+	def onAddTBN(self, event):
+		"""Add a TBW observation to the list and update the main window"""
+		
+		id = self.listControl.GetItemCount() + 1
+		gain = self.project.sessions[0].tbnGain
+		self.project.sessions[0].observations.append( sdf.TBN('tbn-%i' % id, 'All-Sky', '2011-01-01 00:00:00.000', '00:00:00.000', 38e6, 7) )
+		self.project.sessions[0].observations[-1].gain = gain
+		self.addObservation(self.project.sessions[0].observations[-1], id)
+		
+	def onAddDRXR(self, event):
+		"""Add a tracking RA/Dec (DRX) observation to the list and update the main window"""
+		
+		id = self.listControl.GetItemCount() + 1
+		gain = self.project.sessions[0].drxGain
+		self.project.sessions[0].observations.append( sdf.DRX('drx-%i' % id, 'target-%i' % id, '2011-01-01 00:00:00.000', '00:00:00.000', 0.0, 0.0, 38e6, 74e6, 7) )
+		self.project.sessions[0].observations[-1].gain = gain
+		self.addObservation(self.project.sessions[0].observations[-1], id)
+		
+	def onAddDRXS(self, event):
+		"""Add a tracking Sun (DRX) observation to the list and update the main window"""
+		
+		id = self.listControl.GetItemCount() + 1
+		gain = self.project.sessions[0].drxGain
+		self.project.sessions[0].observations.append( sdf.Solar('solar-%i' % id, 'target-%i' % id, '2011-01-01 00:00:00.000', '00:00:00.000', 38e6, 74e6, 7) )
+		self.project.sessions[0].observations[-1].gain = gain
+		self.addObservation(self.project.sessions[0].observations[-1], id)
+		
+	def onAddDRXJ(self, event):
+		"""Add a tracking Jupiter (DRX) observation to the list and update the main window"""
+		
+		id = self.listControl.GetItemCount() + 1
+		gain = self.project.sessions[0].drxGain
+		self.project.sessions[0].observations.append( sdf.Jovian('jovian-%i' % id, 'target-%i' % id, '2011-01-01 00:00:00.000', '00:00:00.000', 38e6, 74e6, 7) )
+		self.project.sessions[0].observations[-1].gain = gain
+		self.addObservation(self.project.sessions[0].observations[-1], id)
+	
+	def onAddStepped(self, event):
+		"""Open up the advanced preferences window"""
+		
 		pass
 	
 	def onRemove(self, event):
+		"""Remove selected observations from the main window as well as the 
+		self.project.sessions[0].observations list."""
+		
 		bad = []
 		for i in range(self.listControl.GetItemCount()):
 			if self.listControl.IsChecked(i):
@@ -170,41 +318,153 @@ class SDFCreator(wx.Frame):
 			del self.project.sessions[0].observations[i]
 	
 	def onValidate(self, event):
+		"""Validate the current observations"""
+		
 		pass
 	
 	def onAdvanced(self, event):
-		pass
+		"""Display the advanced settings dialog for controlling TBW samples and
+		data return method"""
+		
+		AdvancedInfo(self)
 	
 	def onAbout(self, event):
+		"""Display a ver very very bried 'about' window"""
+		
 		wx.MessageBox('GUI interface for session definition file creation.', 'About')
 	
 	def onQuit(self, event):
+		"""Quit the main window"""
+		
 		self.Close()
 		
 	def addColumns(self):
+		"""Add the various columns to the main window based on the type of 
+		observations being defined."""
+		
 		self.listControl.InsertColumn(0, 'ID', width=50)
 		self.listControl.InsertColumn(1, 'Name', width=100)
 		self.listControl.InsertColumn(2, 'Target', width=100)
 		self.listControl.InsertColumn(3, 'Comments', width=100)
-		self.listControl.InsertColumn(4, 'Start (UTC)', width=250)
+		self.listControl.InsertColumn(4, 'Start (UTC)', width=225)
 		
 		if self.mode == 'TBW':
 			pass
 		elif self.mode == 'TBN':
 			self.listControl.InsertColumn(5, 'Duration', width=150)
-			self.listControl.InsertColumn(6, 'Frequency (MHz)', width=150)
-			self.listControl.InsertColumn(7, 'Filter Code', width=100)
+			self.listControl.InsertColumn(6, 'Frequency (MHz)', width=125)
+			self.listControl.InsertColumn(7, 'Filter Code', width=75)
 		elif self.mode == 'DRX':
 			self.listControl.InsertColumn(5, 'Duration', width=150)
 			self.listControl.InsertColumn(6, 'RA (Hour J2000)', width=150)
-			self.listControl.InsertColumn(7, 'Dec (Deg J2000)', width=150)
-			self.listControl.InsertColumn(8, 'Frequency 1 (MHz)', width=150)
-			self.listControl.InsertColumn(9, 'Frequency 2 (MHz)', width=150)
-			self.listControl.InsertColumn(10, 'Filter Code', width=100)
+			self.listControl.InsertColumn(7, 'Dec (Deg. J2000)', width=150)
+			self.listControl.InsertColumn(8, 'Frequency 1 (MHz)', width=125)
+			self.listControl.InsertColumn(9, 'Frequency 2 (MHz)', width=125)
+			self.listControl.InsertColumn(10, 'Filter Code', width=75)
 		else:
 			pass
 		
+	def addObservation(self, obs, id):
+		"""Add an observation to a particular location in the observation list
+		
+		.. note::
+			This only updates the list visible on the screen, not the SD list
+			stored in self.project
+		"""
+		
+		index = self.listControl.InsertStringItem(sys.maxint, str(id))
+		self.listControl.SetStringItem(index, 1, obs.name)
+		self.listControl.SetStringItem(index, 2, obs.target)
+		if obs.comments is not None:
+			self.listControl.SetStringItem(index, 3, obs.comments)
+		else:
+			self.listControl.SetStringItem(index, 3, 'None provided')
+		self.listControl.SetStringItem(index, 4, obs.start)
+			
+		if self.mode == 'TBN':
+			self.listControl.SetStringItem(index, 5, obs.duration)
+			self.listControl.SetStringItem(index, 6, "%.6f" % (obs.freq1*fS/2**32 / 1e6))
+			self.listControl.SetStringItem(index, 7, "%i" % obs.filter)
+		
+		if self.mode == 'DRX':
+			self.listControl.SetStringItem(index, 5, obs.duration)
+			if obs.mode == 'TRK_SOL':
+				self.listControl.SetStringItem(index, 6, "Sun")
+				self.listControl.SetStringItem(index, 7, "--")
+			elif obs.mode == 'TRK_JOV':
+				self.listControl.SetStringItem(index, 6, "Jupiter")
+				self.listControl.SetStringItem(index, 7, "--")
+			else:
+				self.listControl.SetStringItem(index, 6, "%.6f" % obs.ra)
+				self.listControl.SetStringItem(index, 7, "%+.6f" % obs.dec)
+			self.listControl.SetStringItem(index, 8, "%.6f" % (obs.freq1*fS/2**32 / 1e6))
+			self.listControl.SetStringItem(index, 9, "%.6f" % (obs.freq2*fS/2**32 / 1e6))
+			self.listControl.SetStringItem(index, 10, "%i" % obs.filter)
+	
+	def setMenuButtons(self, mode):
+		"""Given a mode of observation (TBW, TBN, TRK_RADEC, etc.), update the 
+		various menu items in 'Observations' and the toolbar buttons"""
+		
+		mode = mode.lower()
+		
+		if mode == 'tbw':
+			self.obsmenu['tbw'].Enable(True)
+			self.obsmenu['tbn'].Enable(False)
+			self.obsmenu['drx-radec'].Enable(False)
+			self.obsmenu['drx-solar'].Enable(False)
+			self.obsmenu['drx-jovian'].Enable(False)
+			self.obsmenu['stepped'].Enable(False)
+			
+			self.toolbar.EnableTool(ID_ADD_TBW, True)
+			self.toolbar.EnableTool(ID_ADD_TBN, False)
+			self.toolbar.EnableTool(ID_ADD_DRX_RADEC,  False)
+			self.toolbar.EnableTool(ID_ADD_DRX_SOLAR,  False)
+			self.toolbar.EnableTool(ID_ADD_DRX_JOVIAN, False)
+		elif mode == 'tbn':
+			self.obsmenu['tbw'].Enable(False)
+			self.obsmenu['tbn'].Enable(True)
+			self.obsmenu['drx-radec'].Enable(False)
+			self.obsmenu['drx-solar'].Enable(False)
+			self.obsmenu['drx-jovian'].Enable(False)
+			self.obsmenu['stepped'].Enable(False)
+			
+			self.toolbar.EnableTool(ID_ADD_TBW, False)
+			self.toolbar.EnableTool(ID_ADD_TBN, True)
+			self.toolbar.EnableTool(ID_ADD_DRX_RADEC,  False)
+			self.toolbar.EnableTool(ID_ADD_DRX_SOLAR,  False)
+			self.toolbar.EnableTool(ID_ADD_DRX_JOVIAN, False)
+		elif mode[0:3] == 'trk' or mode[0:3] == 'drx':
+			self.obsmenu['tbw'].Enable(False)
+			self.obsmenu['tbn'].Enable(False)
+			self.obsmenu['drx-radec'].Enable(True)
+			self.obsmenu['drx-solar'].Enable(True)
+			self.obsmenu['drx-jovian'].Enable(True)
+			self.obsmenu['stepped'].Enable(False)
+			
+			self.toolbar.EnableTool(ID_ADD_TBW, False)
+			self.toolbar.EnableTool(ID_ADD_TBN, False)
+			self.toolbar.EnableTool(ID_ADD_DRX_RADEC,  True)
+			self.toolbar.EnableTool(ID_ADD_DRX_SOLAR,  True)
+			self.toolbar.EnableTool(ID_ADD_DRX_JOVIAN, True)
+		else:
+			self.obsmenu['tbw'].Enable(False)
+			self.obsmenu['tbn'].Enable(False)
+			self.obsmenu['drx-radec'].Enable(False)
+			self.obsmenu['drx-solar'].Enable(False)
+			self.obsmenu['drx-jovian'].Enable(False)
+			self.obsmenu['stepped'].Enable(False)
+			
+			self.toolbar.EnableTool(ID_ADD_TBW, False)
+			self.toolbar.EnableTool(ID_ADD_TBN, False)
+			self.toolbar.EnableTool(ID_ADD_DRX_RADEC,  False)
+			self.toolbar.EnableTool(ID_ADD_DRX_SOLAR,  False)
+			self.toolbar.EnableTool(ID_ADD_DRX_JOVIAN, False)
+	
 	def parseFile(self, filename):
+		"""Given a filename, parse the file using the sdf.parse() method and 
+		update all of the various aspects of the GUI (observation list, mode, 
+		button, menu items, etc.)"""
+		
 		self.listControl.DeleteAllItems()
 		self.listControl.DeleteAllColumns()
 		self.initSDF()
@@ -212,36 +472,29 @@ class SDFCreator(wx.Frame):
 		print "Parsing file '%s'" % filename
 		fh = open(filename, 'r')
 		self.project = sdf.parse(fh)
+		self.setMenuButtons(self.project.sessions[0].observations[0].mode)
 		if self.project.sessions[0].observations[0].mode == 'TBW':
 			self.mode = 'TBW'
 		elif self.project.sessions[0].observations[0].mode == 'TBN':
 			self.mode = 'TBN'
-		else:
+		elif self.project.sessions[0].observations[0].mode[0:3] == 'TRK':
 			self.mode = 'DRX'
+		else:
+			pass
 		fh.close()
+		
+		try:
+			self.project.sessions[0].tbwBits = self.project.sessions[0].observations[0].bits
+			self.project.sessions[0].tbwSamples = self.project.sessions[0].observations[0].samples
+		except:
+			pass
+		self.project.sessions[0].tbnGain = self.project.sessions[0].observations[0].gain
+		self.project.sessions[0].drxGain = self.project.sessions[0].observations[0].gain
 		
 		self.addColumns()
 		id = 1
-		for o in self.project.sessions[0].observations:
-			index = self.listControl.InsertStringItem(sys.maxint, str(id))
-			self.listControl.SetStringItem(index, 1, o.name)
-			self.listControl.SetStringItem(index, 2, o.target)
-			self.listControl.SetStringItem(index, 3, o.comments)
-			self.listControl.SetStringItem(index, 4, o.start)
-			
-			if self.mode == 'TBN':
-				self.listControl.SetStringItem(index, 5, o.duration)
-				self.listControl.SetStringItem(index, 6, "%.6f" % (o.freq1 / 1e6))
-				self.listControl.SetStringItem(index, 7, "%i" % o.filter)
-			
-			if self.mode == 'DRX':
-				self.listControl.SetStringItem(index, 5, o.duration)
-				self.listControl.SetStringItem(index, 6, "%.6f" % o.ra)
-				self.listControl.SetStringItem(index, 7, "%+.6f" % o.dec)
-				self.listControl.SetStringItem(index, 8, "%.6f" % (o.freq1 / 1e6))
-				self.listControl.SetStringItem(index, 9, "%.6f" % (o.freq2 / 1e6))
-				self.listControl.SetStringItem(index, 10, "%i" % o.filter)
-		
+		for obs in self.project.sessions[0].observations:
+			self.addObservation(obs, id)
 			id += 1
 
 
@@ -249,62 +502,64 @@ ID_OBS_INFO_OK = 211
 ID_OBS_INFO_CANCEL = 212
 
 class ObserverInfo(wx.Frame):
+	"""Class to hold information about the observer (name, ID), the current project 
+	(title, ID), and what type of session this will be (TBW, TBN, etc.)"""
+	
 	def __init__(self, parent):
-		wx.Frame.__init__(self, parent, title='Observer Info.', size=(550,450))
+		wx.Frame.__init__(self, parent, title='Observer Information', size=(725,675))
 		
 		self.parent = parent
-		self.observerIDEntry = None
-		self.observerFirstEntry = None
-		self.observerLastEntry = None
-		self.projectIDEntry = None
-		self.projectTitleEntry = None
-		self.projectCommentsEntry = None
-		self.tbwButton = None
-		self.tbnButton = None
-		self.drxButton = None
 		
 		self.initUI()
 		self.initEvents()
 		self.Show()
 		
 	def initUI(self):
+		row = 0
 		panel = wx.Panel(self)
 		sizer = wx.GridBagSizer(5, 5)
 		
 		font = wx.SystemSettings_GetFont(wx.SYS_SYSTEM_FONT)
 		font.SetPointSize(font.GetPointSize()+2)
 		
+		#
+		# Observer Info
+		#
+		
 		obs = wx.StaticText(panel, label='Observer Information')
 		obs.SetFont(font)
 		
-		sid = wx.StaticText(panel, label='ID Number')
+		oid = wx.StaticText(panel, label='ID Number')
 		fname = wx.StaticText(panel, label='First Name')
 		lname = wx.StaticText(panel, label='Last Name')
 		
-		sidText = wx.TextCtrl(panel)
+		oidText = wx.TextCtrl(panel)
 		fnameText = wx.TextCtrl(panel)
 		lnameText = wx.TextCtrl(panel)
 		if self.parent.project.observer.id != 0:
-			sidText.SetValue(str(self.parent.project.observer.id))
+			oidText.SetValue(str(self.parent.project.observer.id))
 		if self.parent.project.observer.first != '':
 			fnameText.SetValue(self.parent.project.observer.first)
 			lnameText.SetValue(self.parent.project.observer.last)
 		
-		ok = wx.Button(panel, ID_OBS_INFO_OK, 'Ok', size=(90, 28))
-		cancel = wx.Button(panel, ID_OBS_INFO_CANCEL, 'Cancel', size=(90, 28))
+		sizer.Add(obs, pos=(row+0,0), span=(1,5), flag=wx.ALIGN_CENTER, border=5)
 		
-		sizer.Add(obs, pos=(0,0), span=(1,5), flag=wx.ALIGN_CENTER, border=5)
+		sizer.Add(oid, pos=(row+1, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(oidText, pos=(row+1, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		
-		sizer.Add(sid, pos=(1, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(sidText, pos=(1, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		
-		sizer.Add(fname, pos=(2, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(fnameText, pos=(2, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(lname, pos=(3, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(lnameText, pos=(3, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(fname, pos=(row+2, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(fnameText, pos=(row+2, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(lname, pos=(row+3, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(lnameText, pos=(row+3, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		
 		line = wx.StaticLine(panel)
-		sizer.Add(line, pos=(4, 0), span=(1, 5), flag=wx.EXPAND|wx.BOTTOM, border=10)
+		sizer.Add(line, pos=(row+4, 0), span=(1, 5), flag=wx.EXPAND|wx.BOTTOM, border=10)
+		
+		row += 5
+		
+		#
+		# Project Info
+		#
 		
 		prj = wx.StaticText(panel, label='Project Information')
 		prj.SetFont(font)
@@ -323,21 +578,41 @@ class ObserverInfo(wx.Frame):
 		if self.parent.project.comments != '' and self.parent.project.comments is not None:
 			pcomsText.SetValue(self.parent.project.comments)
 		
-		sizer.Add(prj, pos=(5,0), span=(1,5), flag=wx.ALIGN_CENTER, border=5)
+		sizer.Add(prj, pos=(row+0,0), span=(1,5), flag=wx.ALIGN_CENTER, border=5)
 		
-		sizer.Add(pid, pos=(6, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(pidText, pos=(6, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(pid, pos=(row+1, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(pidText, pos=(row+1, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		
-		sizer.Add(pname, pos=(7, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(pnameText, pos=(7, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(pcoms, pos=(8, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(pcomsText, pos=(8, 1), span=(4, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(pname, pos=(row+2, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(pnameText, pos=(row+2, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(pcoms, pos=(row+3, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(pcomsText, pos=(row+3, 1), span=(4, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		
 		line = wx.StaticLine(panel)
-		sizer.Add(line, pos=(12, 0), span=(1, 5), flag=wx.EXPAND|wx.BOTTOM, border=10)
+		sizer.Add(line, pos=(row+7, 0), span=(1, 5), flag=wx.EXPAND|wx.BOTTOM, border=10)
+		
+		row += 8
+		
+		#
+		# Session-Wide Info
+		#
 		
 		ses = wx.StaticText(panel, label='Session Information')
 		ses.SetFont(font)
+		
+		sid = wx.StaticText(panel, label='ID Number')
+		sname = wx.StaticText(panel, label='Title')
+		scoms = wx.StaticText(panel, label='Comments')
+		
+		sidText = wx.TextCtrl(panel)
+		snameText = wx.TextCtrl(panel)
+		scomsText = wx.TextCtrl(panel, style=wx.TE_MULTILINE)
+		if self.parent.project.sessions[0].id != '':
+			sidText.SetValue(str(self.parent.project.sessions[0].id))
+		if self.parent.project.sessions[0].name != '':
+			snameText.SetValue(self.parent.project.sessions[0].name)
+		if self.parent.project.sessions[0].comments != '' and self.parent.project.sessions[0].comments is not None:
+			scomsText.SetValue(self.parent.project.sessions[0].comments)
 		
 		tid = wx.StaticText(panel, label='Session Type')
 		tbwRB = wx.RadioButton(panel, -1, 'Transient Buffer-Wide (TBW)', style=wx.RB_GROUP)
@@ -365,37 +640,90 @@ class ObserverInfo(wx.Frame):
 			tbwRB.SetValue(False)
 			tbnRB.SetValue(False)
 			drxRB.SetValue(False)
+			
+		did = wx.StaticText(panel, label='Data Return Method')
+		drsuRB = wx.RadioButton(panel, -2, 'DRSU', style=wx.RB_GROUP)
+		usbRB = wx.RadioButton(panel, -2, 'USB Harddrive (4 max)')
+		redRB = wx.RadioButton(panel, -2, 'Archive (describe reduction in session comments)')
+		if self.parent.project.sessions[0].dataReturnMethod == 'DRSU':
+			drsuRB.SetValue(True)
+			usbRB.SetValue(False)
+			redRB.SetValue(False)
+		elif self.parent.project.sessions[0].dataReturnMethod == 'USB Harddrives':
+			drsuRB.SetValue(False)
+			usbRB.SetValue(True)
+			redRB.SetValue(False)
+		else:
+			drsuRB.SetValue(False)
+			usbRB.SetValue(False)
+			redRB.SetValue(True)
 		
-		sizer.Add(ses, pos=(13,0), span=(1,5), flag=wx.ALIGN_CENTER, border=5)
+		sizer.Add(ses, pos=(row+0, 0), span=(1,5), flag=wx.ALIGN_CENTER, border=5)
 		
-		sizer.Add(tid, pos=(14,0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(tbwRB, pos=(14,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(tbnRB, pos=(15,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(drxRB, pos=(16,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(sid, pos=(row+1, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(sidText, pos=(row+1, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		
-		sizer.Add(ok, pos=(17, 3))
-		sizer.Add(cancel, pos=(17, 4), flag=wx.RIGHT|wx.BOTTOM, border=5)
+		sizer.Add(sname, pos=(row+2, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(snameText, pos=(row+2, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(scoms, pos=(row+3, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(scomsText, pos=(row+3, 1), span=(4, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(tid, pos=(row+7,0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(tbwRB, pos=(row+7,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(tbnRB, pos=(row+8,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(drxRB, pos=(row+9,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(did, pos=(row+10,0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(drsuRB, pos=(row+10,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(usbRB, pos=(row+11,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(redRB, pos=(row+12,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		
+		line = wx.StaticLine(panel)
+		sizer.Add(line, pos=(row+13, 0), span=(1, 5), flag=wx.EXPAND|wx.BOTTOM, border=10)
+		
+		row += 14
+		
+		#
+		# Buttons
+		#
+		
+		ok = wx.Button(panel, ID_OBS_INFO_OK, 'Ok', size=(90, 28))
+		cancel = wx.Button(panel, ID_OBS_INFO_CANCEL, 'Cancel', size=(90, 28))
+		sizer.Add(ok, pos=(row+0, 3))
+		sizer.Add(cancel, pos=(row+0, 4), flag=wx.RIGHT|wx.BOTTOM, border=5)
 		
 		sizer.AddGrowableCol(1)
 		sizer.AddGrowableRow(8)
 		
 		panel.SetSizerAndFit(sizer)
 		
-		self.observerIDEntry = sidText
+		#
+		# Save the various widgets for access later
+		#
+		
+		self.observerIDEntry = oidText
 		self.observerFirstEntry = fnameText
 		self.observerLastEntry = lnameText
+		
 		self.projectIDEntry = pidText
 		self.projectTitleEntry = pnameText
 		self.projectCommentsEntry = pcomsText
+		
+		self.sessionIDEntry = sidText
+		self.sessionTitleEntry = snameText
+		self.sessionCommentsEntry = scomsText
 		self.tbwButton = tbwRB
 		self.tbnButton = tbnRB
 		self.drxButton = drxRB
+		self.drsuButton = drsuRB
+		self.usbButton = usbRB
+		self.redButton = redRB 
 		
 	def initEvents(self):
 		self.Bind(wx.EVT_BUTTON, self.onOK, id=ID_OBS_INFO_OK)
 		self.Bind(wx.EVT_BUTTON, self.onCancel, id=ID_OBS_INFO_CANCEL)
 		
 	def onOK(self, event):
+		"""Save everything into all of the correct places"""
+		
 		self.parent.project.observer.id = int(self.observerIDEntry.GetValue())
 		self.parent.project.observer.first = self.observerFirstEntry.GetValue()
 		self.parent.project.observer.last = self.observerLastEntry.GetValue()
@@ -405,28 +733,372 @@ class ObserverInfo(wx.Frame):
 		self.parent.project.name = self.projectTitleEntry.GetValue()
 		self.parent.project.comments = self.projectCommentsEntry.GetValue()
 		
-		if self.parent.mode == '':
-			if self.tbwButton:
-				self.parent.mode = 'TBW'
-			if self.tbnButton:
-				self.parent.mode = 'TBN'
-			if self.drxButton:
-				self.parent.mode = 'DRX'
-			self.parent.addColumns()
-			
+		self.parent.project.sessions[0].id = self.sessionIDEntry.GetValue()
+		self.parent.project.sessions[0].name = self.sessionTitleEntry.GetValue()
+		self.parent.project.sessions[0].comments = self.sessionCommentsEntry.GetValue()
+		
+		if self.drsuButton.GetValue():
+			self.parent.project.sessions[0].dataReturnMethod = 'DRSU'
+		elif self.usbButton.GetValue():
+			self.parent.project.sessions[0].dataReturnMethod = 'USB Harddrives'
 		else:
-			if self.tbwButton:
-				self.parent.mode = 'TBW'
-			if self.tbnButton:
-				self.parent.mode = 'TBN'
-			if self.drxButton:
-				self.parent.mode = 'DRX'
+			self.parent.project.sessions[0].dataReturnMethod = 'Reduced per session comments'
+		
+		if self.tbwButton.GetValue():
+			self.parent.mode = 'TBW'
+		elif self.tbnButton.GetValue():
+			self.parent.mode = 'TBN'
+		else:
+			self.parent.mode = 'DRX'
+		self.parent.setMenuButtons(self.parent.mode)
+		if self.parent.listControl.GetColumnCount() == 0:
+			self.parent.addColumns()
 		
 		self.Close()
 		
 	def onCancel(self, event):
 		self.Close()
 
+
+ID_ADV_INFO_OK = 311
+ID_ADV_INFO_CANCEL = 312
+
+class AdvancedInfo(wx.Frame):
+	def __init__(self, parent):
+		wx.Frame.__init__(self, parent, title='Advanced Settings', size=(800, 375))
+		
+		self.parent = parent
+		self.bitsEntry = None
+		self.samplesEntry = None
+		self.drsuButton = None
+		self.usbButton = None
+		self.reduceButton = None
+		self.reduceEntry = None
+		
+		self.initUI()
+		self.initEvents()
+		self.Show()
+		
+	def initUI(self):
+		bits = ['12-bit', '4-bit']
+		tbnGain = ['%i' % i for i in xrange(31)]
+		tbnGain.insert(0, 'MCS Decides')
+		drxGain = ['%i' % i for i in xrange(13)]
+		drxGain.insert(0, 'MCS Decides')
+		intervals = ['MCS Decides', 'Never', '1 minute', '5 minutes', '15 minutes', '30 minutes', '1 hour']
+		
+		row = 0
+		panel = wx.Panel(self)
+		sizer = wx.GridBagSizer(5, 5)
+		
+		font = wx.SystemSettings_GetFont(wx.SYS_SYSTEM_FONT)
+		font.SetPointSize(font.GetPointSize()+2)
+		
+		#
+		# MCS
+		#
+		
+		mcs = wx.StaticText(panel, label='MCS-Specific Information')
+		mcs.SetFont(font)
+		
+		mrp = wx.StaticText(panel, label='MIB Recording Period:')
+		mrpASP = wx.StaticText(panel, label='ASP')
+		mrpDP = wx.StaticText(panel, label='DP')
+		mrpDR = wx.StaticText(panel, label='DR1 - DR5')
+		mrpSHL = wx.StaticText(panel, label='SHL')
+		mrpMCS = wx.StaticText(panel, label='MSC')
+		mrpComboASP = wx.ComboBox(panel, -1, value='MCS Decides', size=(75, 20), choices=intervals, style=wx.CB_READONLY)
+		mrpComboASP.SetStringSelection(self.__timeToCombo(self.parent.project.sessions[0].recordMIB['ASP']))
+		mrpComboDP = wx.ComboBox(panel, -1, value='MCS Decides', size=(75, 20), choices=intervals, style=wx.CB_READONLY)
+		mrpComboDP.SetStringSelection(self.__timeToCombo(self.parent.project.sessions[0].recordMIB['DP_']))
+		mrpComboDR = wx.ComboBox(panel, -1, value='MCS Decides', size=(75, 20), choices=intervals, style=wx.CB_READONLY)
+		mrpComboDR.SetStringSelection(self.__timeToCombo(self.parent.project.sessions[0].recordMIB['DR1']))
+		mrpComboSHL = wx.ComboBox(panel, -1, value='MCS Decides', size=(75, 20), choices=intervals, style=wx.CB_READONLY)
+		mrpComboSHL.SetStringSelection(self.__timeToCombo(self.parent.project.sessions[0].recordMIB['SHL']))
+		mrpComboMCS = wx.ComboBox(panel, -1, value='MCS Decides', size=(75, 20), choices=intervals, style=wx.CB_READONLY)
+		mrpComboMCS.SetStringSelection(self.__timeToCombo(self.parent.project.sessions[0].recordMIB['MCS']))
+		
+		mup = wx.StaticText(panel, label='MIB Update Period:')
+		mupASP = wx.StaticText(panel, label='ASP')
+		mupDP = wx.StaticText(panel, label='DP')
+		mupDR = wx.StaticText(panel, label='DR1 - DR5')
+		mupSHL = wx.StaticText(panel, label='SHL')
+		mupMCS = wx.StaticText(panel, label='MSC')
+		mupComboASP = wx.ComboBox(panel, -1, value='MCS Decides', choices=intervals, style=wx.CB_READONLY)
+		mupComboASP.SetStringSelection(self.__timeToCombo(self.parent.project.sessions[0].updateMIB['ASP']))
+		mupComboDP = wx.ComboBox(panel, -1, value='MCS Decides', choices=intervals, style=wx.CB_READONLY)
+		mupComboDP.SetStringSelection(self.__timeToCombo(self.parent.project.sessions[0].updateMIB['DP_']))
+		mupComboDR = wx.ComboBox(panel, -1, value='MCS Decides', choices=intervals, style=wx.CB_READONLY)
+		mupComboDR.SetStringSelection(self.__timeToCombo(self.parent.project.sessions[0].updateMIB['DR1']))
+		mupComboSHL = wx.ComboBox(panel, -1, value='MCS Decides', choices=intervals, style=wx.CB_READONLY)
+		mupComboSHL.SetStringSelection(self.__timeToCombo(self.parent.project.sessions[0].updateMIB['SHL']))
+		mupComboMCS = wx.ComboBox(panel, -1, value='MCS Decides', choices=intervals, style=wx.CB_READONLY)
+		mupComboMCS.SetStringSelection(self.__timeToCombo(self.parent.project.sessions[0].updateMIB['MCS']))
+		
+		schLog = wx.CheckBox(panel, -1, label='Include relevant MSC/Scheduler Log')
+		schLog.SetValue(self.parent.project.sessions[0].logScheduler)
+		exeLog = wx.CheckBox(panel, -1, label='Include relevant MSC/Executive Log')
+		exeLog.SetValue(self.parent.project.sessions[0].logExecutive)
+		
+		incSMIB = wx.CheckBox(panel, -1, 'Include station static MIB')
+		incSMIB.SetValue(self.parent.project.sessions[0].includeStationStatic)
+		incDESG = wx.CheckBox(panel, -1, 'Include design and calibration information')
+		incDESG.SetValue(self.parent.project.sessions[0].includeDesign)
+		
+		sizer.Add(mcs, pos=(row+0,0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
+		
+		sizer.Add(mrp, pos=(row+1, 0), span=(1, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(mrpASP, pos=(row+2, 0), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(mrpComboASP, pos=(row+2, 1), span=(1,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(mrpDP, pos=(row+2, 2), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(mrpComboDP, pos=(row+2, 3), span=(1,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(mrpDR, pos=(row+2, 4), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(mrpComboDR, pos=(row+2, 5), span=(1,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(mrpSHL, pos=(row+3, 0), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(mrpComboSHL, pos=(row+3, 1), span=(1,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(mrpMCS, pos=(row+3, 2), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(mrpComboMCS, pos=(row+3, 3), span=(1,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		
+		sizer.Add(mup, pos=(row+4, 0), span=(1, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(mupASP, pos=(row+5, 0), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(mupComboASP, pos=(row+5, 1), span=(1,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(mupDP, pos=(row+5, 2), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(mupComboDP, pos=(row+5, 3), span=(1,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(mupDR, pos=(row+5, 4), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(mupComboDR, pos=(row+5, 5), span=(1,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(mupSHL, pos=(row+6, 0), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(mupComboSHL, pos=(row+6, 1), span=(1,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(mupMCS, pos=(row+6, 2), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(mupComboMCS, pos=(row+6, 3), span=(1,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		
+		sizer.Add(schLog, pos=(row+7, 0), span=(1, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(exeLog, pos=(row+7, 2), span=(1, 3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(incSMIB, pos=(row+8, 0), span=(1, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(incDESG, pos=(row+8, 2), span=(1, 3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		
+		line = wx.StaticLine(panel)
+		sizer.Add(line, pos=(row+9, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
+		
+		row += 10
+		
+		#
+		# TBW
+		#
+		
+		if self.parent.mode == 'TBW':
+			tbw = wx.StaticText(panel, label='TBW-Specific Information')
+			tbw.SetFont(font)
+			
+			tbits = wx.StaticText(panel, label='Data')
+			tsamp = wx.StaticText(panel, label='Samples')
+			tunit = wx.StaticText(panel, label='per capture')
+			
+			tbitsText = wx.ComboBox(panel, -1, value='12-bit', choices=bits, style=wx.CB_READONLY)
+			tsampText = wx.TextCtrl(panel)
+			tbitsText.SetStringSelection('%i-bits' % self.parent.project.sessions[0].tbwBits)
+			tsampText.SetValue("%i" % self.parent.project.sessions[0].tbwSamples)
+			
+			sizer.Add(tbw, pos=(row+0,0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
+			
+			sizer.Add(tbits, pos=(row+1, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			sizer.Add(tbitsText, pos=(row+1, 1), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			sizer.Add(tsamp, pos=(row+2, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			sizer.Add(tsampText, pos=(row+2, 1), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			sizer.Add(tunit, pos=(row+2, 2), span=(1, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			
+			line = wx.StaticLine(panel)
+			sizer.Add(line, pos=(row+3, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
+			
+			row += 4
+		
+		#
+		# TBN
+		#
+		
+		if self.parent.mode == 'TBN':
+			tbn = wx.StaticText(panel, label='TBN-Specific Information')
+			tbn.SetFont(font)
+			
+			tgain = wx.StaticText(panel, label='Gain')
+			tgainText =  wx.ComboBox(panel, -1, value='MCS Decides', choices=tbnGain, style=wx.CB_READONLY)
+			if self.parent.project.sessions[0].tbnGain == -1:
+				tgainText.SetStringSelection('MCS Decides')
+			else:
+				tgainText.SetStringSelection('%i' % self.parent.project.sessions[0].tbnGain)
+			
+			sizer.Add(tbn, pos=(row+0,0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
+			
+			sizer.Add(tgain, pos=(row+1, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			sizer.Add(tgainText, pos=(row+1, 1), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			
+			line = wx.StaticLine(panel)
+			sizer.Add(line, pos=(row+2, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
+			
+			row += 3
+		
+		#
+		# DRX
+		#
+		
+		if self.parent.mode == 'DRX':
+			drx = wx.StaticText(panel, label='DRX-Specific Information')
+			drx.SetFont(font)
+			
+			dgain = wx.StaticText(panel, label='Gain')
+			dgainText =  wx.ComboBox(panel, -1, value='MCS Decides', choices=drxGain, style=wx.CB_READONLY)
+			if self.parent.project.sessions[0].drxGain == -1:
+				dgainText.SetStringSelection('MCS Decides')
+			else:
+				dgainText.SetStringSelection('%i' % self.parent.project.sessions[0].drxGain)
+			
+			sizer.Add(drx, pos=(row+0,0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
+			
+			sizer.Add(dgain, pos=(row+1, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			sizer.Add(dgainText, pos=(row+1, 1), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			
+			line = wx.StaticLine(panel)
+			sizer.Add(line, pos=(row+2, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
+			
+			row += 3
+		
+		#
+		# Buttons
+		#
+		
+		ok = wx.Button(panel, ID_OBS_INFO_OK, 'Ok', size=(90, 28))
+		cancel = wx.Button(panel, ID_OBS_INFO_CANCEL, 'Cancel', size=(90, 28))
+		sizer.Add(ok, pos=(row+0, 4))
+		sizer.Add(cancel, pos=(row+0, 5), flag=wx.RIGHT|wx.BOTTOM, border=5)
+		
+		panel.SetSizerAndFit(sizer)
+		
+		#
+		# Save the various widgets for access later
+		#
+		
+		self.mrpASP = mrpComboASP
+		self.mrpDP = mrpComboDP
+		self.mrpDR = mrpComboDR
+		self.mrpSHL = mrpComboSHL
+		self.mrpMCS = mrpComboMCS
+		self.mupASP = mupComboASP
+		self.mupDP = mupComboDP
+		self.mupDR = mupComboDR
+		self.mupSHL = mupComboSHL
+		self.mupMCS = mupComboMCS
+		self.schLog = schLog
+		self.exeLog = exeLog
+		self.incSMIB = incSMIB
+		self.incDESG = incDESG
+		
+		if self.parent.mode == 'TBW':
+			self.tbwBits = tbitsText
+			self.tbwSamp = tsampText
+		
+		if self.parent.mode == 'TBN':
+			self.tbnGain = tgainText
+		
+		if self.parent.mode == 'DRX':
+			self.drxGain = dgainText
+		
+	def initEvents(self):
+		self.Bind(wx.EVT_BUTTON, self.onOK, id=ID_OBS_INFO_OK)
+		self.Bind(wx.EVT_BUTTON, self.onCancel, id=ID_OBS_INFO_CANCEL)
+	
+	def onOK(self, event):
+		"""Save everything into all of the correct places"""
+		
+		self.parent.project.sessions[0].recordMIB['ASP'] = self.__parseTimeCombo(self.mrpASP)
+		self.parent.project.sessions[0].recordMIB['DP_'] = self.__parseTimeCombo(self.mrpDP)
+		for i in range(1,6):
+			self.parent.project.sessions[0].recordMIB['DR%i' % i] = self.__parseTimeCombo(self.mrpDR)
+		self.parent.project.sessions[0].recordMIB['SHL'] = self.__parseTimeCombo(self.mrpSHL)
+		self.parent.project.sessions[0].recordMIB['MCS'] = self.__parseTimeCombo(self.mrpMCS)
+			
+		self.parent.project.sessions[0].updateMIB['ASP'] = self.__parseTimeCombo(self.mupASP)
+		self.parent.project.sessions[0].updateMIB['DP_'] = self.__parseTimeCombo(self.mupDP)
+		for i in range(1,6):
+			self.parent.project.sessions[0].recordMIB['DR%i' % i] = self.__parseTimeCombo(self.mupDR)
+		self.parent.project.sessions[0].updateMIB['SHL'] = self.__parseTimeCombo(self.mupSHL)
+		self.parent.project.sessions[0].updateMIB['MCS'] = self.__parseTimeCombo(self.mupMCS)
+		
+		self.parent.project.sessions[0].logScheduler = self.schLog.GetValue()
+		self.parent.project.sessions[0].logExecutive = self.exeLog.GetValue()
+		
+		self.parent.project.sessions[0].includeStationStatic = self.incSMIB.GetValue()
+		self.parent.project.sessions[0].includeDesign = self.incDESG.GetValue()
+		
+		if self.parent.mode == 'TBW':
+			self.parent.project.sessions[0].tbwBits = int( self.tbwBits.GetValue().split('-')[0] )
+			self.parent.project.sessions[0].tbwSamples = int( self.tbwSamp.GetValue() )
+			
+		if self.parent.mode == 'TBN':
+			self.parent.project.sessions[0].tbnGain = self.__parseGainCombo(self.tbnGain)
+			
+		if self.parent.mode == 'DRX':
+			self.parent.project.sessions[0].drxGain = self.__parseGainCombo(self.drxGain)
+		
+		for obs in self.parent.project.sessions[0].observations:
+			if obs.mode == 'TBW':
+				obs.bits = self.parent.project.sessions[0].tbwBits
+				obs.samples = self.parent.project.sessions[0].tbwSamples
+			elif obs.mode == 'TBN':
+				obs.gain = self.parent.project.sessions[0].tbnGain
+			else:
+				obs.gain = self.parent.project.sessions[0].drxGain
+		
+		self.Close()
+	
+	def onCancel(self, event):
+		self.Close()
+		
+	def __parseTimeCombo(self, cb):
+		"""Given a combo box that represents some times, parse it and return
+		the time in minutes."""
+		
+		if cb.GetValue() == 'MCS Decides':
+			out = -1
+		elif cb.GetValue() == 'Never':
+			out = 0
+		else:
+			t, u = cb.GetValue().split(1)
+			if u.find('minute') >= 0:
+				out = int(t)
+			else:
+				out = int(t)*60
+				
+		return out
+		
+	def __parseGainCombo(self, cb):
+		"""Given a combo box that represents some times, parse it and return
+		the time in minutes."""
+		
+		if cb.GetValue() == 'MCS Decides':
+			out = -1
+		else:
+			out = int(cb.GetValue())
+			
+		return out
+		
+	def __timeToCombo(self, time, options=[1, 5, 15, 30, 60]):
+		"""Convert a time onto the rigid system imposed by the GUI"""
+		
+		if time == -1:
+			return "MCS Decides"
+		elif time == 0:
+			return "Never"
+		else:
+			if time <= 1:
+				return "1 minute"
+			elif time <= 5:
+				return "5 minutes"
+			elif time <= 15:
+				return "15 minutes"
+			elif time <= 30:
+				return "30 minutes"
+			else:
+				return "1 hour"
+			
 
 if __name__ == "__main__":
 	app = wx.App()
