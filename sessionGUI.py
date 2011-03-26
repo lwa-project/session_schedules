@@ -175,7 +175,7 @@ class SDFCreator(wx.Frame):
 		self.savemenu = save
 		
 		# Observer menu items
-		info = wx.MenuItem(obsMenu, ID_INFO, '&Observer/Project Info.')
+		info = wx.MenuItem(obsMenu, ID_INFO, 'Observer/&Project Info.')
 		obsMenu.AppendItem(info)
 		add = wx.Menu()
 		addTBW = wx.MenuItem(add, ID_ADD_TBW, 'TB&W')
@@ -191,7 +191,7 @@ class SDFCreator(wx.Frame):
 		add.AppendItem(addDRXJ)
 		addStepped = wx.MenuItem(add, ID_ADD_STEPPED, 'DRX - Ste&pped')
 		add.AppendItem(addStepped)
-		obsMenu.AppendMenu(-1, 'Add', add)
+		obsMenu.AppendMenu(-1, '&Add', add)
 		remove = wx.MenuItem(obsMenu, ID_REMOVE, '&Remove Selected')
 		obsMenu.AppendItem(remove)
 		validate = wx.MenuItem(obsMenu, ID_VALIDATE, '&Validate All')
@@ -199,7 +199,7 @@ class SDFCreator(wx.Frame):
 		obsMenu.AppendSeparator()
 		timeseries = wx.MenuItem(obsMenu, ID_TIMESERIES, 'Session at a &Glance')
 		obsMenu.AppendItem(timeseries)
-		advanced = wx.MenuItem(obsMenu, ID_ADVANCED, '&Advanced Settings')
+		advanced = wx.MenuItem(obsMenu, ID_ADVANCED, 'Advanced SSettings')
 		obsMenu.AppendItem(advanced)
 		
 		# Save menu items and disable stepped observations (for now)
@@ -436,15 +436,18 @@ class SDFCreator(wx.Frame):
 		
 		obsIndex = event.GetIndex()
 		obsAttr = event.GetColumn()
-		newData = self.coerceMap[obsAttr](event.GetText())
-		
-		oldData = getattr(self.project.sessions[0].observations[obsIndex], self.columnMap[obsAttr])
-		if newData != oldData:
-			setattr(self.project.sessions[0].observations[obsIndex], self.columnMap[obsAttr], newData)
-			self.project.sessions[0].observations[obsIndex].update()
-		
-			self.edited = True
-			self.setSaveButton()
+		try:
+			newData = self.coerceMap[obsAttr](event.GetText())
+			
+			oldData = getattr(self.project.sessions[0].observations[obsIndex], self.columnMap[obsAttr])
+			if newData != oldData:
+				setattr(self.project.sessions[0].observations[obsIndex], self.columnMap[obsAttr], newData)
+				self.project.sessions[0].observations[obsIndex].update()
+			
+				self.edited = True
+				self.setSaveButton()
+		except ValueError:
+			pass
 	
 	def onRemove(self, event):
 		"""Remove selected observations from the main window as well as the 
