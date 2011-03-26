@@ -14,16 +14,75 @@ from wx.lib.mixins.listctrl import TextEditMixin, CheckListCtrlMixin
 class ObservationListCtrl(wx.ListCtrl, TextEditMixin, CheckListCtrlMixin):
 	"""Class that compiles a editable list with check boxes"""
 	
-	def __init__(self, parent):
-		wx.ListCtrl.__init__(self, parent, -1, style=wx.LC_REPORT)
+	def __init__(self, parent, **kwargs):
+		wx.ListCtrl.__init__(self, parent, style=wx.LC_REPORT, **kwargs)
 		TextEditMixin.__init__(self)
 		CheckListCtrlMixin.__init__(self)
+
+
+class PlotPanel(wx.Panel):
+	"""The PlotPanel has a Figure and a Canvas. OnSize events simply set a 
+	flag, and the actual resizing of the figure is triggered by an Idle event.
+	
+	From: http://www.scipy.org/Matplotlib_figure_in_a_wx_panel
+	"""
+	
+	def __init__(self, parent, color=None, dpi=None, **kwargs):
+		from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
+		from matplotlib.figure import Figure
+
+		# initialize Panel
+		if 'id' not in kwargs.keys():
+			kwargs['id'] = wx.ID_ANY
+		if 'style' not in kwargs.keys():
+			kwargs['style'] = wx.NO_FULL_REPAINT_ON_RESIZE
+		wx.Panel.__init__(self, parent, **kwargs)
+
+		# initialize matplotlib stuff
+		self.figure = Figure(None, dpi)
+		self.canvas = FigureCanvasWxAgg(self, -1, self.figure)
+		self.SetColor(color)
+
+		self._SetSize()
+		self.draw()
+
+		self._resizeflag = False
+
+		self.Bind(wx.EVT_IDLE, self._onIdle)
+		self.Bind(wx.EVT_SIZE, self._onSize)
+
+	def SetColor( self, rgbtuple=None ):
+		"""Set figure and canvas colours to be the same."""
+		if rgbtuple is None:
+			rgbtuple = wx.SystemSettings.GetColour( wx.SYS_COLOUR_BTNFACE ).Get()
+		clr = [c/255. for c in rgbtuple]
+		self.figure.set_facecolor(clr)
+		self.figure.set_edgecolor(clr)
+		self.canvas.SetBackgroundColour(wx.Colour(*rgbtuple))
+
+	def _onSize(self, event):
+		self._resizeflag = True
+
+	def _onIdle(self, evt):
+		if self._resizeflag:
+			self._resizeflag = False
+			self._SetSize()
+
+	def _SetSize(self):
+		pixels = tuple(self.parent.GetClientSize())
+		self.SetSize(pixels)
+		self.canvas.SetSize(pixels)
+		self.figure.set_size_inches(float( pixels[0] )/self.figure.get_dpi(), float( pixels[1] )/self.figure.get_dpi())
+
+	def draw(self):
+		pass # abstract, to be overridden by child classes
 
 
 ID_NEW = 11
 ID_OPEN = 12
 ID_SAVE = 13
-ID_QUIT = 14
+ID_SAVE_AS = 14
+ID_QUIT = 15
 
 ID_INFO = 21
 ID_ADD_TBW = 22
@@ -34,13 +93,15 @@ ID_ADD_DRX_JOVIAN = 26
 ID_ADD_STEPPED = 27
 ID_REMOVE = 28
 ID_VALIDATE = 29
-ID_ADVANCED = 30
+ID_TIMESERIES = 30
+ID_ADVANCED = 31
 
-ID_DATA_RETURN = 41
-ID_DATA_VOLUME = 42
+ID_DATA_VOLUME = 41
 
 ID_HELP = 51
 ID_ABOUT = 52
+
+ID_LISTCTRL = 61
 
 class SDFCreator(wx.Frame):
 	def __init__(self, parent, title, args=[]):
@@ -49,8 +110,8 @@ class SDFCreator(wx.Frame):
 		self.dirname = ''
 		self.toolbar = None
 		self.statusbar = None
+		self.savemenu = None
 		self.obsmenu = {}
-		self.obsbutton = {}
 		
 		self.initSDF()
 		
@@ -60,9 +121,14 @@ class SDFCreator(wx.Frame):
 		self.Show()
 		
 		if len(args) > 0:
-			self.parseFile(args[0])
+			self.filename = args[0]
+			self.parseFile(self.filename)
 		else:
+			self.filename = ''
 			self.setMenuButtons('None')
+			
+		self.edited = False
+		self.setSaveButton()
 		
 	def initSDF(self):
 		""" Create an empty sdf.project instance to store all of the actual
@@ -89,35 +155,41 @@ class SDFCreator(wx.Frame):
 		
 		fileMenu = wx.Menu()
 		obsMenu = wx.Menu()
+		dataMenu = wx.Menu()
 		helpMenu = wx.Menu()
 		
 		# File menu items
 		new = wx.MenuItem(fileMenu, ID_NEW, '&New')
 		fileMenu.AppendItem(new)
-		open = wx.MenuItem(fileMenu, ID_OPEN, '&Open SDF')
+		open = wx.MenuItem(fileMenu, ID_OPEN, '&Open')
 		fileMenu.AppendItem(open)
-		save = wx.MenuItem(fileMenu, ID_SAVE, '&Save SDF')
+		save = wx.MenuItem(fileMenu, ID_SAVE, '&Save')
 		fileMenu.AppendItem(save)
+		saveas = wx.MenuItem(fileMenu, ID_SAVE_AS, 'S&ave As')
+		fileMenu.AppendItem(saveas)
 		fileMenu.AppendSeparator()
 		quit = wx.MenuItem(fileMenu, ID_QUIT, '&Quit')
 		fileMenu.AppendItem(quit)
+		
+		# Save the 'save' menu item
+		self.savemenu = save
 		
 		# Observer menu items
 		info = wx.MenuItem(obsMenu, ID_INFO, '&Observer/Project Info.')
 		obsMenu.AppendItem(info)
 		add = wx.Menu()
-		addTBW = wx.MenuItem(add, ID_ADD_TBW, 'TBW')
+		addTBW = wx.MenuItem(add, ID_ADD_TBW, 'TB&W')
 		add.AppendItem(addTBW)
-		addTBN = wx.MenuItem(add, ID_ADD_TBN, 'TBN')
+		addTBN = wx.MenuItem(add, ID_ADD_TBN, 'TB&N')
 		add.AppendItem(addTBN)
 		add.AppendSeparator()
-		addDRXR = wx.MenuItem(add, ID_ADD_DRX_RADEC, 'DRX - RA/Dec')
+		addDRXR = wx.MenuItem(add, ID_ADD_DRX_RADEC, 'DRX - &RA/Dec')
 		add.AppendItem(addDRXR)
-		addDRXS = wx.MenuItem(add, ID_ADD_DRX_SOLAR, 'DRX - Solar')
+		addDRXS = wx.MenuItem(add, ID_ADD_DRX_SOLAR, 'DRX - &Solar')
 		add.AppendItem(addDRXS)
-		addDRXJ = wx.MenuItem(add, ID_ADD_DRX_JOVIAN, 'DRX - Jovian')
+		addDRXJ = wx.MenuItem(add, ID_ADD_DRX_JOVIAN, 'DRX - &Jovian')
 		add.AppendItem(addDRXJ)
-		addStepped = wx.MenuItem(add, ID_ADD_STEPPED, 'DRX - Stepped')
+		addStepped = wx.MenuItem(add, ID_ADD_STEPPED, 'DRX - Ste&pped')
 		add.AppendItem(addStepped)
 		obsMenu.AppendMenu(-1, 'Add', add)
 		remove = wx.MenuItem(obsMenu, ID_REMOVE, '&Remove Selected')
@@ -125,6 +197,8 @@ class SDFCreator(wx.Frame):
 		validate = wx.MenuItem(obsMenu, ID_VALIDATE, '&Validate All')
 		obsMenu.AppendItem(validate)
 		obsMenu.AppendSeparator()
+		timeseries = wx.MenuItem(obsMenu, ID_TIMESERIES, 'Session at a &Glance')
+		obsMenu.AppendItem(timeseries)
 		advanced = wx.MenuItem(obsMenu, ID_ADVANCED, '&Advanced Settings')
 		obsMenu.AppendItem(advanced)
 		
@@ -137,12 +211,17 @@ class SDFCreator(wx.Frame):
 		self.obsmenu['stepped'] = addStepped
 		addStepped.Enable(False)
 		
+		# Data menu items
+		volume = wx.MenuItem(obsMenu, ID_DATA_VOLUME, '&Estimated Data Volume')
+		dataMenu.AppendItem(volume)
+		
 		# Help menu items
 		about = wx.MenuItem(helpMenu, ID_ABOUT, '&About')
 		helpMenu.AppendItem(about)
 		
 		menubar.Append(fileMenu, '&File')
-		menubar.Append(obsMenu, '&Observations')
+		menubar.Append(obsMenu,  '&Observations')
+		menubar.Append(dataMenu, '&Data')
 		menubar.Append(helpMenu, '&Help')
 		self.SetMenuBar(menubar)
 		
@@ -153,7 +232,9 @@ class SDFCreator(wx.Frame):
 		self.toolbar.AddLabelTool(ID_OPEN, '', wx.Bitmap('icons/open.png'), shortHelp='Open', 
 								longHelp='Open and load an existing SD file')
 		self.toolbar.AddLabelTool(ID_SAVE, '', wx.Bitmap('icons/save.png'), shortHelp='Save', 
-								longHelp='Save the current setup to a SD file')
+								longHelp='Save the current setup')
+		self.toolbar.AddLabelTool(ID_SAVE_AS, '', wx.Bitmap('icons/save-as.png'), shortHelp='Save as', 
+								longHelp='Save the current setup to a new SD file')
 		self.toolbar.AddLabelTool(ID_QUIT, '', wx.Bitmap('icons/exit.png'), shortHelp='Quit', 
 								longHelp='Quit (without saving)')
 		self.toolbar.AddSeparator()
@@ -172,9 +253,10 @@ class SDFCreator(wx.Frame):
 		self.toolbar.AddLabelTool(ID_REMOVE, '', wx.Bitmap('icons/remove.png'), shortHelp='Remove Selected', 
 								longHelp='Remove the selected observations from the list')
 		self.toolbar.AddLabelTool(ID_VALIDATE, '', wx.Bitmap('icons/validate.png'), shortHelp='Validate Observations', 
-								longHelp='Display a brief help message for this program')
+								longHelp='Validate the current set of parameters and observations')
 		self.toolbar.AddSeparator()
-		self.toolbar.AddLabelTool(ID_ABOUT, '', wx.Bitmap('icons/help.png'), shortHelp='Help')
+		self.toolbar.AddLabelTool(ID_ABOUT, '', wx.Bitmap('icons/help.png'), shortHelp='Help', 
+								longHelp='Display a brief help message for this program')
 		self.toolbar.Realize()
 		
 		# Disable stepped observations (for now)
@@ -187,7 +269,7 @@ class SDFCreator(wx.Frame):
 		hbox = wx.BoxSizer(wx.HORIZONTAL)
 		panel = wx.Panel(self, -1)
 		
-		self.listControl = ObservationListCtrl(panel)
+		self.listControl = ObservationListCtrl(panel, id=ID_LISTCTRL)
 		
 		hbox.Add(self.listControl, 1, wx.EXPAND)
 		panel.SetSizer(hbox)
@@ -199,6 +281,7 @@ class SDFCreator(wx.Frame):
 		self.Bind(wx.EVT_MENU, self.onNew, id=ID_NEW)
 		self.Bind(wx.EVT_MENU, self.onLoad, id=ID_OPEN)
 		self.Bind(wx.EVT_MENU, self.onSave, id=ID_SAVE)
+		self.Bind(wx.EVT_MENU, self.onSaveAs, id=ID_SAVE_AS)
 		self.Bind(wx.EVT_MENU, self.onQuit, id=ID_QUIT)
 		
 		# Observer menu events
@@ -211,13 +294,23 @@ class SDFCreator(wx.Frame):
 		self.Bind(wx.EVT_MENU, self.onAddStepped, id=ID_ADD_STEPPED)
 		self.Bind(wx.EVT_MENU, self.onRemove, id=ID_REMOVE)
 		self.Bind(wx.EVT_MENU, self.onValidate, id=ID_VALIDATE)
+		self.Bind(wx.EVT_MENU, self.onTimeseries, id=ID_TIMESERIES)
 		self.Bind(wx.EVT_MENU, self.onAdvanced, id=ID_ADVANCED)
+		
+		# Data menu events
+		self.Bind(wx.EVT_MENU, self.onVolume, id=ID_DATA_VOLUME)
 		
 		# Help menu events
 		self.Bind(wx.EVT_MENU, self.onAbout, id=ID_ABOUT)
+		
+		# Observation edits
+		self.Bind(wx.EVT_LIST_END_LABEL_EDIT, self.onEdit, id=ID_LISTCTRL)
 	
 	def onNew(self, event):
 		"""Create a new SD session"""
+		
+		self.edited = True
+		self.setSaveButton()
 		
 		self.setMenuButtons('None')
 		self.listControl.DeleteAllItems()
@@ -232,11 +325,26 @@ class SDFCreator(wx.Frame):
 		
 		if dialog.ShowModal() == wx.ID_OK:
 			self.dirname = dialog.GetDirectory()
+			self.filename = dialog.GetPath()
 			self.parseFile(dialog.GetPath())
+			
+			self.edited = False
+			self.setSaveButton()
+			
 		dialog.Destroy()
 
 	def onSave(self, event):
-		"""Save the current observation to a SD file"""
+		"""Save the current observation to a file"""
+		
+		fh = open(self.filename, 'w')
+		fh.write(self.project.render())
+		fh.close()
+		
+		self.edited = False
+		self.setSaveButton()
+
+	def onSaveAs(self, event):
+		"""Save the current observation to a new SD file"""
 		
 		dialog = wx.FileDialog(self, "Select Output File", self.dirname, '', 'Text Files (*.txt)|*.txt|All Files (*.*)|*.*', wx.SAVE|wx.FD_OVERWRITE_PROMPT)
 		
@@ -246,6 +354,10 @@ class SDFCreator(wx.Frame):
 			fh = open(dialog.GetPath(), 'w')
 			fh.write(self.project.render())
 			fh.close()
+			self.filename = dialog.GetPath()
+			
+			self.edited = False
+			self.setSaveButton()
 			
 		dialog.Destroy()
 	
@@ -263,6 +375,9 @@ class SDFCreator(wx.Frame):
 		self.project.sessions[0].observations.append( sdf.TBW('tbw-%i' % id, 'All-Sky', '2011-01-01 00:00:00.000', samples, bits=bits) )
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
+		self.edited = True
+		self.setSaveButton()
+		
 	def onAddTBN(self, event):
 		"""Add a TBW observation to the list and update the main window"""
 		
@@ -271,6 +386,9 @@ class SDFCreator(wx.Frame):
 		self.project.sessions[0].observations.append( sdf.TBN('tbn-%i' % id, 'All-Sky', '2011-01-01 00:00:00.000', '00:00:00.000', 38e6, 7) )
 		self.project.sessions[0].observations[-1].gain = gain
 		self.addObservation(self.project.sessions[0].observations[-1], id)
+		
+		self.edited = True
+		self.setSaveButton()
 		
 	def onAddDRXR(self, event):
 		"""Add a tracking RA/Dec (DRX) observation to the list and update the main window"""
@@ -281,6 +399,9 @@ class SDFCreator(wx.Frame):
 		self.project.sessions[0].observations[-1].gain = gain
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
+		self.edited = True
+		self.setSaveButton()
+		
 	def onAddDRXS(self, event):
 		"""Add a tracking Sun (DRX) observation to the list and update the main window"""
 		
@@ -290,6 +411,9 @@ class SDFCreator(wx.Frame):
 		self.project.sessions[0].observations[-1].gain = gain
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
+		self.edited = True
+		self.setSaveButton()
+		
 	def onAddDRXJ(self, event):
 		"""Add a tracking Jupiter (DRX) observation to the list and update the main window"""
 		
@@ -298,11 +422,29 @@ class SDFCreator(wx.Frame):
 		self.project.sessions[0].observations.append( sdf.Jovian('jovian-%i' % id, 'target-%i' % id, '2011-01-01 00:00:00.000', '00:00:00.000', 38e6, 74e6, 7) )
 		self.project.sessions[0].observations[-1].gain = gain
 		self.addObservation(self.project.sessions[0].observations[-1], id)
+		
+		self.edited = True
+		self.setSaveButton()
 	
 	def onAddStepped(self, event):
 		"""Open up the advanced preferences window"""
 		
 		pass
+	
+	def onEdit(self, event):
+		"""Make the selected change to the underlying observation."""
+		
+		obsIndex = event.GetIndex()
+		obsAttr = event.GetColumn()
+		newData = self.coerceMap[obsAttr](event.GetText())
+		
+		oldData = getattr(self.project.sessions[0].observations[obsIndex], self.columnMap[obsAttr])
+		if newData != oldData:
+			setattr(self.project.sessions[0].observations[obsIndex], self.columnMap[obsAttr], newData)
+			self.project.sessions[0].observations[obsIndex].update()
+		
+			self.edited = True
+			self.setSaveButton()
 	
 	def onRemove(self, event):
 		"""Remove selected observations from the main window as well as the 
@@ -316,11 +458,42 @@ class SDFCreator(wx.Frame):
 		for i in bad:
 			self.listControl.DeleteItem(i)
 			del self.project.sessions[0].observations[i]
+			
+		self.edited = True
+		self.setSaveButton()
 	
 	def onValidate(self, event):
 		"""Validate the current observations"""
 		
-		pass
+		# Loop through the lists of observations and validate one-at-a-time so 
+		# that we can mark bad observations
+		i=0
+		validObs = True
+		for obs in self.project.sessions[0].observations:
+			valid = obs.validate()
+			for col in xrange(len(self.columnMap)):
+				item = self.listControl.GetItem(i, col)
+			
+				if not valid:
+					self.listControl.SetItemTextColour(item.GetId(), wx.RED)
+					self.listControl.RefreshItem(item.GetId())
+					validObs = False
+				else:
+					self.listControl.SetItemTextColour(item.GetId(), wx.BLACK)
+					self.listControl.RefreshItem(item.GetId())
+			i += 1
+		
+		# Do a global validation
+		if self.project.validate():
+			wx.MessageBox('Congratulations, you have a valid set of observations.', 'Validator Results')
+		else:
+			if validObs:
+				wx.MessageBox('All observations are valid, but there are errors in the session setup.', 'Validator Results')
+	
+	def onTimeseries(self, event):
+		"""Display a window showing the layout of the observations in time."""
+		
+		TimeseriesDisplay(self)
 	
 	def onAdvanced(self, event):
 		"""Display the advanced settings dialog for controlling TBW samples and
@@ -328,13 +501,31 @@ class SDFCreator(wx.Frame):
 		
 		AdvancedInfo(self)
 	
+	def onVolume(self, event):
+		"""Display a message window showing the data used for each observation 
+		and the total data volume."""
+		
+		out = 'Estimated Data Volue:\n'
+		
+		i = 0
+		tot = 0
+		for obs in self.project.sessions[0].observations:
+			out += "Observation #%2i: %6.2f GB\n" % (i+1, obs.dataVolume/1024.0**3)
+			tot += obs.dataVolume
+			i += 1
+		
+		out += "--------------------------\n"
+		out += "Total: %7.2f GB\n" % (tot/1024.0**3,)
+		
+		wx.MessageBox(out, 'Data Volume')
+	
 	def onAbout(self, event):
 		"""Display a ver very very bried 'about' window"""
 		
 		wx.MessageBox('GUI interface for session definition file creation.', 'About')
 	
 	def onQuit(self, event):
-		"""Quit the main window"""
+		"""Quit the main window."""
 		
 		self.Close()
 		
@@ -342,27 +533,73 @@ class SDFCreator(wx.Frame):
 		"""Add the various columns to the main window based on the type of 
 		observations being defined."""
 		
+		width = 50 + 100 + 100 + 100 + 225
+		self.columnMap = []
+		self.coerceMap = []
+		
+		def float6(s):
+			return float(s)*1e6
+		
 		self.listControl.InsertColumn(0, 'ID', width=50)
 		self.listControl.InsertColumn(1, 'Name', width=100)
 		self.listControl.InsertColumn(2, 'Target', width=100)
 		self.listControl.InsertColumn(3, 'Comments', width=100)
 		self.listControl.InsertColumn(4, 'Start (UTC)', width=225)
+		self.columnMap.append('id')
+		self.columnMap.append('name')
+		self.columnMap.append('target')
+		self.columnMap.append('comments')
+		self.columnMap.append('start')
+		for i in xrange(5):
+			self.coerceMap.append(str)
 		
 		if self.mode == 'TBW':
 			pass
 		elif self.mode == 'TBN':
-			self.listControl.InsertColumn(5, 'Duration', width=150)
+			width += 125 + 125 + 85
+			self.listControl.InsertColumn(5, 'Duration', width=125)
 			self.listControl.InsertColumn(6, 'Frequency (MHz)', width=125)
-			self.listControl.InsertColumn(7, 'Filter Code', width=75)
+			self.listControl.InsertColumn(7, 'Filter Code', width=85)
+			self.columnMap.append('duration')
+			self.columnMap.append('frequency1')
+			self.columnMap.append('filter')
+			self.coerceMap.append(str)
+			self.coerceMap.append(float6)
+			self.coerceMap.append(int)
 		elif self.mode == 'DRX':
-			self.listControl.InsertColumn(5, 'Duration', width=150)
+			width += 125 + 150 + 150 + 125 + 125 + 85 + 125
+			self.listControl.InsertColumn(5, 'Duration', width=125)
 			self.listControl.InsertColumn(6, 'RA (Hour J2000)', width=150)
 			self.listControl.InsertColumn(7, 'Dec (Deg. J2000)', width=150)
 			self.listControl.InsertColumn(8, 'Frequency 1 (MHz)', width=125)
 			self.listControl.InsertColumn(9, 'Frequency 2 (MHz)', width=125)
-			self.listControl.InsertColumn(10, 'Filter Code', width=75)
+			self.listControl.InsertColumn(10, 'Filter Code', width=85)
+			self.listControl.InsertColumn(11, 'Max S/N Beam?', width=125)
+			self.columnMap.append('duration')
+			self.columnMap.append('ra')
+			self.columnMap.append('dec')
+			self.columnMap.append('frequency1')
+			self.columnMap.append('frequency2')
+			self.columnMap.append('filter')
+			self.columnMap.append('MaxSNR')
+			self.coerceMap.append(str)
+			self.coerceMap.append(float)
+			self.coerceMap.append(float)
+			self.coerceMap.append(float6)
+			self.coerceMap.append(float6)
+			self.coerceMap.append(int)
+			self.coerceMap.append(str)
 		else:
 			pass
+		
+		size = self.listControl.GetSize()
+		size[0] = width
+		self.listControl.SetMinSize(size)
+		self.listControl.Fit()
+		size = self.GetSize()
+		size[0] = width
+		self.SetMinSize(size)
+		self.Fit()
 		
 	def addObservation(self, obs, id):
 		"""Add an observation to a particular location in the observation list
@@ -400,6 +637,15 @@ class SDFCreator(wx.Frame):
 			self.listControl.SetStringItem(index, 8, "%.6f" % (obs.freq1*fS/2**32 / 1e6))
 			self.listControl.SetStringItem(index, 9, "%.6f" % (obs.freq2*fS/2**32 / 1e6))
 			self.listControl.SetStringItem(index, 10, "%i" % obs.filter)
+			self.listControl.SetStringItem(index, 11, "%s" % obs.MaxSNR)
+			
+	def setSaveButton(self):
+		if self.edited:
+			self.savemenu.Enable(True)
+			self.toolbar.EnableTool(ID_SAVE, True)
+		else:
+			self.savemenu.Enable(False)
+			self.toolbar.EnableTool(ID_SAVE, False)
 	
 	def setMenuButtons(self, mode):
 		"""Given a mode of observation (TBW, TBN, TRK_RADEC, etc.), update the 
@@ -506,7 +752,7 @@ class ObserverInfo(wx.Frame):
 	(title, ID), and what type of session this will be (TBW, TBN, etc.)"""
 	
 	def __init__(self, parent):
-		wx.Frame.__init__(self, parent, title='Observer Information', size=(725,675))
+		wx.Frame.__init__(self, parent, title='Observer Information', size=(750,675))
 		
 		self.parent = parent
 		
@@ -1098,7 +1344,105 @@ class AdvancedInfo(wx.Frame):
 				return "30 minutes"
 			else:
 				return "1 hour"
+
+
+class TSPanel(PlotPanel):
+	def __init__(self, parent, observations=[], **kwargs):
+		self.parent = parent
+		self.obs = observations
+		
+		# initiate plotter
+		PlotPanel.__init__( self, parent, **kwargs )
+		self.SetColor( (255,255,255) )
+
+	def draw(self):
+		"""Draw data."""
+		
+		if not hasattr( self, 'subplot' ):
+			self.ax1 = self.figure.add_subplot( 111 )
+
+		if len(self.obs) == 0:
+			pass
+		else:
+			mode = self.obs[0].mode
+			colors = ['blue', 'green', 'red', 'cyan', 'magenta']
+			i = 0
+			earliest = 1e20
+			for o in self.obs:
+				start = o.mjd + o.mpm/1000.0 / (3600.0*24.0)
+				if start < earliest:
+					earliest = start
 			
+			for o in self.obs:
+				start = o.mjd + o.mpm/1000.0 / (3600.0*24.0)
+				dur = o.dur/1000.0 / (3600.0*24.0)
+				
+				if mode == 'TBW' or mode == 'TBN':
+					yl = 0.5
+				else:
+					yl = 0.5 + i
+				self.ax1.barh(yl, dur, height=1.0, left=start-earliest, alpha=0.6, color=colors[i % len(colors)], label='Observation %i' % (i+1))
+				i += 1
+			self.ax1.legend(loc=0)
+			
+			# Second set of x axes
+			self.ax1.xaxis.tick_bottom()
+			self.ax2 = self.figure.add_axes(self.ax1.get_position(), sharey=self.ax1, frameon=False)
+			self.ax2.xaxis.tick_top()
+			self.ax2.set_xlim([self.ax1.get_xlim()[0]*24.0, self.ax1.get_xlim()[1]*24.0])
+			
+			# Labels
+			self.ax1.set_xlabel('MJD-%i [days]' % earliest)
+			self.ax1.set_ylabel('Observation')
+			self.ax2.set_xlabel('Session Elapsed Time [hours]')
+			self.ax2.xaxis.set_label_position('top')
+
+
+class TimeseriesDisplay(wx.Frame):
+	def __init__(self, parent):
+		wx.Frame.__init__(self, parent, title='Advanced Settings', size=(800, 375))
+		
+		self.parent = parent
+		
+		self.initUI()
+		self.initEvents()
+		self.Show()
+		
+	def initUI(self):
+		row = 0
+		panel = wx.Panel(self)
+		sizer = wx.GridBagSizer(5, 5)
+		
+		#
+		# Plot
+		#
+		
+		plotPanel = TSPanel(panel, observations=self.parent.project.sessions[0].observations)
+		sizer.Add(plotPanel, pos=(0, 0), span=(2, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			
+		line = wx.StaticLine(panel)
+		sizer.Add(line, pos=(row+2, 0), span=(1, 2), flag=wx.EXPAND|wx.BOTTOM, border=10)
+			
+		row += 3
+		
+		#
+		# Buttons
+		#
+		
+		cancel = wx.Button(panel, ID_OBS_INFO_CANCEL, 'Cancel', size=(90, 28))
+		sizer.Add(cancel, pos=(row+0, 2), flag=wx.RIGHT|wx.BOTTOM, border=5)
+		
+		sizer.AddGrowableCol(0)
+		sizer.AddGrowableRow(0)
+		
+		panel.SetSizerAndFit(sizer)
+		
+	def initEvents(self):
+		self.Bind(wx.EVT_BUTTON, self.onCancel, id=ID_OBS_INFO_CANCEL)
+		
+	def onCancel(self, event):
+		self.Close()
+
 
 if __name__ == "__main__":
 	app = wx.App()

@@ -193,7 +193,8 @@ class Project(object):
 		
 		failures = 0
 		for session in self.sessions:
-			failures += session.validate()
+			if not session.validate():
+				failures += 1
 			
 		if failures == 0:
 			return True
@@ -285,7 +286,8 @@ class Session(object):
 			if self.updateMIB[key] < -1:
 				failures += 1
 		for obs in self.observations:
-			failures += obs.validate()
+			if not obs.validate():
+				failures += 1
 			totalData += obs.dataVolume
 		if totalData >= (5*1024**4):
 			failures += 1
@@ -329,6 +331,22 @@ class Observation(object):
 		self.MaxSNR = bool(MaxSNR)
 		self.comments = comments
 		
+		self.mjd = None
+		self.mpm = None
+		self.dur = None
+		self.freq1 = None
+		self.freq2 = None
+		self.beam = None
+		self.dataVolume = None
+		
+		self.update()
+		
+		# For future use
+		self.gain = -1
+		
+	def update(self):
+		"""Update the computed parameters from the string values."""
+		
 		self.mjd = self.getMJD()
 		self.mpm = self.getMPM()
 		self.dur = self.getDuration()
@@ -336,9 +354,6 @@ class Observation(object):
 		self.freq2 = self.getFrequency2()
 		self.beam = self.getBeamType()
 		self.dataVolume = self.estimateBytes()
-		
-		# For future use
-		self.gain = -1
 
 	def getMJD(self):
 		"""Return the modified Julian Date corresponding to the date/time of the
@@ -797,8 +812,7 @@ class Stepped(Observation):
 			failures += 1
 		# Basic - steps
 		for step in self.steps:
-			stepValid = step.validate()
-			if not stepValid:
+			if not step.validate():
 				failures += 1
 		# Advanced - Target Visibility
 		if self.computeVisibility() < 1.0:
