@@ -995,8 +995,10 @@ class ObserverInfo(wx.Frame):
 		
 		if self.tbwButton.GetValue():
 			self.parent.mode = 'TBW'
+			self.parent.sessions[0].includeStationStatic = True
 		elif self.tbnButton.GetValue():
 			self.parent.mode = 'TBN'
+			self.parent.sessions[0].includeStationStatic = True
 		else:
 			self.parent.mode = 'DRX'
 		self.parent.setMenuButtons(self.parent.mode)
