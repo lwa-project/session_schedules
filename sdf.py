@@ -73,6 +73,7 @@ __all__ = ['Observer', 'Project', 'Session', 'Observation', 'TBW', 'TBN', 'DRX',
 _dtRE = re.compile(r'((?P<tz>[A-Z]{2,3}) )?(?P<year>\d{4})[ -]((?P<month>\d{1,2})|(?P<mname>[a-z]{3}))[ -](?P<day>\d{1,2})[ T](?P<hour>\d{1,2}):(?P<minute>\d{1,2}):(?P<second>\d{1,2}(\.\d{1,6})?)')
 _UTC = pytz.utc
 _nStands = 256
+_DRSUCapacityTB = 5
 
 
 def parseTimeString(s):
@@ -101,6 +102,7 @@ def parseTimeString(s):
 		minute = int(mtch.group('minute'))
 		second = math.floor(float(mtch.group('second')))
 		microsecond = int(round((float(mtch.group('second')) - second)*1000)*1000)
+		second = int(second)
 		
 		if mtch.group('mname') is None:
 			month = int(mtch.group('month'))
@@ -186,15 +188,20 @@ class Project(object):
 		else:
 			self.projectOffice = projectOffice
 		
-	def validate(self):
+	def validate(self, verbose=False):
 		"""Examine all of the sessions and all of their observations to check
 		for validity.  If everything is valid, return True.  Otherwise, return
 		False."""
 		
 		failures = 0
+		sessionCount = 1
 		for session in self.sessions:
-			if not session.validate():
+			if verbose:
+				print "[%i] Validating session %i" % (os.getpid(), sessionCount)
+			if not session.validate(verbose=verbose):
 				failures += 1
+				
+			sessionCount += 1
 			
 		if failures == 0:
 			return True
@@ -271,7 +278,7 @@ class Session(object):
 		
 		self.updateMIB[component] = int(interval)
 		
-	def validate(self):
+	def validate(self, verbose=False):
 		"""Examine all of the observations associated with the session to check
 		for validity.  If everything is valid, return True.  Otherwise, return
 		False."""
@@ -282,14 +289,28 @@ class Session(object):
 			failues += 1
 		for key in self.recordMIB.keys():
 			if self.recordMIB[key] < -1:
+				if verbose:
+					print "[%i] Error: Invalid recording interval for '%s' MIB entry '%i'" % (os.getpid(), key, self.recordMIB[key])
 				failures += 1
 			if self.updateMIB[key] < -1:
+				if verbose:
+					print "[%i] Error: Invalid update interval for '%s' MIB entry '%i'" % (os.getpid(), key, self.updateMIB[key])
 				failures += 1
+				
+		observationCount = 1
 		for obs in self.observations:
-			if not obs.validate():
+			if verbose:
+				print "[%i] Validation observation %i" % (os.getpid(), observationCount)
+			
+			if not obs.validate(verbose=verbose):
 				failures += 1
 			totalData += obs.dataVolume
-		if totalData >= (5*1024**4):
+			
+			observationCount += 1
+			
+		if totalData >= (2*_DRSUCapacityTB*1024**4):
+			if verbose:
+				print "[%i] Error: Total data volume for session exceeds %i TB DRSU limit" % (os.getpid(), 2*_DRSUCapacityTB,)
 			failures += 1
 		
 		if failures == 0:
@@ -429,7 +450,7 @@ class Observation(object):
 		
 		return 1.0
 	
-	def validate(self):
+	def validate(self, verbose=False):
 		"""Place holder for functions that evaluate the observation and return True 
 		if it is valid, False otherwise."""
 		
@@ -482,21 +503,31 @@ class TBW(Observation):
 		nBytes = nFrames * TBWSize * _nStands
 		return nBytes
 		
-	def validate(self):
+	def validate(self, verbose=False):
 		"""Evaluate the observation and return True if it is valid, False
 		otherwise."""
 		
 		failures = 0
 		# Basic - Sample size and data bits agreement
 		if self.bits not in [4, 12]:
+			if verbose:
+				print "[%i] Error: Invalid number of data bits '%i'" % (os.getpid(), self.bits)
 			failures += 1
 		if self.bits == 12 and self.samples > 12000000:
+			if verbose:
+				print "[%i] Error: Invalid number of samples for 12-bit data (%i > 12000000)" % (os.getpid(), self.samples)
 			failures += 1
 		if self.bits == 4 and self.samples > 36000000:
+			if verbose:
+				print "[%i] Error: Invalid number of samples for 4-bit data (%i > 36000000)" % (os.getpid(), self.samples)
 			failures += 1
+			
 		# Advanced - Data Volume
-		if self.dataVolume >= (5*1024**4):
+		if self.dataVolume >= (_DRSUCapacityTB*1024**4):
+			if verbose:
+				print "[%i] Error: Data volume exceeds %i TB DRSU limit" % (os.getpid(), _DRSUCapacityTB)
 			failures += 1
+			
 		# Any failures indicates a bad observation
 		if failures == 0:
 			return True
@@ -538,19 +569,27 @@ class TBN(Observation):
 		nBytes = nFrames * TBNSize * _nStands * 2
 		return nBytes
 		
-	def validate(self):
+	def validate(self, verbose=False):
 		"""Evaluate the observation and return True if it is valid, False
 		otherwise."""
 		
 		failures = 0
 	     # Basic - Frequency and filter code values
 		if self.freq1 < 219130984 or self.freq1 > 1928352663:
+			if verbose:
+				print "[%i] Error: Specified frequency is outside of DP tuning range" % os.getpid()
 			failures += 1
 		if self.filter not in [1,2,3,4,5,6,7]:
+			if verbose:
+				print "[%i] Error: Invalid filter code '%i'" % (os.getpid(), self.filter)
 			failures += 1
+			
 		# Advanced - Data Volume
-		if self.dataVolume >= (5*1024**4):
+		if self.dataVolume >= (_DRSUCapacityTB*1024**4):
+			if verbose:
+				print "[%i] Error: Data volume exceeds %i TB DRSU limit" % (os.getpid(), _DRSUCapacityTB)
 			failures += 1
+			
 		# Any failures indicates a bad observation
 		if failures == 0:
 			return True
@@ -627,28 +666,45 @@ class DRX(Observation):
 		
 		return float(vis)/float(cnt)
 		
-	def validate(self):
+	def validate(self, verbose=False):
 		"""Evaluate the observation and return True if it is valid, False
 		otherwise."""
 		
 		failures = 0
 	     # Basic - Frequency and filter code values
 		if self.freq1 < 219130984 or self.freq1 > 1928352663:
+			if verbose:
+				print "[%i] Error: Specified frequency for tuning 1 is outside of DP tuning range" % os.getpid()
 			failures += 1
 		if self.freq2 < 219130984 or self.freq2 > 1928352663:
+			if verbose:
+				print "[%i] Error: Specified frequency for tuning 2 is outside of DP tuning range" % os.getpid()
 			failures += 1
 		if self.filter not in [1,2,3,4,5,6,7]:
+			if verbose:
+				print "[%i] Error: Invalid filter code '%i'" % (os.getpid(), self.filter)
 			failures += 1
+			
 		# Advanced - Target Visibility
 		if self.ra < 0 or self.ra >=24:
+			if verbose:
+				print "[%i] Error: Invalid value for RA '%.6f'" % (os.getpid(), self.ra)
 			failures += 1
 		if self.dec < -90 or self.dec > 90:
+			if verbose:
+				print "[%i] Error: Invalid value for dec. '%+.6f'" % (os.getpid(), self.dec)
 			failures += 1
 		if self.computeVisibility() < 1.0:
+			if verbose:
+				print "[%i] Error: Target is only above the horizon for %.1f%% of the observation" % (os.getpid(), self.computeVisibility()*100.0)
 			failures += 1
+			
 		# Advanced - Data Volume
-		if self.dataVolume >= (5*1024**4):
+		if self.dataVolume >= (_DRSUCapacityTB*1024**4):
+			if verbose:
+				print "[%i] Error: Data volume exceeds %i TB DRSU limit" % (os.getpid(), _DRSUCapacityTB)
 			failures += 1
+			
 		# Any failures indicates a bad observation
 		if failures == 0:
 			return True
@@ -802,24 +858,39 @@ class Stepped(Observation):
 			
 		return float(vis)/float(cnt)
 		
-	def validate(self):
+	def validate(self, verbose=False):
 		"""Evaluate the observation and return True if it is valid, False
 		otherwise."""
 		
 		failures = 0
 		# Basic - filter setup
 		if self.filter not in [1,2,3,4,5,6,7]:
+			if verbose:
+				print "[%i] Error: Invalid filter code '%i'" % (os.getpid(), self.filter)
 			failures += 1
+			
 		# Basic - steps
+		stepCount = 1
 		for step in self.steps:
-			if not step.validate():
+			if verbose:
+				print "[%i] Validation step %i" % (os.getpid(), stepCount)
+			if not step.validate(verbose=verbose):
 				failures += 1
+				
+			stepCount += 1
+			
 		# Advanced - Target Visibility
 		if self.computeVisibility() < 1.0:
+			if verbose:
+				print "[%i] Error: Target steps only above the horizon for %.1f%% of the observation" % (os.getpid(), self.computeVisibility()*100.0)
 			failures += 1
+			
 		# Advanced - Data Volume
-		if self.dataVolume >= (5*1024**4):
+		if self.dataVolume >= (_DRSUCapacityTB*1024**4):
+			if verbose:
+				print "[%i] Error: Data volume exceeds %i TB DRSU limit" % (os.getpid(), _DRSUCapacityTB)
 			failures += 1
+			
 		# Any failures indicates a bad observation
 		if failures == 0:
 			return True
@@ -916,7 +987,7 @@ class BeamStep(object):
 			
 		return pnt
 			
-	def validate(self):
+	def validate(self, verbose=False):
 		"""Evaluate the step and return True if it is valid, False otherwise."""
 		
 		failures = 0
@@ -925,19 +996,31 @@ class BeamStep(object):
 			failures += 1
 	     # Basic - Frequency and filter code values
 		if self.freq1 < 219130984 or self.freq1 > 1928352663:
+			if verbose:
+				print "[%i] Error: Specified frequency for tuning 1 is outside of DP tuning range" % os.getpid()
 			failures += 1
 		if self.freq2 < 219130984 or self.freq2 > 1928352663:
+			if verbose:
+				print "[%i] Error: Specified frequency for tuning 2 is outside of DP tuning range" % os.getpid()
 			failures += 1
 		# Advanced - Target Visibility via RA/Dec & Az/El ranging
 		if self.RADec:
 			if self.c1 < 0 or self.c1 >=24:
+				if verbose:
+					print "[%i] Error: Invalid value for RA '%.6f'" % (os.getpid(), self.c1)
 				failures += 1
 			if self.c2 < -90 or self.c2 > 90:
+				if verbose:
+					print "[%i] Error: Invalid value for dec. '%+.6f'" % (os.getpid(), self.c2)
 				failures += 1
 		else:
 			if self.c1 < 0 or self.c1 > 360:
+				if verbose:
+					print "[%i] Error: Invalid value for azimuth '%.6f'" % (os.getpid(), self.c1)
 				failures += 1
 			if self.c2 < 0 or self.c2 > 90:
+				if verbose:
+					print "[%i] Error: Invalid value for elevation '%.6f'" % (os.getpid(), self.c2)
 				failures += 1
 		# Any failures indicates a bad observation
 		if failures == 0:
@@ -970,7 +1053,7 @@ def __parseCreateObsObject(obsTemp, beamTemps=[]):
 		durString = '%02i:%02i:%06.3f' % (dur/3600.0, (dur%3600.0)/60.0, dur%60.0)
 	except:
 		pass
-	
+
 	# Convert the frequencies from "tuning words" to Hz
 	f1 = obsTemp['freq1']*fS / 2**32
 	f2 = obsTemp['freq2']*fS / 2**32

@@ -199,7 +199,7 @@ class SDFCreator(wx.Frame):
 		obsMenu.AppendSeparator()
 		timeseries = wx.MenuItem(obsMenu, ID_TIMESERIES, 'Session at a &Glance')
 		obsMenu.AppendItem(timeseries)
-		advanced = wx.MenuItem(obsMenu, ID_ADVANCED, 'Advanced SSettings')
+		advanced = wx.MenuItem(obsMenu, ID_ADVANCED, 'Advanced &Settings')
 		obsMenu.AppendItem(advanced)
 		
 		# Save menu items and disable stepped observations (for now)
@@ -336,30 +336,40 @@ class SDFCreator(wx.Frame):
 	def onSave(self, event):
 		"""Save the current observation to a file"""
 		
-		fh = open(self.filename, 'w')
-		fh.write(self.project.render())
-		fh.close()
+		self.onValidate(1, confirmValid=False)
 		
-		self.edited = False
-		self.setSaveButton()
+		if not self.project.validate():
+			wx.MessageBox('The session definition file could not be saved due to errors in the file.', 'Save Failed')
+		else:
+			fh = open(self.filename, 'w')
+			fh.write(self.project.render())
+			fh.close()
+			
+			self.edited = False
+			self.setSaveButton()
 
 	def onSaveAs(self, event):
 		"""Save the current observation to a new SD file"""
 		
-		dialog = wx.FileDialog(self, "Select Output File", self.dirname, '', 'Text Files (*.txt)|*.txt|All Files (*.*)|*.*', wx.SAVE|wx.FD_OVERWRITE_PROMPT)
+		self.onValidate(1, confirmValid=False)
 		
-		if dialog.ShowModal() == wx.ID_OK:
-			self.dirname = dialog.GetDirectory()
+		if not self.project.validate():
+			wx.MessageBox('The session definition file could not be saved due to errors in the file.', 'Save Failed')
+		else:
+			dialog = wx.FileDialog(self, "Select Output File", self.dirname, '', 'Text Files (*.txt)|*.txt|All Files (*.*)|*.*', wx.SAVE|wx.FD_OVERWRITE_PROMPT)
 			
-			fh = open(dialog.GetPath(), 'w')
-			fh.write(self.project.render())
-			fh.close()
-			self.filename = dialog.GetPath()
-			
-			self.edited = False
-			self.setSaveButton()
-			
-		dialog.Destroy()
+			if dialog.ShowModal() == wx.ID_OK:
+				self.dirname = dialog.GetDirectory()
+				
+				fh = open(dialog.GetPath(), 'w')
+				fh.write(self.project.render())
+				fh.close()
+				self.filename = dialog.GetPath()
+				
+				self.edited = False
+				self.setSaveButton()
+				
+			dialog.Destroy()
 	
 	def onInfo(self, event):
 		"""Open up the observer/project information window"""
@@ -465,15 +475,16 @@ class SDFCreator(wx.Frame):
 		self.edited = True
 		self.setSaveButton()
 	
-	def onValidate(self, event):
+	def onValidate(self, event, confirmValid=True):
 		"""Validate the current observations"""
 		
 		# Loop through the lists of observations and validate one-at-a-time so 
 		# that we can mark bad observations
-		i=0
+		i = 0
 		validObs = True
 		for obs in self.project.sessions[0].observations:
-			valid = obs.validate()
+			print "[%i] Validating observation %i" % (os.getpid(), i+1)
+			valid = obs.validate(verbose=True)
 			for col in xrange(len(self.columnMap)):
 				item = self.listControl.GetItem(i, col)
 			
@@ -482,13 +493,16 @@ class SDFCreator(wx.Frame):
 					self.listControl.RefreshItem(item.GetId())
 					validObs = False
 				else:
-					self.listControl.SetItemTextColour(item.GetId(), wx.BLACK)
-					self.listControl.RefreshItem(item.GetId())
+					if self.listControl.GetItemTextColour(item.GetId()) != (0, 0, 0, 255):
+						self.listControl.SetItemTextColour(item.GetId(), wx.BLACK)
+						self.listControl.RefreshItem(item.GetId())
+				
 			i += 1
 		
 		# Do a global validation
 		if self.project.validate():
-			wx.MessageBox('Congratulations, you have a valid set of observations.', 'Validator Results')
+			if confirmValid:
+				wx.MessageBox('Congratulations, you have a valid set of observations.', 'Validator Results')
 		else:
 			if validObs:
 				wx.MessageBox('All observations are valid, but there are errors in the session setup.', 'Validator Results')
@@ -508,7 +522,7 @@ class SDFCreator(wx.Frame):
 		"""Display a message window showing the data used for each observation 
 		and the total data volume."""
 		
-		out = 'Estimated Data Volue:\n'
+		out = 'Estimated Data Volume:\n'
 		
 		i = 0
 		tot = 0
@@ -1146,7 +1160,7 @@ class AdvancedInfo(wx.Frame):
 			
 			tbitsText = wx.ComboBox(panel, -1, value='12-bit', choices=bits, style=wx.CB_READONLY)
 			tsampText = wx.TextCtrl(panel)
-			tbitsText.SetStringSelection('%i-bits' % self.parent.project.sessions[0].tbwBits)
+			tbitsText.SetStringSelection('%i-bit' % self.parent.project.sessions[0].tbwBits)
 			tsampText.SetValue("%i" % self.parent.project.sessions[0].tbwSamples)
 			
 			sizer.Add(tbw, pos=(row+0,0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
