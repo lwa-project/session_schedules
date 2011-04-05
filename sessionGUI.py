@@ -527,16 +527,22 @@ class SDFCreator(wx.Frame):
 	def onAbout(self, event):
 		"""Display a ver very very bried 'about' window"""
 		
-		dialog = wx.MessageDialog(self, 'GUI interface for session definition file creation.', 'About', style=wx.OK|wx.ICON_INFORMATION)
-		if dialog.ShowModal() == wx.ID_OK:
-			pass
-		dialog.Destroy()
+		dialog = wx.AboutDialogInfo()
+		
+		dialog.SetIcon(wx.Icon('icons/lwa.png', wx.BITMAP_TYPE_PNG))
+		dialog.SetName('Session GUI')
+		dialog.SetVersion('0.1')
+		dialog.SetDescription("""GUI for creating session definition files to define observations with the Long Wavelength Array.""")
+		dialog.SetWebSite('http://lwa.unm.edu')
+		dialog.AddDeveloper('Jayce Dowell')
+		
+		wx.AboutBox(dialog)
 	
 	def onQuit(self, event):
 		"""Quit the main window."""
 		
 		if self.edited:
-			dialog = wx.MessageDialog(self, 'The current session defintion file has changes that have not been saved.\n\nExit anyways?', 'Confirm Quit', style=wx.YES_NO|wx.NO_DEFAULT|wx.ICON_EXCLAMATION)
+			dialog = wx.MessageDialog(self, 'The current session defintion file has changes that have not been saved.\n\nExit anyways?', 'Confirm Quit', style=wx.YES_NO|wx.NO_DEFAULT|wx.ICON_QUESTION)
 			
 			if dialog.ShowModal() == wx.ID_YES:
 				self.Close()
