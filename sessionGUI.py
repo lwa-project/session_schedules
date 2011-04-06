@@ -94,7 +94,8 @@ ID_ADD_STEPPED = 27
 ID_REMOVE = 28
 ID_VALIDATE = 29
 ID_TIMESERIES = 30
-ID_ADVANCED = 31
+ID_RESOLVE = 31
+ID_ADVANCED = 32
 
 ID_DATA_VOLUME = 41
 
@@ -197,6 +198,8 @@ class SDFCreator(wx.Frame):
 		validate = wx.MenuItem(obsMenu, ID_VALIDATE, '&Validate All')
 		obsMenu.AppendItem(validate)
 		obsMenu.AppendSeparator()
+		resolve = wx.MenuItem(obsMenu, ID_RESOLVE, 'Resolve Selected')
+		obsMenu.AppendItem(resolve)
 		timeseries = wx.MenuItem(obsMenu, ID_TIMESERIES, 'Session at a &Glance')
 		obsMenu.AppendItem(timeseries)
 		advanced = wx.MenuItem(obsMenu, ID_ADVANCED, 'Advanced &Settings')
@@ -294,6 +297,7 @@ class SDFCreator(wx.Frame):
 		self.Bind(wx.EVT_MENU, self.onAddStepped, id=ID_ADD_STEPPED)
 		self.Bind(wx.EVT_MENU, self.onRemove, id=ID_REMOVE)
 		self.Bind(wx.EVT_MENU, self.onValidate, id=ID_VALIDATE)
+		self.Bind(wx.EVT_MENU, self.onResolve, id=ID_RESOLVE)
 		self.Bind(wx.EVT_MENU, self.onTimeseries, id=ID_TIMESERIES)
 		self.Bind(wx.EVT_MENU, self.onAdvanced, id=ID_ADVANCED)
 		
@@ -463,17 +467,21 @@ class SDFCreator(wx.Frame):
 		"""Remove selected observations from the main window as well as the 
 		self.project.sessions[0].observations list."""
 		
-		bad = []
-		for i in range(self.listControl.GetItemCount()):
-			if self.listControl.IsChecked(i):
-				bad.append(i)
-				
-		for i in bad:
+		def stillBad(lc):
+			for i in range(lc.GetItemCount()):
+				if lc.IsChecked(i):
+					return i+1
+			return 0
+
+		bad = stillBad(self.listControl)
+		while bad:
+			i = bad - 1
 			self.listControl.DeleteItem(i)
 			del self.project.sessions[0].observations[i]
+			bad = stillBad(self.listControl)
 			
-		self.edited = True
-		self.setSaveButton()
+			self.edited = True
+			self.setSaveButton()
 	
 	def onValidate(self, event, confirmValid=True):
 		"""Validate the current observations"""
@@ -506,6 +514,11 @@ class SDFCreator(wx.Frame):
 		else:
 			if validObs:
 				wx.MessageBox('All observations are valid, but there are errors in the session setup.', 'Validator Results')
+
+	def onResolve(self, event):
+		"""Display a window to resolve a target name to ra/dec coordinates."""
+
+		ResolveTarget(self)
 	
 	def onTimeseries(self, event):
 		"""Display a window showing the layout of the observations in time."""
@@ -1537,6 +1550,178 @@ class VolumeInfo(wx.Frame):
 		self.Bind(wx.EVT_BUTTON, self.onOk, id=ID_VOL_INFO_OK)
 		
 	def onOk(self, event):
+		self.Close()
+
+
+ID_RESOLVE_RESOLVE = 611
+ID_RESOLVE_APPLY = 612
+ID_RESOLVE_CANCEL = 613
+
+class ResolveTarget(wx.Frame):
+	def __init__ (self, parent):	
+		wx.Frame.__init__(self, parent, title='Resolve Target', size=(475, 200))
+		
+		self.parent = parent
+		
+		self.setSource()
+		if self.source == 'Invalid Mode':
+			wx.MessageBox('All-sky modes (TBW and TBN) are not directed at a particular target.', 'All-Sky Mode')
+		else:
+			self.initUI()
+			self.initEvents()
+			self.Show()
+
+	def setSource(self):
+		if self.parent.mode.upper() == 'DRX':
+			for i in range(self.parent.listControl.GetItemCount()):
+				if self.parent.listControl.IsChecked(i):
+					item = self.parent.listControl.GetItem(i, 2)
+					self.observationID = i
+					self.source = item.GetText()
+					return True
+
+			self.observationID = -1
+			self.source = ''
+			return False
+			
+		else:
+			self.observationID = -1
+			self.source = 'Invalid Mode'
+			return False
+		
+	def initUI(self):
+		row = 0
+		panel = wx.Panel(self)
+		sizer = wx.GridBagSizer(5, 5)
+		
+		src = wx.StaticText(panel, label='Target Name:')
+		srcText = wx.TextCtrl(panel)
+		srcText.SetValue(self.source)
+		sizer.Add(src, pos=(row+0, 0), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(srcText, pos=(row+0, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+	
+		line = wx.StaticLine(panel)
+		sizer.Add(line, pos=(row+1, 0), span=(1, 5), flag=wx.EXPAND|wx.BOTTOM, border=10)
+
+		ra = wx.StaticText(panel, label='RA (hours, J2000):')
+		raText = wx.TextCtrl(panel, style=wx.TE_READONLY)
+		raText.SetValue('---')
+		dec = wx.StaticText(panel, label='Dec (degrees, J2000):')
+		decText = wx.TextCtrl(panel, style=wx.TE_READONLY)
+		decText.SetValue('---')
+		srv = wx.StaticText(panel, label='Service Used:')
+		srvText = wx.TextCtrl(panel, style=wx.TE_READONLY)
+		srvText.SetValue('---')
+
+		sizer.Add(ra, pos=(row+2, 0), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(raText, pos=(row+2, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(dec, pos=(row+3, 0), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(decText, pos=(row+3, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(srv, pos=(row+4, 0), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(srvText, pos=(row+4, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+	
+		line = wx.StaticLine(panel)
+		sizer.Add(line, pos=(row+5, 0), span=(1, 5), flag=wx.EXPAND|wx.BOTTOM, border=10)
+
+		resolve = wx.Button(panel, ID_RESOLVE_RESOLVE, 'Resolve', size=(90, 28))
+		appli = wx.Button(panel, ID_RESOLVE_APPLY, 'Apply', size=(90, 28))
+		cancel = wx.Button(panel, ID_RESOLVE_CANCEL, 'Cancel', size=(90, 28))
+		
+		sizer.Add(resolve, pos=(row+6, 2))
+		sizer.Add(appli, pos=(row+6, 3))
+		sizer.Add(cancel, pos=(row+6, 4))
+		
+		panel.SetSizerAndFit(sizer)
+
+		self.srcText = srcText
+		self.raText = raText
+		self.decText = decText
+		self.srvText = srvText
+		self.appli = appli
+		self.appli.Enable(False)
+
+	def initEvents(self):
+		self.Bind(wx.EVT_BUTTON, self.onResolve, id=ID_RESOLVE_RESOLVE)
+		self.Bind(wx.EVT_BUTTON, self.onApply, id=ID_RESOLVE_APPLY)
+		self.Bind(wx.EVT_BUTTON, self.onCancel, id=ID_RESOLVE_CANCEL)
+
+	def onResolve(self, event):
+		import urllib
+
+		self.source = self.srcText.GetValue()
+		try:
+			result = urllib.urlopen('http://www1.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/NameResolver/find?target=%s' % urllib.quote_plus(self.source))
+		
+			line = result.readlines()
+			target = (line[0].replace('\n', '').split('='))[1]
+			service = (line[1].replace('\n', '').split('='))[1]
+			coordsys = (line[2].replace('\n', '').split('='))[1]
+			ra = (line[3].replace('\n', '').split('='))[1]
+			dec = (line[4].replace('\n', '').split('='))[1]
+		
+			self.raText.SetValue("%.6f" % (float(ra)/15.0,))
+			self.decText.SetValue("%+.6f" % (float(dec),))
+			self.srvText.SetValue(service[0:-2])
+
+			if self.observationID != -1:
+				self.appli.Enable(True)
+
+		except IOError:
+			self.raText.SetValue("---")
+			self.decText.SetValue("---")
+			self.srvText.SetValue("Download error")
+
+	def onApply(self, event):
+		if self.observationID == -1:
+			return False
+		elif self.parent.project.sessions[0].observations[self.observationID].mode != 'TRK_RADEC':
+			return False
+		else:
+			obsIndex = self.observationID
+			obsAttr = 6
+			try:
+				newData = self.parent.coerceMap[obsAttr](self.raText.GetValue())
+			
+				oldData = getattr(self.parent.project.sessions[0].observations[obsIndex], self.parent.columnMap[obsAttr])
+				print newData, oldData, self.parent.columnMap[obsAttr]
+				if newData != oldData:
+					setattr(self.parent.project.sessions[0].observations[obsIndex], self.parent.columnMap[obsAttr], newData)
+					self.parent.project.sessions[0].observations[obsIndex].update()
+					print self.parent.project.sessions[0].observations[obsIndex].ra
+			
+					item = self.parent.listControl.GetItem(obsIndex, obsAttr)
+					item.SetText(self.raText.GetValue())
+					self.parent.listControl.SetItemText(item.GetId(), self.raText.GetValue())
+					self.parent.listControl.RefreshItem(item.GetId())
+					print self.parent.listControl.GetItemText(item.GetId())
+					#help(item)
+
+					self.parent.edited = True
+					self.parent.setSaveButton()
+					self.appli.Enable(False)
+			except ValueError:
+				pass
+
+			obsAttr = 7
+			try:
+				newData = self.parent.coerceMap[obsAttr](self.decText.GetValue())
+			
+				oldData = getattr(self.parent.project.sessions[0].observations[obsIndex], self.parent.columnMap[obsAttr])
+				if newData != oldData:
+					setattr(self.parent.project.sessions[0].observations[obsIndex], self.parent.columnMap[obsAttr], newData)
+					self.parent.project.sessions[0].observations[obsIndex].update()
+			
+					item = self.parent.listControl.GetItem(obsIndex, obsAttr)
+					item.SetText(self.decText.GetValue())
+					self.parent.listControl.RefreshItem(item.GetId())
+
+					self.parent.edited = True
+					self.parent.setSaveButton()
+					self.appli.Enable(False)
+			except ValueError:
+				pass
+
+	def onCancel(self, event):
 		self.Close()
 
 
