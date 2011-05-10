@@ -444,7 +444,7 @@ class Observation(object):
 		
 		return None
 	
-	def computeVisibility(self, station=lwa1()):
+	def computeVisibility(self, station=lwa1):
 		"""Place holder for functions that return the fractional visibility of the 
 		target during the observation period."""
 		
@@ -486,7 +486,7 @@ class TBW(Observation):
 	def __init__(self, name, target, start, samples, bits=12, comments=None):
 		self.samples = samples
 		self.bits = bits
-		duration = (int(samples) / 196000 + 1)*1100 / 1000.0
+		duration = (int(samples) / 196000 + 1)*1100 / 1000.0 * 3
 		Observation.__init__(self, name, target, start, str(duration), 'TBW', 0.0, 0.0, 0.0, 0.0, 1, comments=comments)
 
 	def estimateBytes(self):
@@ -644,7 +644,7 @@ class DRX(Observation):
 		pnt._epoch = '2000'
 		return pnt
 		
-	def computeVisibility(self, station=lwa1()):
+	def computeVisibility(self, station=lwa1):
 		"""Return the fractional visibility of the target during the observation 
 		period."""
 		
@@ -825,7 +825,7 @@ class Stepped(Observation):
 		nBytes = nFrames * DRXSize * 4
 		return nBytes
 		
-	def computeVisibility(self, station=lwa1()):
+	def computeVisibility(self, station=lwa1):
 		"""Return the fractional visibility of the target during the observation 
 		period."""
 		

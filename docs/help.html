@@ -1,0 +1,134 @@
+<html>
+
+<body>
+<a name="top"><h4>Table of Contents</h4></a>
+<ul>
+<li><a href="#intro">Introduction</a></li>
+<li><a href="#tbwtbn">Transient Buffer Modes</a></li>
+<li><a href="#drx">Beam Forming Mode</a></li>
+<li><a href="#data">Data and Reductions</a></li>
+<li><a href="#valid">SDF Validation</a></li>
+<li><a href="#mcs">Advanced Settings</a></li>
+<li><a href="#limits">Limitations</a></li>
+<li><a href="#glos">Glossary</a></li>
+</ul>
+
+<p>
+<a name="intro">
+<h6>Introduction</h6>
+Session GUI provides an easy-to-use interface to creating session definition files (SDFs) for observing at 
+LWA stations that are compliant with the format described in 
+<a href="http://www.ece.vt.edu/swe/lwavt/doc/MCS0030v4_Observing.pdf">MSC0030</a>.<br /><br />
+
+Session GUI allows an observer to:
+<ul>
+	<li>Specify the individual observations in a session,</li>
+	<li>Request a particular method of getting the data back, and</li>
+	<li>Estimate the total data volume of the observations.</li>
+</ul>
+<a href="#top">Top</a>
+</a>
+</p>
+
+<p>
+<a name="tbwtbn">
+<h6>Transient Buffer Modes</h6>
+Sessions for both the wide-band (TBW) and narrow-band (TBN) modes are supported.  The two modes, however,
+cannot be mixed within a single session.<br /><br />
+
+For TBW, both 4 and 12-bit data are supported as well as the full range of samples (up to 36 million with 
+4-bit data) in the TBW buffer.  TBW observations cannot be scheduled to fill a time range.  Rather, the 
+individual captures need to be scheduled separately.  Session GUI keeps track of the combined integration 
+and readout times to make it easier to not overlap TBW captures.<br /><br />
+
+For TBN, all tunings within the DP tuning range (10 to 88 MHz) as well as all 7 filters are supported.  
+There is no limit on how long a TBN recording can be scheduled for as long as it does not exceed the DRSU 
+capacity.  By default, the TBN gain setting is left up to MCS to decide by can be overridden in the 
+<a href="#mcs">advanced settings menu</a>.
+<br /><a href="#top">Top</a>
+</a>
+</p>
+
+<p>
+<a name="drx">
+<h6>Beam Forming Modes</h6>
+Beam forming modes tracking the sky, Sun, and Jupiter and supported.  For each beam, both tunings are 
+supported with the caveat that both tunings will use the same filter code and gain settings.  Similar to
+TBN the gain value can be changed if it has been specified under the <a href="#mcs">advanced settings menu</a>.
+<br /><br />
+
+Session GUI supports resolving targets in the &quot;Target&quot; column into RA and dec. values via the 
+Observations->Resolve Selected menu.  To use this feature, select the observation you wish to resolve via the 
+check box on the left-hand side of the observation list and go into the resolver menu.  The resolver supports
+resolving with both the NASA-IPAC 
+<br /><a href="#top">Top</a>
+</a>
+</p>
+
+<p>
+<a name="data">
+<h6>Data and Reductions</h6>
+Session GUI provides a means for estimating the data volume associated with each observation via the 
+Data->Estimated Data Volume menu.  This menu displays the estimated data volume using the observing mode, 
+duration, and filter code for each observation in the session as well as the total data volume for the session.
+<br /><br />
+
+Reductions and data return method (DRSU, user-provided USB hard drives, etc.) are specified using the 
+Observation->Observer/Project Info. menu
+<br /><a href="#top">Top</a>
+</a>
+</p>
+
+<p>
+<a name="valid">
+<h6>Validating SDF Files</h6>
+Although Session GUI provides basic validation of the generated SDF files, more rigorous validation
+by the MCS/Scheduler can be done <a href="http://fornax.phys.unm.edu/lwa/schedule/validator.py">here</a>.
+The validator calls the &quot;tpss&quot; executable and validates to level 2.
+<br /><a href="#top">Top</a>
+</a>
+</p>
+
+<p>
+<a name="mcs">
+<h6>Advanced MCS Settings</h6>
+The Observations->Advanced Settings menu allows for fine control of the various MCS MIB report and update 
+intervals as well as controlling what is included in the tar file that is created at the end of a session.
+This window also contains the observation gain settings (TBN and DRX)
+<br /><a href="#top">Top</a>
+</a>
+</p>
+
+<p>
+<a name="limits">
+<h6>Limitations</h6>
+<ul>
+	<li>Stepped observations (OBS_MODE = STEPPED) are not currently supported.</li>
+	<li>Some columns are editable that should not be, e.g., &quot;ID&quot;.</li>
+</ul>
+<br /><a href="#top">Top</a>
+</a>
+</p>
+
+<p>
+<a name="glos">
+<h6>Glossary</h6>
+<b>SDF</b>: <u>S</u>ession <u>D</u>efintion <u>F</u>ile; The files created by Session GUI that are used by
+the MCS/SessionScheduler to setup and obtain observations.<br /><br />
+
+<b>project</b>: A set of observations which collectively support a defined scientific objective.<br /><br />
+
+<b>session</b>: A subset of observations conducted within the scope of a project that is conducted using 
+exactly one of the 5 principal DP outputs (that is, one of the 4 beam outputs or the TBW/TBN output) 
+within a contiguous time duration, typically a few hours in length.  Informally, a session might be 
+described as an &quot;observing run&quot;.<br /><br />
+
+<b>observation</b>: The process of collecting a contiguous block of data from the session-specified DP 
+output, during which the parameters defining the observation do not change. From the perspective of an 
+LWA-1 user, observations are &quot;atomic&quot; units for scheduling purposes.<br /><br />
+<a href="#top">Top</a>
+</a>
+</p>
+
+</body>
+</html>
