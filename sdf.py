@@ -486,7 +486,7 @@ class TBW(Observation):
 	def __init__(self, name, target, start, samples, bits=12, comments=None):
 		self.samples = samples
 		self.bits = bits
-		duration = (int(samples) / 196000 + 1)*1100 / 1000.0 * 3
+		duration = (int(samples) / 196000 + 1)*1100 / 1000.0 * 4.5
 		Observation.__init__(self, name, target, start, str(duration), 'TBW', 0.0, 0.0, 0.0, 0.0, 1, comments=comments)
 
 	def estimateBytes(self):
