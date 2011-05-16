@@ -486,7 +486,7 @@ class TBW(Observation):
 	def __init__(self, name, target, start, samples, bits=12, comments=None):
 		self.samples = samples
 		self.bits = bits
-		duration = (int(samples) / 196000 + 1)*1100 / 1000.0 * 4.5
+		duration = (int(samples) / 196000 + 1)*1100 / 1000.0 * 3.5
 		Observation.__init__(self, name, target, start, str(duration), 'TBW', 0.0, 0.0, 0.0, 0.0, 1, comments=comments)
 
 	def estimateBytes(self):
@@ -1384,7 +1384,6 @@ SESSION_REMPO    {{ "Requested data return method is %s"|format(session.dataRetu
 {{- "\nSESSION_INC_DES  %i"|format(session.includeDesign) if session.includeDesign }}
 
 {% for obs in session.observations -%}
-{% set poComment = project.projectOffice.observations[whichSession][loop.index0]|default('None', boolean=True) -%}
 OBS_ID           {{ loop.index }}
 OBS_TITLE        {{ obs.name|default('None provided', boolean=True) }}
 OBS_TARGET       {{ obs.target|default('None provided', boolean=True) }}
@@ -1452,3 +1451,9 @@ OBS_TBW_SAMPLES  {{ obs.samples }}
 {% endif %}
 
 """)
+
+#
+# Line removed in the observation loop for dealing the project office comments 
+# that was causing problems for jinja2:
+#  {% set poComment = project.projectOffice.observations[whichSession][loop.index0]|default('None', boolean=True) -%}
+#

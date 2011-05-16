@@ -377,17 +377,20 @@ class SDFCreator(wx.Frame):
 		Save the current observation to a file.
 		"""
 		
-		self.onValidate(1, confirmValid=False)
-		
-		if not self.project.validate():
-			wx.MessageBox('The session definition file could not be saved due to errors in the file.', 'Save Failed')
+		if self.filename == '':
+			self.onSaveAs(event)
 		else:
-			fh = open(self.filename, 'w')
-			fh.write(self.project.render())
-			fh.close()
+			self.onValidate(1, confirmValid=False)
 			
-			self.edited = False
-			self.setSaveButton()
+			if not self.project.validate():
+				wx.MessageBox('The session definition file could not be saved due to errors in the file.', 'Save Failed')
+			else:
+				fh = open(self.filename, 'w')
+				fh.write(self.project.render())
+				fh.close()
+				
+				self.edited = False
+				self.setSaveButton()
 
 	def onSaveAs(self, event):
 		"""
