@@ -357,6 +357,7 @@ class SDFCreator(wx.Frame):
 		Create a new SD session.
 		"""
 		
+		self.filename = ''
 		self.edited = True
 		self.setSaveButton()
 		
@@ -396,12 +397,17 @@ class SDFCreator(wx.Frame):
 			if not self.project.validate():
 				wx.MessageBox('The session definition file could not be saved due to errors in the file.', 'Save Failed')
 			else:
-				fh = open(self.filename, 'w')
-				fh.write(self.project.render())
-				fh.close()
-				
-				self.edited = False
-				self.setSaveButton()
+				try:
+					fh = open(self.filename, 'w')
+					fh.write(self.project.render())
+					fh.close()
+					
+					self.edited = False
+					self.setSaveButton()
+				except IOError as err:
+					print "[%i] Error: %s" % (os.getpid(), str(err))
+					dialog = wx.MessageDialog(self, 'Error saving to %s\n\nDetails:\n%s' % (self.filename, str(err)), 'Save Error', style=wx.OK|wx.ICON_ERROR)
+					dialog.ShowModal()
 
 	def onSaveAs(self, event):
 		"""
@@ -418,13 +424,18 @@ class SDFCreator(wx.Frame):
 			if dialog.ShowModal() == wx.ID_OK:
 				self.dirname = dialog.GetDirectory()
 				
-				fh = open(dialog.GetPath(), 'w')
-				fh.write(self.project.render())
-				fh.close()
 				self.filename = dialog.GetPath()
+				try:
+					fh = open(self.filename, 'w')
+					fh.write(self.project.render())
+					fh.close()
 				
-				self.edited = False
-				self.setSaveButton()
+					self.edited = False
+					self.setSaveButton()
+				except IOError as err:
+					print "[%i] Error: %s" % (os.getpid(), str(err))
+					dialog = wx.MessageDialog(self, 'Error saving to %s\n\nDetails:\n%s' % (self.filename, str(err)), 'Save As Error', style=wx.OK|wx.ICON_ERROR)
+					dialog.ShowModal()
 				
 			dialog.Destroy()
 	
@@ -443,7 +454,7 @@ class SDFCreator(wx.Frame):
 		id = self.listControl.GetItemCount() + 1
 		bits = self.project.sessions[0].tbwBits
 		samples = self.project.sessions[0].tbwSamples
-		self.project.sessions[0].observations.append( sdf.TBW('tbw-%i' % id, 'All-Sky', '2011-01-01 00:00:00.000', samples, bits=bits) )
+		self.project.sessions[0].observations.append( sdf.TBW('tbw-%i' % id, 'All-Sky', 'UTC 2011 01 01 00:00:00.000', samples, bits=bits) )
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
 		self.edited = True
@@ -456,7 +467,7 @@ class SDFCreator(wx.Frame):
 		
 		id = self.listControl.GetItemCount() + 1
 		gain = self.project.sessions[0].tbnGain
-		self.project.sessions[0].observations.append( sdf.TBN('tbn-%i' % id, 'All-Sky', '2011-01-01 00:00:00.000', '00:00:00.000', 38e6, 7) )
+		self.project.sessions[0].observations.append( sdf.TBN('tbn-%i' % id, 'All-Sky', 'UTC 2011 01 01 00:00:00.000', '00:00:00.000', 38e6, 7) )
 		self.project.sessions[0].observations[-1].gain = gain
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
@@ -470,7 +481,7 @@ class SDFCreator(wx.Frame):
 		
 		id = self.listControl.GetItemCount() + 1
 		gain = self.project.sessions[0].drxGain
-		self.project.sessions[0].observations.append( sdf.DRX('drx-%i' % id, 'target-%i' % id, '2011-01-01 00:00:00.000', '00:00:00.000', 0.0, 0.0, 38e6, 74e6, 7) )
+		self.project.sessions[0].observations.append( sdf.DRX('drx-%i' % id, 'target-%i' % id, 'UTC 2011 01 01 00:00:00.000', '00:00:00.000', 0.0, 0.0, 38e6, 74e6, 7) )
 		self.project.sessions[0].observations[-1].gain = gain
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
@@ -484,7 +495,7 @@ class SDFCreator(wx.Frame):
 		
 		id = self.listControl.GetItemCount() + 1
 		gain = self.project.sessions[0].drxGain
-		self.project.sessions[0].observations.append( sdf.Solar('solar-%i' % id, 'target-%i' % id, '2011-01-01 00:00:00.000', '00:00:00.000', 38e6, 74e6, 7) )
+		self.project.sessions[0].observations.append( sdf.Solar('solar-%i' % id, 'target-%i' % id, 'UTC 2011 01 01 00:00:00.000', '00:00:00.000', 38e6, 74e6, 7) )
 		self.project.sessions[0].observations[-1].gain = gain
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
@@ -498,7 +509,7 @@ class SDFCreator(wx.Frame):
 		
 		id = self.listControl.GetItemCount() + 1
 		gain = self.project.sessions[0].drxGain
-		self.project.sessions[0].observations.append( sdf.Jovian('jovian-%i' % id, 'target-%i' % id, '2011-01-01 00:00:00.000', '00:00:00.000', 38e6, 74e6, 7) )
+		self.project.sessions[0].observations.append( sdf.Jovian('jovian-%i' % id, 'target-%i' % id, 'UTC 2011 01 01 00:00:00.000', '00:00:00.000', 38e6, 74e6, 7) )
 		self.project.sessions[0].observations[-1].gain = gain
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
@@ -527,10 +538,19 @@ class SDFCreator(wx.Frame):
 				setattr(self.project.sessions[0].observations[obsIndex], self.columnMap[obsAttr], newData)
 				self.project.sessions[0].observations[obsIndex].update()
 			
+				item = self.listControl.GetItem(obsIndex, obsAttr)
+				if self.listControl.GetItemTextColour(item.GetId()) != (0, 0, 0, 255):
+					self.listControl.SetItemTextColour(item.GetId(), wx.BLACK)
+					self.listControl.RefreshItem(item.GetId())
+			
 				self.edited = True
 				self.setSaveButton()
-		except ValueError:
-			pass
+		except ValueError as err:
+			print '[%i] Error: %s' % (os.getpid(), str(err))
+			
+			item = self.listControl.GetItem(obsIndex, obsAttr)
+			self.listControl.SetItemTextColour(item.GetId(), wx.RED)
+			self.listControl.RefreshItem(item.GetId())
 	
 	def onRemove(self, event):
 		"""
@@ -539,11 +559,23 @@ class SDFCreator(wx.Frame):
 		"""
 		
 		def stillBad(lc):
-			for i in range(lc.GetItemCount()):
+			"""
+			Function to recur throught the rows and check to see if any still 
+			need to be removed.  Returns the index+1 of the next element to be
+			removed.
+			
+			Why index+1?  Well... because 0 is interperated as False and 1+ as
+			True.  Thus if any one row is bad, value corresponding to boolean
+			True is returned.
+			"""
+			
+			for i in xrange(lc.GetItemCount()):
 				if lc.IsChecked(i):
 					return i+1
 			return 0
 
+		# While there is still at least one bad row, continue looping and removing
+		# rows
 		bad = stillBad(self.listControl)
 		while bad:
 			i = bad - 1
@@ -553,6 +585,13 @@ class SDFCreator(wx.Frame):
 			
 			self.edited = True
 			self.setSaveButton()
+		
+		# Re-number the remaining rows to keep the display clean
+		for i in xrange(self.listControl.GetItemCount()):
+			item = self.listControl.GetItem(i, 0)
+			item.SetText('%i' % (i+1))
+			self.listControl.SetItem(item)
+			self.listControl.RefreshItem(item.GetId())
 	
 	def onValidate(self, event, confirmValid=True):
 		"""
@@ -697,7 +736,20 @@ class SDFCreator(wx.Frame):
 		observations being defined.
 		"""
 		
-		width = 50 + 100 + 100 + 100 + 225
+		def snrConv(text):
+			"""
+			Special conversion function for dealing with the MaxSNR keyword input.
+			"""
+			
+			text = text.lower().capitalize()
+			if text == 'True' or text == 'Yes':
+				return True
+			elif text == 'False' or text == 'No':
+				return False
+			else:
+				raise ValueError("Unknown boolean conversion of '%s'" % text)
+		
+		width = 50 + 100 + 100 + 100 + 235
 		self.columnMap = []
 		self.coerceMap = []
 		
@@ -708,7 +760,7 @@ class SDFCreator(wx.Frame):
 		self.listControl.InsertColumn(1, 'Name', width=100)
 		self.listControl.InsertColumn(2, 'Target', width=100)
 		self.listControl.InsertColumn(3, 'Comments', width=100)
-		self.listControl.InsertColumn(4, 'Start (UTC)', width=225)
+		self.listControl.InsertColumn(4, 'Start (UTC)', width=235)
 		self.columnMap.append('id')
 		self.columnMap.append('name')
 		self.columnMap.append('target')
@@ -735,8 +787,8 @@ class SDFCreator(wx.Frame):
 			self.listControl.InsertColumn(5, 'Duration', width=125)
 			self.listControl.InsertColumn(6, 'RA (Hour J2000)', width=150)
 			self.listControl.InsertColumn(7, 'Dec (Deg. J2000)', width=150)
-			self.listControl.InsertColumn(8, 'Frequency 1 (MHz)', width=125)
-			self.listControl.InsertColumn(9, 'Frequency 2 (MHz)', width=125)
+			self.listControl.InsertColumn(8, 'Tuning 1 (MHz)', width=125)
+			self.listControl.InsertColumn(9, 'Tuning 2 (MHz)', width=125)
 			self.listControl.InsertColumn(10, 'Filter Code', width=85)
 			self.listControl.InsertColumn(11, 'Max S/N Beam?', width=125)
 			self.columnMap.append('duration')
@@ -752,7 +804,7 @@ class SDFCreator(wx.Frame):
 			self.coerceMap.append(float6)
 			self.coerceMap.append(float6)
 			self.coerceMap.append(int)
-			self.coerceMap.append(str)
+			self.coerceMap.append(snrConv)
 		else:
 			pass
 		
@@ -1837,7 +1889,6 @@ class ResolveTarget(wx.Frame):
 					newData = self.parent.coerceMap[obsAttr](widget.GetValue())
 			
 					oldData = getattr(self.parent.project.sessions[0].observations[obsIndex], self.parent.columnMap[obsAttr])
-					print newData, oldData, self.parent.columnMap[obsAttr]
 					if newData != oldData:
 						setattr(self.parent.project.sessions[0].observations[obsIndex], self.parent.columnMap[obsAttr], newData)
 						self.parent.project.sessions[0].observations[obsIndex].update()
@@ -1850,8 +1901,8 @@ class ResolveTarget(wx.Frame):
 						self.parent.edited = True
 						self.parent.setSaveButton()
 						self.appli.Enable(False)
-				except ValueError:
-					pass
+				except ValueError as err:
+					print '[%i] Error: %s' % (os.getpid(), str(err))
 
 	def onCancel(self, event):
 		self.Close()

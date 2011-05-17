@@ -72,6 +72,10 @@ __all__ = ['Observer', 'Project', 'Session', 'Observation', 'TBW', 'TBN', 'DRX',
 
 _dtRE = re.compile(r'((?P<tz>[A-Z]{2,3}) )?(?P<year>\d{4})[ -]((?P<month>\d{1,2})|(?P<mname>[A-Za-z]{3}))[ -](?P<day>\d{1,2})[ T](?P<hour>\d{1,2}):(?P<minute>\d{1,2}):(?P<second>\d{1,2}(\.\d{1,6})?)')
 _UTC = pytz.utc
+_EST = pytz.timezone('US/Eastern')
+_CST = pytz.timezone('US/Central')
+_MST = pytz.timezone('US/Mountain')
+_PST = pytz.timezone('US/Pacific')
 _nStands = 256
 _DRSUCapacityTB = 5
 
@@ -90,8 +94,16 @@ def parseTimeString(s):
 			tz = _UTC
 		else:
 			tzName = mtch.group('tz')
-			if tzName == 'UT' or tzName == 'UTC':
+			if tzName in ['UT', 'UTC']:
 				tz = _UTC
+			elif tzName in ['EST', 'EDT']:
+				tz = _EST
+			elif tzName in ['CST', 'CDT']:
+				tz = _CST
+			elif tzName in ['MST', 'MDT']:
+				tz = _MST
+			elif tzName in ['PST', 'PDT']:
+				tz = _PST
 			else:
 				raise ValueError("Unknown time zone: '%s'" % tzName)
 		
@@ -134,8 +146,9 @@ def parseTimeString(s):
 				month == 12
 			else:
 				raise ValueError("Unknown month abbreviation: '%s'" % monthName)
-			
-		return datetime(year, month, day, hour, minute, second, microsecond, tzinfo=tz)
+		
+		dtObject = tz.localize(datetime(year, month, day, hour, minute, second, microsecond))
+		return dtObject.astimezone(_UTC)
 
 
 class Observer(object):
@@ -1044,6 +1057,7 @@ def __parseCreateObsObject(obsTemp, beamTemps=[]):
 	start = Time(obsTemp['mjd'] + obsTemp['mpm'] / 1000.0 / 3600.0 / 24.0, format='MJD').utc_py_date
 	start += timedelta(microseconds=(int(round(start.microsecond/1000.0)*1000.0)-start.microsecond))
 	utcString = start.strftime("UTC %Y %m %d %H:%M:%S.%f")
+	utcString = utcString[:-3]
 	
 	# Build up a string representing the observation duration.  For TBW observations 
 	# this needs to be wrapped in a try...expect statement to catch errors.
@@ -1344,7 +1358,7 @@ def parse(fh):
 		for obs in project.sessions[0].observations:
 			obs.bits = sessionBits
 			obs.samples = int(sessionSamples)
-			obs.dur = (int(obs.samples) / 196000 + 1)*1100
+			obs.dur = (obs.samples / 196000 + 1)*1100 * 3.5
 			obs.duration = str(obs.dur / 1000.0)
 
 	# Return the project
