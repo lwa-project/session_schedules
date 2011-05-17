@@ -21,13 +21,24 @@ __author__ = "Jayce Dowell"
 
 class ObservationListCtrl(wx.ListCtrl, TextEditMixin, CheckListCtrlMixin):
 	"""
-	Class that compiles a editable list with check boxes.
+	Class that combines an editable list with check boxes.
 	"""
 	
 	def __init__(self, parent, **kwargs):
 		wx.ListCtrl.__init__(self, parent, style=wx.LC_REPORT, **kwargs)
 		TextEditMixin.__init__(self)
 		CheckListCtrlMixin.__init__(self)
+
+	def OpenEditor(self, col, row):
+		"""
+		Overwrite the default OpenEditor class so that select columns
+		are not actually editable.
+		"""
+		
+		if col in [0,]:
+			pass
+		else:
+			TextEditMixin.OpenEditor(self, col, row)
 
 
 class PlotPanel(wx.Panel):
