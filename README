@@ -4,14 +4,14 @@ Session Schedules
 Overview and Requirements
 -------------------------
 Session Schedules is a collection of python modules and scripts for 
-build MCS0030 compliant session definition files (SDFs).  Session 
+building MCS0030 compliant session definition files (SDFs).  Session 
 Schedules builds off of the LSL 0.4.x framework for working with LWA
 data and also depends on the following python modules:
   * pytz
   * jinja2
   * wxPython
 
-Not installation (e.g., python setup.py install) is required to use the
+No installation (e.g., python setup.py install) is required to use the
 software.  Simply run the scripts in the SessionSchedules directory.
 
 Python Contents
