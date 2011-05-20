@@ -359,6 +359,7 @@ class SDFCreator(wx.Frame):
 		
 		self.filename = ''
 		self.edited = True
+		self.badEdit = False
 		self.setSaveButton()
 		
 		self.setMenuButtons('None')
@@ -392,10 +393,9 @@ class SDFCreator(wx.Frame):
 		if self.filename == '':
 			self.onSaveAs(event)
 		else:
-			self.onValidate(1, confirmValid=False)
 			
-			if not self.project.validate():
-				wx.MessageBox('The session definition file could not be saved due to errors in the file.', 'Save Failed')
+			if not self.onValidate(1, confirmValid=False):
+				self.displayError('The session definition file could not be saved due to errors in the file.', title='Save Failed')
 			else:
 				try:
 					fh = open(self.filename, 'w')
@@ -405,19 +405,15 @@ class SDFCreator(wx.Frame):
 					self.edited = False
 					self.setSaveButton()
 				except IOError as err:
-					print "[%i] Error: %s" % (os.getpid(), str(err))
-					dialog = wx.MessageDialog(self, 'Error saving to %s\n\nDetails:\n%s' % (self.filename, str(err)), 'Save Error', style=wx.OK|wx.ICON_ERROR)
-					dialog.ShowModal()
+					self.displayError('Error saving to %s' % self.filename, details=err, title='Save Error')
 
 	def onSaveAs(self, event):
 		"""
 		Save the current observation to a new SD file.
 		"""
 		
-		self.onValidate(1, confirmValid=False)
-		
-		if not self.project.validate():
-			wx.MessageBox('The session definition file could not be saved due to errors in the file.', 'Save Failed')
+		if not self.onValidate(1, confirmValid=False):
+			self.displayError('The session definition file could not be saved due to errors in the file.', title='Save Failed')
 		else:
 			dialog = wx.FileDialog(self, "Select Output File", self.dirname, '', 'Text Files (*.txt)|*.txt|All Files (*.*)|*.*', wx.SAVE|wx.FD_OVERWRITE_PROMPT)
 			
@@ -433,9 +429,7 @@ class SDFCreator(wx.Frame):
 					self.edited = False
 					self.setSaveButton()
 				except IOError as err:
-					print "[%i] Error: %s" % (os.getpid(), str(err))
-					dialog = wx.MessageDialog(self, 'Error saving to %s\n\nDetails:\n%s' % (self.filename, str(err)), 'Save As Error', style=wx.OK|wx.ICON_ERROR)
-					dialog.ShowModal()
+					self.displayError('Error saving to %s' % self.filename, details=err, title='Save Error')
 				
 			dialog.Destroy()
 	
@@ -545,12 +539,16 @@ class SDFCreator(wx.Frame):
 			
 				self.edited = True
 				self.setSaveButton()
+
+			self.badEdit = False
 		except ValueError as err:
 			print '[%i] Error: %s' % (os.getpid(), str(err))
 			
 			item = self.listControl.GetItem(obsIndex, obsAttr)
 			self.listControl.SetItemTextColour(item.GetId(), wx.RED)
 			self.listControl.RefreshItem(item.GetId())
+
+			self.badEdit = True
 	
 	def onRemove(self, event):
 		"""
@@ -598,10 +596,18 @@ class SDFCreator(wx.Frame):
 		Validate the current observations.
 		"""
 		
+		try:
+			if self.badEdit:
+				validObs = False
+				return False
+			else:
+				validObs = True
+		except AttributeError:
+			validObs = True
+
 		# Loop through the lists of observations and validate one-at-a-time so 
 		# that we can mark bad observations
 		i = 0
-		validObs = True
 		for obs in self.project.sessions[0].observations:
 			print "[%i] Validating observation %i" % (os.getpid(), i+1)
 			valid = obs.validate(verbose=True)
@@ -623,9 +629,11 @@ class SDFCreator(wx.Frame):
 		if self.project.validate():
 			if confirmValid:
 				wx.MessageBox('Congratulations, you have a valid set of observations.', 'Validator Results')
+			return True
 		else:
 			if validObs:
 				wx.MessageBox('All observations are valid, but there are errors in the session setup.', 'Validator Results')
+			return False
 
 	def onResolve(self, event):
 		"""
@@ -969,6 +977,26 @@ class SDFCreator(wx.Frame):
 			self.addObservation(obs, id)
 			id += 1
 
+	def displayError(self, error, details=None, title=None):
+		"""
+		Display an error dialog and write an error message to the command 
+		line if requested.
+		"""
+		if title is None:
+			title = 'An Error has Occured'
+		
+
+		if details is None:
+			print "[%i] Error: %s" % (os.getpid(), str(error))
+			self.statusbar.SetStatusText('Error: %s' % str(error), 1)
+			dialog = wx.MessageDialog(self, '%s' % str(error), title, style=wx.OK|wx.ICON_ERROR)
+		else:
+			print "[%i] Error: %s" % (os.getpid(), str(details))
+			self.statusbar.SetStatusText('Error: %s' % str(details), 1)
+			dialog = wx.MessageDialog(self, '%s\n\nDetails:\n%s' % (str(error), str(details)), title, style=wx.OK|wx.ICON_ERROR)
+
+		dialog.ShowModal()
+
 
 ID_OBS_INFO_OK = 211
 ID_OBS_INFO_CANCEL = 212
@@ -980,7 +1008,7 @@ class ObserverInfo(wx.Frame):
 	"""
 	
 	def __init__(self, parent):
-		wx.Frame.__init__(self, parent, title='Observer Information', size=(750,675))
+		wx.Frame.__init__(self, parent, title='Observer Information', size=(800,685))
 		
 		self.parent = parent
 		
@@ -1038,7 +1066,7 @@ class ObserverInfo(wx.Frame):
 		prj = wx.StaticText(panel, label='Project Information')
 		prj.SetFont(font)
 		
-		pid = wx.StaticText(panel, label='ID Number')
+		pid = wx.StaticText(panel, label='ID Code')
 		pname = wx.StaticText(panel, label='Title')
 		pcoms = wx.StaticText(panel, label='Comments')
 		
@@ -1200,6 +1228,24 @@ class ObserverInfo(wx.Frame):
 		Save everything into all of the correct places.
 		"""
 		
+		try:
+			junk = int(self.observerIDEntry.GetValue())
+			if junk < 1:
+				self.displayError('Observer ID must be positive', title='Observer ID Error')
+				return False
+		except ValueError as err:
+			self.displayError('Observer ID must be numeric', details=err, title='Observer ID Error')
+			return False
+
+		try:
+			junk = int(self.sessionIDEntry.GetValue())
+			if junk < 1:
+				self.displayError('Session ID must be positive', title='Session ID Error')
+				return False
+		except ValueError as err:
+			self.displayError('Session ID must be numeric', details=err, title='Session ID Error')
+			return False
+		
 		self.parent.project.observer.id = int(self.observerIDEntry.GetValue())
 		self.parent.project.observer.first = self.observerFirstEntry.GetValue()
 		self.parent.project.observer.last = self.observerLastEntry.GetValue()
@@ -1209,7 +1255,7 @@ class ObserverInfo(wx.Frame):
 		self.parent.project.name = self.projectTitleEntry.GetValue()
 		self.parent.project.comments = self.projectCommentsEntry.GetValue()
 		
-		self.parent.project.sessions[0].id = self.sessionIDEntry.GetValue()
+		self.parent.project.sessions[0].id = int(self.sessionIDEntry.GetValue())
 		self.parent.project.sessions[0].name = self.sessionTitleEntry.GetValue()
 		self.parent.project.sessions[0].comments = self.sessionCommentsEntry.GetValue()
 		
@@ -1237,13 +1283,36 @@ class ObserverInfo(wx.Frame):
 	def onCancel(self, event):
 		self.Close()
 
+	def displayError(self, error, details=None, title=None):
+		"""
+		Display an error dialog and write an error message to the command 
+		line if requested.
+		"""
+		if title is None:
+			title = 'An Error has Occured'
+		
+
+		if details is None:
+			print "[%i] Error: %s" % (os.getpid(), str(error))
+			dialog = wx.MessageDialog(self, '%s' % str(error), title, style=wx.OK|wx.ICON_ERROR)
+		else:
+			print "[%i] Error: %s" % (os.getpid(), str(details))
+			dialog = wx.MessageDialog(self, '%s\n\nDetails:\n%s' % (str(error), str(details)), title, style=wx.OK|wx.ICON_ERROR)
+
+		dialog.ShowModal()
+
 
 ID_ADV_INFO_OK = 311
 ID_ADV_INFO_CANCEL = 312
 
 class AdvancedInfo(wx.Frame):
 	def __init__(self, parent):
-		wx.Frame.__init__(self, parent, title='Advanced Settings', size=(800, 375))
+		if parent.mode == 'TBW':
+			size = (830, 400)
+		else:
+			size = (830, 375)
+
+		wx.Frame.__init__(self, parent, title='Advanced Settings', size=size)
 		
 		self.parent = parent
 		self.bitsEntry = None
@@ -1285,15 +1354,15 @@ class AdvancedInfo(wx.Frame):
 		mrpDR = wx.StaticText(panel, label='DR1 - DR5')
 		mrpSHL = wx.StaticText(panel, label='SHL')
 		mrpMCS = wx.StaticText(panel, label='MSC')
-		mrpComboASP = wx.ComboBox(panel, -1, value='MCS Decides', size=(75, 20), choices=intervals, style=wx.CB_READONLY)
+		mrpComboASP = wx.ComboBox(panel, -1, value='MCS Decides', choices=intervals, style=wx.CB_READONLY)
 		mrpComboASP.SetStringSelection(self.__timeToCombo(self.parent.project.sessions[0].recordMIB['ASP']))
-		mrpComboDP = wx.ComboBox(panel, -1, value='MCS Decides', size=(75, 20), choices=intervals, style=wx.CB_READONLY)
+		mrpComboDP = wx.ComboBox(panel, -1, value='MCS Decides', choices=intervals, style=wx.CB_READONLY)
 		mrpComboDP.SetStringSelection(self.__timeToCombo(self.parent.project.sessions[0].recordMIB['DP_']))
-		mrpComboDR = wx.ComboBox(panel, -1, value='MCS Decides', size=(75, 20), choices=intervals, style=wx.CB_READONLY)
+		mrpComboDR = wx.ComboBox(panel, -1, value='MCS Decides', choices=intervals, style=wx.CB_READONLY)
 		mrpComboDR.SetStringSelection(self.__timeToCombo(self.parent.project.sessions[0].recordMIB['DR1']))
-		mrpComboSHL = wx.ComboBox(panel, -1, value='MCS Decides', size=(75, 20), choices=intervals, style=wx.CB_READONLY)
+		mrpComboSHL = wx.ComboBox(panel, -1, value='MCS Decides', choices=intervals, style=wx.CB_READONLY)
 		mrpComboSHL.SetStringSelection(self.__timeToCombo(self.parent.project.sessions[0].recordMIB['SHL']))
-		mrpComboMCS = wx.ComboBox(panel, -1, value='MCS Decides', size=(75, 20), choices=intervals, style=wx.CB_READONLY)
+		mrpComboMCS = wx.ComboBox(panel, -1, value='MCS Decides', choices=intervals, style=wx.CB_READONLY)
 		mrpComboMCS.SetStringSelection(self.__timeToCombo(self.parent.project.sessions[0].recordMIB['MCS']))
 		
 		mup = wx.StaticText(panel, label='MIB Update Period:')
@@ -1487,6 +1556,23 @@ class AdvancedInfo(wx.Frame):
 		"""
 		Save everything into all of the correct places.
 		"""
+
+		if self.parent.mode == 'TBW':
+			tbwBits = int( self.tbwBits.GetValue().split('-')[0] )
+			tbwSamp = int( self.tbwSamp.GetValue() )
+			if tbwSamp < 0:
+				self.displayError('Number of TBW samples must be positive', title='TBW Sample Error')
+				return False
+
+			if tbwBits == 4  and tbwSamp > 36000000:
+				self.displayError('Number of TBW samples too large for a %i-bit capture' % tbwBits, 
+							details='%i > 36000000' % tbwSamp, title='TBW Sample Error')
+				return False
+
+			if tbwBits == 12 and tbwSamp > 12000000:
+				self.displayError('Number of TBW samples too large for a %i-bit capture' % tbwBits, 
+							details='%i > 12000000' % tbwSamp, title='TBW Sample Error')
+				return False
 		
 		self.parent.project.sessions[0].recordMIB['ASP'] = self.__parseTimeCombo(self.mrpASP)
 		self.parent.project.sessions[0].recordMIB['DP_'] = self.__parseTimeCombo(self.mrpDP)
@@ -1584,6 +1670,24 @@ class AdvancedInfo(wx.Frame):
 				return "30 minutes"
 			else:
 				return "1 hour"
+
+	def displayError(self, error, details=None, title=None):
+		"""
+		Display an error dialog and write an error message to the command 
+		line if requested.
+		"""
+		if title is None:
+			title = 'An Error has Occured'
+		
+
+		if details is None:
+			print "[%i] Error: %s" % (os.getpid(), str(error))
+			dialog = wx.MessageDialog(self, '%s' % str(error), title, style=wx.OK|wx.ICON_ERROR)
+		else:
+			print "[%i] Error: %s" % (os.getpid(), str(details))
+			dialog = wx.MessageDialog(self, '%s\n\nDetails:\n%s' % (str(error), str(details)), title, style=wx.OK|wx.ICON_ERROR)
+
+		dialog.ShowModal()
 
 
 class TSPanel(PlotPanel):
