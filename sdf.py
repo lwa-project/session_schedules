@@ -587,7 +587,11 @@ class TBN(Observation):
 		otherwise."""
 		
 		failures = 0
-	     # Basic - Frequency and filter code values
+		# Basic - Duration, frequency, and filter code values
+		if self.dur < 1:
+			if verbose:
+				print "[%i] Error: Specified a duration of length zero" % os.getpid()
+			failures += 1
 		if self.freq1 < 219130984 or self.freq1 > 1928352663:
 			if verbose:
 				print "[%i] Error: Specified frequency is outside of DP tuning range" % os.getpid()
@@ -684,7 +688,11 @@ class DRX(Observation):
 		otherwise."""
 		
 		failures = 0
-	     # Basic - Frequency and filter code values
+		# Basic - Duration, frequency, and filter code values
+		if self.dur < 1:
+			if verbose:
+				print "[%i] Error: Specified a duration of length zero" % os.getpid()
+			failures += 1
 		if self.freq1 < 219130984 or self.freq1 > 1928352663:
 			if verbose:
 				print "[%i] Error: Specified frequency for tuning 1 is outside of DP tuning range" % os.getpid()

@@ -152,6 +152,10 @@ class SDFCreator(wx.Frame):
 		if len(args) > 0:
 			self.filename = args[0]
 			self.parseFile(self.filename)
+			if self.mode == 'TBW':
+				self.finfo.Enable(False)
+			else:
+				self.finfo.Enable(True)
 		else:
 			self.filename = ''
 			self.setMenuButtons('None')
@@ -253,8 +257,8 @@ class SDFCreator(wx.Frame):
 		# Help menu items
 		help = wx.MenuItem(helpMenu, ID_HELP, 'Session GUI Handbook\tF1')
 		helpMenu.AppendItem(help)
-		finfo = wx.MenuItem(helpMenu, ID_FILTER_INFO, '&Filter Codes')
-		helpMenu.AppendItem(finfo)
+		self.finfo = wx.MenuItem(helpMenu, ID_FILTER_INFO, '&Filter Codes')
+		helpMenu.AppendItem(self.finfo)
 		helpMenu.AppendSeparator()
 		about = wx.MenuItem(helpMenu, ID_ABOUT, '&About')
 		helpMenu.AppendItem(about)
@@ -370,6 +374,11 @@ class SDFCreator(wx.Frame):
 		self.listControl.DeleteAllColumns()
 		self.initSDF()
 		ObserverInfo(self)
+
+		if self.mode == 'TBW':
+			self.finfo.Enable(False)
+		else:
+			self.finfo.Enable(True)
 	
 	def onLoad(self, event):
 		"""
@@ -387,6 +396,11 @@ class SDFCreator(wx.Frame):
 			self.setSaveButton()
 			
 		dialog.Destroy()
+
+		if self.mode == 'TBW':
+			self.finfo.Enable(False)
+		else:
+			self.finfo.Enable(True)
 
 	def onSave(self, event):
 		"""
@@ -692,15 +706,18 @@ class SDFCreator(wx.Frame):
 			else:
 				return value, Hz
 		
-		filterInfo = "TBN"
-		for tk,tv in TBNFilters.iteritems():
-			tv, tu = units(tv)
-			filterInfo = "%s\n%i  %.3f %-3s" % (filterInfo, tk, tv, tu)
-		filterInfo = "%s\n\nDRX" % filterInfo
-		
-		for dk,dv in DRXFilters.iteritems():
-			dv, du = units(dv)
-			filterInfo = "%s\n%i  %.3f %-3s" % (filterInfo, dk, dv, du)
+		if self.mode == 'TBN':
+			filterInfo = "TBN"
+			for tk,tv in TBNFilters.iteritems():
+				tv, tu = units(tv)
+				filterInfo = "%s\n%i  %.3f %-3s" % (filterInfo, tk, tv, tu)
+		elif self.mode == 'DRX':
+			filterInfo = "DRX"
+			for dk,dv in DRXFilters.iteritems():
+				dv, du = units(dv)
+				filterInfo = "%s\n%i  %.3f %-3s" % (filterInfo, dk, dv, du)
+		else:
+			filterInfo = 'No filters defined for the current mode.'
 			
 		wx.MessageBox(filterInfo, 'Filter Codes')
 	
