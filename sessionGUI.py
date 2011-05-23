@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import os
-import sys
 import sdf
+import sys
 
 from lsl.common.dp import fS
 from lsl.reader.tbn import filterCodes as TBNFilters
@@ -14,8 +14,8 @@ import wx.html as html
 from wx.lib.mixins.listctrl import TextEditMixin, CheckListCtrlMixin
 
 
-__version__ = "0.1"
-__revision__ = "$ Revision: 12 $"
+__version__ = "0.2"
+__revision__ = "$ Revision: 15 $"
 __author__ = "Jayce Dowell"
 
 
@@ -36,6 +36,8 @@ class ObservationListCtrl(wx.ListCtrl, TextEditMixin, CheckListCtrlMixin):
 		"""
 		
 		if col in [0,]:
+			pass
+		elif self.parent.project.sessions[0].observations[row].mode in ['TRK_SOL', 'TRK_JOV'] and col in [6, 7]:
 			pass
 		else:
 			TextEditMixin.OpenEditor(self, col, row)
@@ -225,10 +227,10 @@ class SDFCreator(wx.Frame):
 		obsMenu.AppendMenu(-1, '&Add', add)
 		remove = wx.MenuItem(obsMenu, ID_REMOVE, '&Remove Selected')
 		obsMenu.AppendItem(remove)
-		validate = wx.MenuItem(obsMenu, ID_VALIDATE, '&Validate All')
+		validate = wx.MenuItem(obsMenu, ID_VALIDATE, '&Validate All\tF5')
 		obsMenu.AppendItem(validate)
 		obsMenu.AppendSeparator()
-		resolve = wx.MenuItem(obsMenu, ID_RESOLVE, 'Resolve Selected')
+		resolve = wx.MenuItem(obsMenu, ID_RESOLVE, 'Resolve Selected\tF3')
 		obsMenu.AppendItem(resolve)
 		timeseries = wx.MenuItem(obsMenu, ID_TIMESERIES, 'Session at a &Glance')
 		obsMenu.AppendItem(timeseries)
@@ -249,7 +251,7 @@ class SDFCreator(wx.Frame):
 		dataMenu.AppendItem(volume)
 		
 		# Help menu items
-		help = wx.MenuItem(helpMenu, ID_HELP, 'Session GUI Handbook')
+		help = wx.MenuItem(helpMenu, ID_HELP, 'Session GUI Handbook\tF1')
 		helpMenu.AppendItem(help)
 		finfo = wx.MenuItem(helpMenu, ID_FILTER_INFO, '&Filter Codes')
 		helpMenu.AppendItem(finfo)
@@ -308,6 +310,7 @@ class SDFCreator(wx.Frame):
 		panel = wx.Panel(self, -1)
 		
 		self.listControl = ObservationListCtrl(panel, id=ID_LISTCTRL)
+		self.listControl.parent = self
 		
 		hbox.Add(self.listControl, 1, wx.EXPAND)
 		panel.SetSizer(hbox)
@@ -348,9 +351,9 @@ class SDFCreator(wx.Frame):
 		
 		# Observation edits
 		self.Bind(wx.EVT_LIST_END_LABEL_EDIT, self.onEdit, id=ID_LISTCTRL)
-		
-		# Keypress bindings
-		self.Bind(wx.EVT_KEY_DOWN, self.onKeyPressed)
+
+		# Window manager close
+		self.Bind(wx.EVT_CLOSE, self.onQuit)
 	
 	def onNew(self, event):
 		"""
@@ -524,31 +527,34 @@ class SDFCreator(wx.Frame):
 		
 		obsIndex = event.GetIndex()
 		obsAttr = event.GetColumn()
+		self.SetStatusText('')
 		try:
 			newData = self.coerceMap[obsAttr](event.GetText())
 			
 			oldData = getattr(self.project.sessions[0].observations[obsIndex], self.columnMap[obsAttr])
-			if newData != oldData:
-				setattr(self.project.sessions[0].observations[obsIndex], self.columnMap[obsAttr], newData)
-				self.project.sessions[0].observations[obsIndex].update()
+			setattr(self.project.sessions[0].observations[obsIndex], self.columnMap[obsAttr], newData)
+			self.project.sessions[0].observations[obsIndex].update()
 			
-				item = self.listControl.GetItem(obsIndex, obsAttr)
-				if self.listControl.GetItemTextColour(item.GetId()) != (0, 0, 0, 255):
-					self.listControl.SetItemTextColour(item.GetId(), wx.BLACK)
-					self.listControl.RefreshItem(item.GetId())
+			item = self.listControl.GetItem(obsIndex, obsAttr)
+			if self.listControl.GetItemTextColour(item.GetId()) != (0, 0, 0, 255):
+				self.listControl.SetItemTextColour(item.GetId(), wx.BLACK)
+				self.listControl.RefreshItem(item.GetId())
 			
-				self.edited = True
-				self.setSaveButton()
+			self.edited = True
+			self.setSaveButton()
 
 			self.badEdit = False
+			self.badEditLocation = (-1, -1)
 		except ValueError as err:
 			print '[%i] Error: %s' % (os.getpid(), str(err))
+			self.SetStatusText('Error: %s' % str(err))
 			
 			item = self.listControl.GetItem(obsIndex, obsAttr)
 			self.listControl.SetItemTextColour(item.GetId(), wx.RED)
 			self.listControl.RefreshItem(item.GetId())
 
 			self.badEdit = True
+			self.badEditLocation = (obsIndex, obsAttr)
 	
 	def onRemove(self, event):
 		"""
@@ -723,26 +729,63 @@ class SDFCreator(wx.Frame):
 			dialog = wx.MessageDialog(self, 'The current session defintion file has changes that have not been saved.\n\nExit anyways?', 'Confirm Quit', style=wx.YES_NO|wx.NO_DEFAULT|wx.ICON_QUESTION)
 			
 			if dialog.ShowModal() == wx.ID_YES:
-				self.Close()
+				self.Destroy()
 			else:
 				pass
 		else:
-			self.Close()
-			
-	def onKeyPressed(self, event):
-		"""
-		Deal with keypressed bindings one at a time.
-		"""
+			self.Destroy()
 		
-		keycode = event.GetKeyCode()
-		if keycode == wx.WXK_F1:
-			HelpWindow(self)
 		
 	def addColumns(self):
 		"""
 		Add the various columns to the main window based on the type of 
 		observations being defined.
 		"""
+
+		def raConv(text):
+			"""
+			Special conversion function for deal with RA values.
+			"""
+
+			value = float(text)
+			if value <= 0 or value >= 24:
+				raise ValueError("RA value must be 0 < RA < 24")
+			else:
+				return value
+
+		def decConv(text):
+			"""
+			Special conversion function for dealing with dec. values.
+			"""
+
+			value = float(text)
+			if value < -90 or value > 90:
+				raise ValueError("Dec values must be -90 <= dec <= 90")
+			else:
+				return value
+
+		def freqConv(text):
+			"""
+			Special conversion function for dealing with frequencies.
+			"""
+
+			value = float(text)*1e6
+			freq = int(round(value * 2**32 / fS))
+			if freq < 219130984 or freq > 1928352663:
+				raise ValueError("Frequency of %.6f MHz is out of the DP tuning range" % (value/1e6,))
+			else:
+				return value
+
+		def filterConv(text):
+			"""
+			Special conversion function for dealing with filter codes.
+			"""
+
+			value = int(text)
+			if value < 1 or value > 7:
+				raise ValueError("Filter code must be an integer between 1 and 7")
+			else:
+				return value
 		
 		def snrConv(text):
 			"""
@@ -760,9 +803,6 @@ class SDFCreator(wx.Frame):
 		width = 50 + 100 + 100 + 100 + 235
 		self.columnMap = []
 		self.coerceMap = []
-		
-		def float6(s):
-			return float(s)*1e6
 		
 		self.listControl.InsertColumn(0, 'ID', width=50)
 		self.listControl.InsertColumn(1, 'Name', width=100)
@@ -788,8 +828,8 @@ class SDFCreator(wx.Frame):
 			self.columnMap.append('frequency1')
 			self.columnMap.append('filter')
 			self.coerceMap.append(str)
-			self.coerceMap.append(float6)
-			self.coerceMap.append(int)
+			self.coerceMap.append(freqConv)
+			self.coerceMap.append(filterConv)
 		elif self.mode == 'DRX':
 			width += 125 + 150 + 150 + 125 + 125 + 85 + 125
 			self.listControl.InsertColumn(5, 'Duration', width=125)
@@ -807,11 +847,11 @@ class SDFCreator(wx.Frame):
 			self.columnMap.append('filter')
 			self.columnMap.append('MaxSNR')
 			self.coerceMap.append(str)
-			self.coerceMap.append(float)
-			self.coerceMap.append(float)
-			self.coerceMap.append(float6)
-			self.coerceMap.append(float6)
-			self.coerceMap.append(int)
+			self.coerceMap.append(raConv)
+			self.coerceMap.append(decConv)
+			self.coerceMap.append(freqConv)
+			self.coerceMap.append(freqConv)
+			self.coerceMap.append(filterConv)
 			self.coerceMap.append(snrConv)
 		else:
 			pass
@@ -862,7 +902,10 @@ class SDFCreator(wx.Frame):
 			self.listControl.SetStringItem(index, 8, "%.6f" % (obs.freq1*fS/2**32 / 1e6))
 			self.listControl.SetStringItem(index, 9, "%.6f" % (obs.freq2*fS/2**32 / 1e6))
 			self.listControl.SetStringItem(index, 10, "%i" % obs.filter)
-			self.listControl.SetStringItem(index, 11, "%s" % obs.MaxSNR)
+			if obs.MaxSNR:
+				self.listControl.SetStringItem(index, 11, "Yes")
+			else:
+				self.listControl.SetStringItem(index, 11, "No")
 			
 	def setSaveButton(self):
 		"""
