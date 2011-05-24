@@ -1754,6 +1754,9 @@ class AdvancedInfo(wx.Frame):
 			else:
 				obs.gain = self.parent.project.sessions[0].drxGain
 		
+		self.parent.edited = True
+		self.setSaveButton()
+
 		self.Close()
 	
 	def onCancel(self, event):
