@@ -32,13 +32,6 @@ this module also includes a simple parser for SD file.  It is mostly complete bu
 not currently support some of the extended session/observation parameters.  This 
 includes:
   * SESSION_DRX_BEAM
-  * OBS_FEE[n][p]
-  * OBS_ASP_FLT[n]
-  * OBS_ASP_AT1[n]
-  * OBS_ASP_AT2[n]
-  * OBS_ASP_ATS[n]
-  * OBS_TBN_GAIN
-  * OBS_DRX_GAIN
   * OBS_BEAM_DELAY[n][p]
   * BEAM_GAIN[n][p][q][r]
 Thus, stepped observations using OBS_STP_B[n] = SPEC_DELAYS_GAINS is not supported.
@@ -66,8 +59,8 @@ from lsl.reader.tbn import FrameSize as TBNSize
 from lsl.reader.drx import FrameSize as DRXSize
 
 
-__version__ = '0.3'
-__revision__ = '$ Revision: 11 $'
+__version__ = '0.4'
+__revision__ = '$ Revision: 14 $'
 __all__ = ['Observer', 'Project', 'Session', 'Observation', 'TBW', 'TBN', 'DRX', 'Solar', 'Jovian', 'Stepped', 'BeamStep', 'parse', '__version__', '__revision__', '__all__']
 
 _dtRE = re.compile(r'^((?P<tz>[A-Z]{2,3}) )?(?P<year>\d{4})[ -]((?P<month>\d{1,2})|(?P<mname>[A-Za-z]{3}))[ -](?P<day>\d{1,2})[ T](?P<hour>\d{1,2}):(?P<minute>\d{1,2}):(?P<second>\d{1,2}(\.\d{1,6})?)$')
@@ -259,6 +252,15 @@ class Session(object):
 		
 		self.includeStationStatic= False
 		self.includeDesign = False
+
+		self.obsFEE = [[-1,-1] for n in xrange(260)]
+		self.aspFlt = [-1 for n in xrange(260)]
+		self.aspAT1 = [-1 for n in xrange(260)]
+		self.aspAT2 = [-1 for n in xrange(260)]
+		self.aspATS = [-1 for n in xrange(260)]
+
+		self.tbnGain = -1
+		self.drxGain = -1
 	
 	def setConfigurationAuthority(self, value):
 		"""Set the configuration request authority to a particular value in the range of
@@ -1349,6 +1351,25 @@ def parse(fh):
 			continue
 		
 		# Session wide settings at the end of the observations
+		if keyword == 'OBS_FEE':
+			if ids[0] == 0:
+				for n in xrange(len(project.sessions[0].obsFEE)):
+					project.sessions[0].obsFEE[n][ids[1]-1] = int(value)
+			else:
+				project.sessions[0].obsFEE[ids[0]-1][ids[1]-1] = int(value)
+			continue
+		if keyword == 'OBS_ASP_FLT':
+			project.sessions[0].aspFlt[ids[0]-1] = int(value)
+			continue
+		if keyword == 'OBS_ASP_AT1':
+			project.sessions[0].aspAT1[ids[0]-1] = int(value)
+			continue
+		if keyword == 'OBS_ASP_AT2':
+			project.sessions[0].aspAT2[ids[0]-1] = int(value)
+			continue
+		if keyword == 'OBS_ASP_ATS':
+			project.sessions[0].aspATS[ids[0]-1] = int(value)
+			continue
 		if keyword == 'OBS_TBW_BITS':
 			sessionBits = int(value)
 			continue
@@ -1466,10 +1487,42 @@ OBS_STP_B[{{ loop.index }}]       {{ step.beam }}
 {%- endif %}
 {% endfor %}
 
+{% for fee in session.obsFEE -%}
+{%- if fee[0] != -1 -%}
+OBS_FEE[{{ loop.index }}][0]  {{ fee[0] }}
+{% endif %}
+{%- if fee[1] != -1 -%}
+OBS_FEE[{{ loop.index }}][1]  {{ fee[1] }}
+{% endif %}
+{%- endfor %}
+{% for flt in session.aspFlt -%}
+{%- if flt != -1 -%}
+OBS_ASP_FLT[{{ loop.index }}]  {{ flt }}
+{% endif %}
+{%- endfor %}
+{% for at1 in session.aspAT1 -%}
+{%- if at1 != -1 -%}
+OBS_ASP_AT1[{{ loop.index }}]  {{ at1 }}
+{% endif %}
+{%- endfor %}
+{% for at2 in session.aspAT2 -%}
+{%- if at2 != -1 -%}
+OBS_ASP_AT2[{{ loop.index }}]  {{ at2 }}
+{% endif %}
+{%- endfor %}
+{% for ats in session.aspATS -%}
+{%- if ats != -1 -%}
+OBS_ASP_ATS[{{ loop.index }}]  {{ ats }}
+{% endif %}
+{%- endfor %}
 {%- set obs = session.observations|first -%}
-{% if obs.mode == 'TBW' -%}
+{%- if obs.mode == 'TBW' -%}
 OBS_TBW_BITS     {{ obs.bits }}
 OBS_TBW_SAMPLES  {{ obs.samples }}
+{%- elif obs.mode == 'TBN' -%}
+OBS_TBN_GAIN     {{ session.tbnGain }}
+{%- else -%}
+OBS_DRX_GAIN     {{ session.drxGain }}
 {% endif %}
 
 """)

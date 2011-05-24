@@ -15,7 +15,7 @@ from wx.lib.mixins.listctrl import TextEditMixin, CheckListCtrlMixin
 
 
 __version__ = "0.2"
-__revision__ = "$ Revision: 15 $"
+__revision__ = "$ Revision: 16 $"
 __author__ = "Jayce Dowell"
 
 
@@ -1368,9 +1368,9 @@ ID_ADV_INFO_CANCEL = 312
 class AdvancedInfo(wx.Frame):
 	def __init__(self, parent):
 		if parent.mode == 'TBW':
-			size = (830, 400)
+			size = (830, 575)
 		else:
-			size = (830, 375)
+			size = (830, 550)
 
 		wx.Frame.__init__(self, parent, title='Advanced Settings', size=size)
 		
@@ -1393,6 +1393,9 @@ class AdvancedInfo(wx.Frame):
 		drxGain = ['%i' % i for i in xrange(13)]
 		drxGain.insert(0, 'MCS Decides')
 		intervals = ['MCS Decides', 'Never', '1 minute', '5 minutes', '15 minutes', '30 minutes', '1 hour']
+		aspFilters = ['MCS Decides', 'Split', 'Full', 'Reduced', 'Off']
+		aspAttn = ['%i' % i for i in xrange(16)]
+		aspAttn.insert(0, 'MCS Decides')
 		
 		row = 0
 		panel = wx.Panel(self)
@@ -1487,6 +1490,68 @@ class AdvancedInfo(wx.Frame):
 		sizer.Add(line, pos=(row+9, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
 		
 		row += 10
+
+		#
+		# ASP
+		# 
+	
+		aspComboFlt = wx.ComboBox(panel, -1, value='MCS Decides', choices=aspFilters, style=wx.CB_READONLY)
+		if self.parent.project.sessions[0].aspFlt[0] == -1:
+			aspComboFlt.SetStringSelection('MCS Decides')
+		elif self.parent.project.sessions[0].aspFlt[0] == 0:
+			aspComboFlt.SetStringSelection('Split')
+		elif self.parent.project.sessions[0].aspFlt[0] == 1:
+			aspComboFlt.SetStringSelection('Full')
+		elif self.parent.project.sessions[0].aspFlt[0] == 2:
+			aspComboFlt.SetStringSelection('Reduced')
+		else:
+			aspComboAT1.SetStringSelection('Off')
+		aspComboAT1 = wx.ComboBox(panel, -1, value='MCS Decides', choices=aspAttn, style=wx.CB_READONLY)
+		if self.parent.project.sessions[0].aspAT1[0] == -1:
+			aspComboAT1.SetStringSelection('MCS Decides')
+		else:
+			aspComboAT1.SetStringSelection('%i' % self.parent.project.sessions[0].aspAT1[0])
+		aspComboAT2 = wx.ComboBox(panel, -1, value='MCS Decides', choices=aspAttn, style=wx.CB_READONLY)
+		if self.parent.project.sessions[0].aspAT2[0] == -1:
+			aspComboAT2.SetStringSelection('MCS Decides')
+		else:
+			aspComboAT2.SetStringSelection('%i' % self.parent.project.sessions[0].aspAT2[0])
+		aspComboATS = wx.ComboBox(panel, -1, value='MCS Decides', choices=aspAttn, style=wx.CB_READONLY)
+		if self.parent.project.sessions[0].aspATS[0] == -1:
+			aspComboATS.SetStringSelection('MCS Decides')
+		else:
+			aspComboATS.SetStringSelection('%i' % self.parent.project.sessions[0].aspATS[0])
+
+		asp = wx.StaticText(panel, label='ASP-Specific Information')
+		asp.SetFont(font)
+
+		flt = wx.StaticText(panel, label='Filter Mode Setting')
+		at1 = wx.StaticText(panel, label='First Attenuator Setting')
+		at2 = wx.StaticText(panel, label='Second Attenuator Setting')
+		ats = wx.StaticText(panel, label='Split Attenuator Setting')
+		fas1 = wx.StaticText(panel, label='for all inputs')
+		fas2 = wx.StaticText(panel, label='for all inputs')
+		fas3 = wx.StaticText(panel, label='for all inputs')
+		fas4 = wx.StaticText(panel, label='for all inputs')
+
+		sizer.Add(asp, pos=(row+0, 0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
+		sizer.Add(flt, pos=(row+1, 0), span=(1, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(aspComboFlt, pos=(row+1, 2), span=(1, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(fas1, pos=(row+1, 4), span=(1, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(at1, pos=(row+2, 0), span=(1, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(aspComboAT1, pos=(row+2, 2), span=(1, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(fas2, pos=(row+2, 4), span=(1, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(at2, pos=(row+3, 0), span=(1, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(aspComboAT2, pos=(row+3, 2), span=(1, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(fas3, pos=(row+3, 4), span=(1, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(ats, pos=(row+4, 0), span=(1, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(aspComboATS, pos=(row+4, 2), span=(1, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(fas4, pos=(row+4, 4), span=(1, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		
+		line = wx.StaticLine(panel)
+		sizer.Add(line, pos=(row+5, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
+			
+		row += 6
 		
 		#
 		# TBW
@@ -1567,7 +1632,7 @@ class AdvancedInfo(wx.Frame):
 			sizer.Add(line, pos=(row+2, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
 			
 			row += 3
-		
+
 		#
 		# Buttons
 		#
@@ -1607,6 +1672,11 @@ class AdvancedInfo(wx.Frame):
 		
 		if self.parent.mode == 'DRX':
 			self.drxGain = dgainText
+
+		self.aspFlt = aspComboFlt
+		self.aspAT1 = aspComboAT1
+		self.aspAT2 = aspComboAT2
+		self.aspATS = aspComboATS
 		
 	def initEvents(self):
 		self.Bind(wx.EVT_BUTTON, self.onOK, id=ID_OBS_INFO_OK)
@@ -1654,6 +1724,17 @@ class AdvancedInfo(wx.Frame):
 		self.parent.project.sessions[0].includeStationStatic = self.incSMIB.GetValue()
 		self.parent.project.sessions[0].includeDesign = self.incDESG.GetValue()
 		
+		aspFltDict = {'MCS Decides': -1, 'Split': 0, 'Full': 1, 'Reduced': 2, 'Off': 3}
+		aspFlt = aspFltDict[self.aspFlt.GetValue()]
+		aspAT1 = -1 if self.aspAT1.GetValue() == 'MCS Decides' else int(self.aspAT1.GetValue())
+		aspAT2 = -1 if self.aspAT2.GetValue() == 'MCS Decides' else int(self.aspAT2.GetValue())
+		aspATS = -1 if self.aspATS.GetValue() == 'MCS Decides' else int(self.aspATS.GetValue())
+		for i in xrange(len(self.parent.project.sessions[0].aspFlt)):
+			self.parent.project.sessions[0].aspFlt[i] = aspFlt
+			self.parent.project.sessions[0].aspAT1[i] = aspAT1
+			self.parent.project.sessions[0].aspAT2[i] = aspAT2
+			self.parent.project.sessions[0].aspATS[i] = aspATS
+
 		if self.parent.mode == 'TBW':
 			self.parent.project.sessions[0].tbwBits = int( self.tbwBits.GetValue().split('-')[0] )
 			self.parent.project.sessions[0].tbwSamples = int( self.tbwSamp.GetValue() )
