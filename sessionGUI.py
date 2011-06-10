@@ -2,12 +2,15 @@
 # -*- coding: utf-8 -*-
 
 import os
-import sdf
 import sys
 
 from lsl.common.dp import fS
 from lsl.reader.tbn import filterCodes as TBNFilters
 from lsl.reader.drx import filterCodes as DRXFilters
+try:
+	from lsl.common import sdf
+except ImportError:
+	import sdf
 
 import wx
 import wx.html as html
@@ -15,7 +18,7 @@ from wx.lib.mixins.listctrl import TextEditMixin, CheckListCtrlMixin
 
 
 __version__ = "0.2"
-__revision__ = "$ Revision: 16 $"
+__revision__ = "$ Revision: 17 $"
 __author__ = "Jayce Dowell"
 
 
