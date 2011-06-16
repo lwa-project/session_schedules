@@ -1,6 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+"""
+Apache mod_python module for validating a SDF file against the validation 
+functions in the sdf module and a version of the sch/tpss program from MCS
+JR5.
+"""
+
 import os
 import re
 import math
@@ -10,6 +16,12 @@ import subprocess
 from jinja2 import Environment, FileSystemLoader
 
 from sdf import *
+
+
+__version__ = "0.1"
+__revision__ = "$Rev$"
+__author__ = "Jayce Dowell"
+
 
 _tpss = '/var/www/data/schedule/tpss'
 

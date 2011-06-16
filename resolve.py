@@ -1,9 +1,23 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+"""
+Apache mod_python module for resolving a catalog name to a RA/dec. pair using
+the name resolver service at:
+  http://www1.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/NameResolver/find
+  
+Returns an XML file with the coordinates of the target or an error.
+"""
+
 import os
 import urllib
 from jinja2 import Environment, FileSystemLoader
+
+
+__version__ = "0.1"
+__revision__ = "$Rev$"
+__author__ = "Jayce Dowell"
+
 
 def index(req):
 	try:

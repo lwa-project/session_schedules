@@ -18,7 +18,7 @@ from wx.lib.mixins.listctrl import TextEditMixin, CheckListCtrlMixin
 
 
 __version__ = "0.2"
-__revision__ = "$ Revision: 17 $"
+__revision__ = "$Rev$"
 __author__ = "Jayce Dowell"
 
 
