@@ -5,6 +5,8 @@ import os
 import sys
 import cStringIO as StringIO
 
+import conflict
+
 from lsl.common.dp import fS
 from lsl.reader.tbn import filterCodes as TBNFilters
 from lsl.reader.drx import filterCodes as DRXFilters
@@ -16,6 +18,14 @@ except ImportError:
 import wx
 import wx.html as html
 from wx.lib.mixins.listctrl import TextEditMixin, CheckListCtrlMixin
+
+import matplotlib
+matplotlib.use('WXAgg')
+matplotlib.interactive(True)
+
+from matplotlib.backends.backend_wxagg import NavigationToolbar2WxAgg, FigureCanvasWxAgg
+from matplotlib.figure import Figure
+from matplotlib.ticker import NullFormatter, NullLocator
 
 
 __version__ = "0.2"
@@ -684,7 +694,7 @@ class SDFCreator(wx.Frame):
 		Display a window showing the layout of the observations in time.
 		"""
 		
-		TimeseriesDisplay(self)
+		SessionDisplay(self)
 	
 	def onAdvanced(self, event):
 		"""
@@ -1851,76 +1861,13 @@ class AdvancedInfo(wx.Frame):
 		dialog.ShowModal()
 
 
-class TSPanel(PlotPanel):
-	def __init__(self, parent, observations=[], **kwargs):
-		self.parent = parent
-		self.obs = observations
-		
-		# initiate plotter
-		PlotPanel.__init__( self, parent, **kwargs )
-		self.SetColor( (255,255,255) )
-
-	def draw(self):
-		"""
-		Draw data.
-		"""
-		
-		import conflict
-		from matplotlib.ticker import NullFormatter, NullLocator
-
-		if not hasattr( self, 'subplot' ):
-			self.ax1 = self.figure.add_subplot( 111 )
-
-		if len(self.obs) == 0:
-			pass
-		else:
-			mode = self.obs[0].mode
-			colors = ['blue', 'green', 'red', 'cyan', 'magenta']
-			
-			earliest = 1e20
-			for o in self.obs:
-				start = o.mjd + o.mpm/1000.0 / (3600.0*24.0)
-				if start < earliest:
-					earliest = start
-			
-			if mode in ('TBW', 'TBN'):
-				yls = [0]*len(self.obs)
-				tkr = NullLocator()
-			else:
-				yls = conflict.assignBeams(self.obs, nBeams=4)
-				tkr = None
-				
-			i = 0
-			for yl,o in zip(yls, self.obs):
-				start = o.mjd + o.mpm/1000.0 / (3600.0*24.0)
-				dur = o.dur/1000.0 / (3600.0*24.0)
-				
-				self.ax1.barh(yl, dur, height=1.0, left=start-earliest, alpha=0.6, color=colors[i % len(colors)], label='Observation %i' % (i+1))
-				self.ax1.annotate('%i' % (i+1), (start-earliest+dur/2, yl+0.5))
-				i += 1
-			
-			# Second set of x axes
-			self.ax1.xaxis.tick_bottom()
-			self.ax2 = self.figure.add_axes(self.ax1.get_position(), sharey=self.ax1, frameon=False)
-			self.ax2.xaxis.tick_top()
-			self.ax2.set_xlim([self.ax1.get_xlim()[0]*24.0, self.ax1.get_xlim()[1]*24.0])
-			
-			# Labels
-			self.ax1.set_xlabel('MJD-%i [days]' % earliest)
-			self.ax1.set_ylabel('Observation')
-			self.ax2.set_xlabel('Session Elapsed Time [hours]')
-			self.ax2.xaxis.set_label_position('top')
-			self.ax1.yaxis.set_major_formatter( NullFormatter() )
-			self.ax2.yaxis.set_major_formatter( NullFormatter() )
-			if tkr is not None:
-				for ax in [self.ax1.yaxis, self.ax2.yaxis]:
-					ax.set_major_locator( tkr )
-					ax.set_minor_locator( tkr )
-
-
-class TimeseriesDisplay(wx.Frame):
+class SessionDisplay(wx.Frame):
+	"""
+	Window for displaying the "Session at a Glance".
+	"""
+	
 	def __init__(self, parent):
-		wx.Frame.__init__(self, parent, title='Advanced Settings', size=(800, 375))
+		wx.Frame.__init__(self, parent, title='Session at a Glance', size=(800, 375))
 		
 		self.parent = parent
 		
@@ -1928,40 +1875,163 @@ class TimeseriesDisplay(wx.Frame):
 		self.initEvents()
 		self.Show()
 		
+		self.initPlot()
+		
 	def initUI(self):
-		row = 0
-		panel = wx.Panel(self)
-		sizer = wx.GridBagSizer(5, 5)
+		"""
+		Start the user interface.
+		"""
 		
-		#
-		# Plot
-		#
+		self.statusbar = self.CreateStatusBar()
 		
-		plotPanel = TSPanel(panel, observations=self.parent.project.sessions[0].observations)
-		sizer.Add(plotPanel, pos=(0, 0), span=(2, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-			
-		line = wx.StaticLine(panel)
-		sizer.Add(line, pos=(row+2, 0), span=(1, 2), flag=wx.EXPAND|wx.BOTTOM, border=10)
-			
-		row += 3
+		hbox = wx.BoxSizer(wx.HORIZONTAL)
 		
-		#
-		# Buttons
-		#
+		# Add plots to panel 1
+		panel1 = wx.Panel(self, -1)
+		vbox1 = wx.BoxSizer(wx.VERTICAL)
+		self.figure = Figure()
+		self.canvas = FigureCanvasWxAgg(panel1, -1, self.figure)
+		self.toolbar = NavigationToolbar2WxAgg(self.canvas)
+		self.toolbar.Realize()
+		vbox1.Add(self.canvas,  1, wx.EXPAND)
+		vbox1.Add(self.toolbar, 0, wx.LEFT | wx.FIXED_MINSIZE)
+		panel1.SetSizer(vbox1)
+		hbox.Add(panel1, 1, wx.EXPAND)
 		
-		cancel = wx.Button(panel, ID_OBS_INFO_CANCEL, 'Cancel', size=(90, 28))
-		sizer.Add(cancel, pos=(row+0, 2), flag=wx.RIGHT|wx.BOTTOM, border=5)
-		
-		sizer.AddGrowableCol(0)
-		sizer.AddGrowableRow(0)
-		
-		panel.SetSizerAndFit(sizer)
+		# Use some sizers to see layout options
+		self.SetSizer(hbox)
+		self.SetAutoLayout(1)
+		hbox.Fit(self)
 		
 	def initEvents(self):
-		self.Bind(wx.EVT_BUTTON, self.onCancel, id=ID_OBS_INFO_CANCEL)
+		"""
+		Set all of the various events in the data range window.
+		"""
+		
+		# Make the images resizable
+		self.Bind(wx.EVT_PAINT, self.resizePlots)
+	
+	def initPlot(self):
+		"""
+		Populate the figure/canvas areas with a plot.  We only need to do this
+		once for this type of window.
+		"""
+		
+		self.obs = self.parent.project.sessions[0].observations
+
+		if len(self.obs) == 0:
+			return False
+		
+		mode = self.obs[0].mode
+		colors = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'orange', 'lavender']
+		
+		## Find the earliest observation
+		self.earliest = conflict.unravelObs(self.obs)[0][0]
+		
+		## Assign beams (DRX modes only)
+		if mode in ('TBW', 'TBN'):
+			yls = [0]*len(self.obs)
+			tkr = NullLocator()
+		else:
+			yls = conflict.assignBeams(self.obs, nBeams=4)
+			tkr = None
+		
+		self.figure.clf()
+		self.ax1 = self.figure.gca()
+		
+		## The actual observations
+		i = 0
+		for yl,o in zip(yls, self.obs):
+			start = o.mjd + o.mpm/1000.0 / (3600.0*24.0)
+			dur = o.dur/1000.0 / (3600.0*24.0)
+			
+			self.ax1.barh(yl, dur, height=1.0, left=start-self.earliest, alpha=0.6, color=colors[i % len(colors)], 
+						label='Observation %i' % (i+1))
+			self.ax1.annotate('%i' % (i+1), (start-self.earliest+dur/2, yl+0.5))
+			i += 1
+		
+		## Second set of x axes
+		self.ax1.xaxis.tick_bottom()
+		self.ax2 = self.figure.add_axes(self.ax1.get_position(), sharey=self.ax1, frameon=False)
+		self.ax2.xaxis.tick_top()
+		self.ax2.set_xlim([self.ax1.get_xlim()[0]*24.0, self.ax1.get_xlim()[1]*24.0])
+		
+		## Labels
+		self.ax1.set_xlabel('MJD-%i [days]' % self.earliest)
+		self.ax1.set_ylabel('Observation')
+		self.ax2.set_xlabel('Session Elapsed Time [hours]')
+		self.ax2.xaxis.set_label_position('top')
+		self.ax1.yaxis.set_major_formatter( NullFormatter() )
+		self.ax2.yaxis.set_major_formatter( NullFormatter() )
+		if tkr is not None:
+			for ax in [self.ax1.yaxis, self.ax2.yaxis]:
+				ax.set_major_locator( tkr )
+				ax.set_minor_locator( tkr )
+				
+		## Draw
+		self.canvas.draw()
+		self.connect()
+	
+	def connect(self):
+		"""
+		Connect to all the events we need to interact with the plots.
+		"""
+		
+		self.cidmotion  = self.figure.canvas.mpl_connect('motion_notify_event', self.on_motion)
+	
+	def on_motion(self, event):
+		"""
+		Deal with motion events in the stand field window.  This involves 
+		setting the status bar with the current x and y coordinates as well
+		as the stand number of the selected stand (if any).
+		"""
+		
+		if event.inaxes:
+			clickX = event.xdata
+			clickY = event.ydata
+			
+			# It looks like the events are coming from the second set of axes, 
+			# which are in hours, not days.  First, compute MJD and MPM of the
+			# current mouse location
+			t = clickX/24.0 + self.earliest
+			mjd = int(t)
+			mpm = int( (t - mjd)*24.0*3600.0*1000.0 )
+			
+			# Compute the session elapsed time
+			elapsed = clickX*3600.0
+			eHour = elapsed / 3600
+			eMinute = (elapsed % 3600) / 60
+			eSecond = (elapsed % 3600) % 60
+			
+			elapsed = "%02i:%02i:%06.3f" % (eHour, eMinute, eSecond)
+			
+			self.statusbar.SetStatusText("MJD: %i  MPM: %i;  Session Elapsed Time: %s" % (mjd, mpm, elapsed))
+		else:
+			self.statusbar.SetStatusText("")
+	
+	def disconnect(self):
+		"""
+		Disconnect all the stored connection ids.
+		"""
+		
+		self.figure.canvas.mpl_disconnect(self.cidmotion)
 		
 	def onCancel(self, event):
 		self.Close()
+		
+	def resizePlots(self, event):
+		w, h = self.GetSize()
+		dpi = self.figure.get_dpi()
+		newW = 1.0*w/dpi
+		newH1 = 1.0*(h/2-100)/dpi
+		newH2 = 1.0*(h/2-75)/dpi
+		self.figure.set_size_inches((newW, newH1))
+		self.figure.canvas.draw()
+
+	def GetToolBar(self):
+		# You will need to override GetToolBar if you are using an 
+		# unmanaged toolbar in your frame
+		return self.toolbar
 
 
 ID_VOL_INFO_OK = 511

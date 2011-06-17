@@ -38,8 +38,8 @@ def unravelObs(obs):
 	# later
 	rObs = []
 	for i in xrange(len(obs)):
-		iStart =  obs[i].mjd*24 + obs[i].mpm/1000.0/3600.0
-		iStop = iStart + obs[i].dur/1000.0/3600.0
+		iStart =  obs[i].mjd + obs[i].mpm/1000.0/3600.0/24.0
+		iStop = iStart + obs[i].dur/1000.0/3600.0/24.0
 		
 		rObs.append( (iStart, i, 1) )
 		rObs.append( (iStop,  i, 0) )
