@@ -3,6 +3,7 @@
 
 import os
 import sys
+import cStringIO as StringIO
 
 from lsl.common.dp import fS
 from lsl.reader.tbn import filterCodes as TBNFilters
@@ -649,11 +650,24 @@ class SDFCreator(wx.Frame):
 			i += 1
 		
 		# Do a global validation
-		if self.project.validate():
+		sys.stdout = StringIO.StringIO()
+		if self.project.validate(verbose=True):
+			msg =  sys.stdout.getvalue()[:-1]
+			sys.stdout.close()
+			sys.stdout = sys.__stdout__
 			if confirmValid:
 				wx.MessageBox('Congratulations, you have a valid set of observations.', 'Validator Results')
 			return True
 		else:
+			msg =  sys.stdout.getvalue()[:-1]
+			sys.stdout.close()
+			sys.stdout = sys.__stdout__
+			
+			msgLines = msg.split('\n')
+			for msg in msgLines:
+				if msg.find('Error') != -1:
+					print msg
+					
 			if validObs:
 				wx.MessageBox('All observations are valid, but there are errors in the session setup.', 'Validator Results')
 			return False
@@ -1851,6 +1865,9 @@ class TSPanel(PlotPanel):
 		Draw data.
 		"""
 		
+		import conflict
+		from matplotlib.ticker import NullFormatter, NullLocator
+
 		if not hasattr( self, 'subplot' ):
 			self.ax1 = self.figure.add_subplot( 111 )
 
@@ -1859,24 +1876,28 @@ class TSPanel(PlotPanel):
 		else:
 			mode = self.obs[0].mode
 			colors = ['blue', 'green', 'red', 'cyan', 'magenta']
-			i = 0
+			
 			earliest = 1e20
 			for o in self.obs:
 				start = o.mjd + o.mpm/1000.0 / (3600.0*24.0)
 				if start < earliest:
 					earliest = start
 			
-			for o in self.obs:
+			if mode in ('TBW', 'TBN'):
+				yls = [0]*len(self.obs)
+				tkr = NullLocator()
+			else:
+				yls = conflict.assignBeams(self.obs, nBeams=4)
+				tkr = None
+				
+			i = 0
+			for yl,o in zip(yls, self.obs):
 				start = o.mjd + o.mpm/1000.0 / (3600.0*24.0)
 				dur = o.dur/1000.0 / (3600.0*24.0)
 				
-				if mode == 'TBW' or mode == 'TBN':
-					yl = 0.5
-				else:
-					yl = 0.5 + i
 				self.ax1.barh(yl, dur, height=1.0, left=start-earliest, alpha=0.6, color=colors[i % len(colors)], label='Observation %i' % (i+1))
+				self.ax1.annotate('%i' % (i+1), (start-earliest+dur/2, yl+0.5))
 				i += 1
-			self.ax1.legend(loc=0)
 			
 			# Second set of x axes
 			self.ax1.xaxis.tick_bottom()
@@ -1889,6 +1910,12 @@ class TSPanel(PlotPanel):
 			self.ax1.set_ylabel('Observation')
 			self.ax2.set_xlabel('Session Elapsed Time [hours]')
 			self.ax2.xaxis.set_label_position('top')
+			self.ax1.yaxis.set_major_formatter( NullFormatter() )
+			self.ax2.yaxis.set_major_formatter( NullFormatter() )
+			if tkr is not None:
+				for ax in [self.ax1.yaxis, self.ax2.yaxis]:
+					ax.set_major_locator( tkr )
+					ax.set_minor_locator( tkr )
 
 
 class TimeseriesDisplay(wx.Frame):

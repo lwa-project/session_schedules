@@ -18,12 +18,12 @@
 <h6>Introduction</h6>
 Session GUI provides an easy-to-use interface to creating session definition files (SDFs) for observing at 
 LWA stations that are compliant with the format described in 
-<a href="http://www.ece.vt.edu/swe/lwavt/doc/MCS0030v4_Observing.pdf">MSC0030</a>.<br /><br />
+<a href="http://www.ece.vt.edu/swe/lwavt/doc/MCS0030v5_Observing.pdf">MCS0030</a>.<br /><br />
 
 Session GUI allows an observer to:
 <ul>
 	<li>Specify the individual observations in a session,</li>
-	<li>Request a particular method of getting the data back, and</li>
+	<li>Request a particular method for retrieving the data, and</li>
 	<li>Estimate the total data volume of the observations.</li>
 </ul>
 <a href="#top">Top</a>
@@ -36,15 +36,16 @@ Session GUI allows an observer to:
 Sessions for both the wide-band (TBW) and narrow-band (TBN) modes are supported.  The two modes, however,
 cannot be mixed within a single session.<br /><br />
 
-For TBW, both 4 and 12-bit data are supported as well as the full range of samples (up to 36 million with 
-4-bit data) in the TBW buffer.  TBW observations cannot be scheduled to fill a time range.  Rather, the 
-individual captures need to be scheduled separately.  Session GUI keeps track of the combined integration 
-and readout times to make it easier to not overlap TBW captures.<br /><br />
+For TBW, both 4 and 12-bit data are supported.  The upper limit for the number of samples for 4-bit data is
+36 million, and the corresponding limit for 12-bit data is 12 million.  Due to the nature of TBW, observations 
+cannot be scheduled to fill a time range, e.g, capture consecutive sets of a given number of samples.  
+Rather, the individual captures need to be scheduled separately.  Session GUI keeps track of the combined integration 
+and readout times help avoid overlap in TBW captures.<br /><br />
 
-For TBN, all tunings within the DP tuning range (10 to 88 MHz) as well as all 7 filters are supported.  
-There is no limit on how long a TBN recording can be scheduled for as long as it does not exceed the DRSU 
-capacity.  By default, the TBN gain setting is left up to MCS to decide by can be overridden in the 
-<a href="#mcs">advanced settings menu</a>.
+For TBN, all tunings within the DP tuning range (10 to 88 MHz) as well as all 7 filters are supported. There 
+is no limit on the length of a TBN recording as long as the resulting data volume does not exceed the DRSU 
+capacity (data volume estimates can be found under the <a href="#data">data menu</a>). By default, the TBN gain setting is 
+determined by MCS but can be overridden in the <a href="#mcs">advanced settings menu</a>.
 <br /><a href="#top">Top</a>
 </a>
 </p>
@@ -52,15 +53,15 @@ capacity.  By default, the TBN gain setting is left up to MCS to decide by can b
 <p>
 <a name="drx">
 <h6>Beam Forming Modes</h6>
-Beam forming modes tracking the sky, Sun, and Jupiter and supported.  For each beam, both tunings are 
-supported with the caveat that both tunings will use the same filter code and gain settings.  Similar to
-TBN the gain value can be changed if it has been specified under the <a href="#mcs">advanced settings menu</a>.
+Beam forming modes tracking the sky, Sun, and Jupiter are avaliable.  For each beam, both tunings are 
+supported with the caveat that both tunings will use the same filter code and gain settings.  Similar 
+to TBN the default gain value can be changed if it has been specified under the <a href="#mcs">advanced settings menu</a>.
 <br /><br />
 
-Session GUI supports resolving targets in the &quot;Target&quot; column into RA and dec. values via the 
-Observations->Resolve Selected menu.  To use this feature, select the observation you wish to resolve via the 
-check box on the left-hand side of the observation list and go into the resolver menu.  The resolver supports
-resolving with both the NASA-IPAC 
+Session GUI supports using the NASA-IPAC and SIMBAD databases to resolve target names listed in the 
+&quot;Target&quot; column into their corresponding RA and DEC coordinates.  To use this feature, select 
+the observation you wish to resolve via the check box on the left-hand side of the observation list 
+and go into the Observations->Resolve Selected menu.
 <br /><a href="#top">Top</a>
 </a>
 </p>
@@ -69,12 +70,12 @@ resolving with both the NASA-IPAC
 <a name="data">
 <h6>Data and Reductions</h6>
 Session GUI provides a means for estimating the data volume associated with each observation via the 
-Data->Estimated Data Volume menu.  This menu displays the estimated data volume using the observing mode, 
-duration, and filter code for each observation in the session as well as the total data volume for the session.
-<br /><br />
+Data->Estimated Data Volume menu.  This menu displays the estimated data volume for each observation in 
+the session using the observing mode, duration, and filter code given.  The total data volume for the 
+session is also reported.<br /><br />
 
-Reductions and data return method (DRSU, user-provided USB hard drives, etc.) are specified using the 
-Observation->Observer/Project Info. menu
+Post acquisition data reduction and the data return method (DRSU, user-provided USB hard drives, etc.) 
+can be specified using the Observation->Observer/Project Info. menu.
 <br /><a href="#top">Top</a>
 </a>
 </p>
@@ -82,9 +83,14 @@ Observation->Observer/Project Info. menu
 <p>
 <a name="valid">
 <h6>Validating SDF Files</h6>
-Although Session GUI provides basic validation of the generated SDF files, more rigorous validation
-by the MCS/Scheduler can be done <a href="http://fornax.phys.unm.edu/lwa/schedule/validator.py">here</a>.
-The validator calls the &quot;tpss&quot; executable and validates to level 2.
+Session GUI provides several mechanisms to ensure that the SDFs created are valid and can be successfully
+executed.  All basic inputs (frequency, filter code, etc.) are validated and observation lines without
+valid output are marked in red.  Additional validation of source visibility for DRX observations is done
+when saving the observations to a file.<br /><br />
+
+Session GUI provides basic validation of the generated SDF files;  more rigorous validation by the 
+MCS/Scheduler can be done <a href="http://fornax.phys.unm.edu/lwa/schedule/validator.py">here</a>.
+The validator calls the &quot;tpss&quot; executable and validates the SDF file to level 2.
 <br /><a href="#top">Top</a>
 </a>
 </p>
@@ -92,9 +98,18 @@ The validator calls the &quot;tpss&quot; executable and validates to level 2.
 <p>
 <a name="mcs">
 <h6>Advanced MCS Settings</h6>
-The Observations->Advanced Settings menu allows for fine control of the various MCS MIB report and update 
-intervals as well as controlling what is included in the tar file that is created at the end of a session.
-This window also contains the observation gain settings (TBN and DRX)
+The Observations->Advanced Settings menu allows for finer control of the observing process.  In this 
+menu, the various MCS MIB report and update intervals can be tailored and the observer can control any 
+desired information (e.g. SSMIF file) to be included in the tar file that is created at the end of the 
+session.<br /><br />
+
+This window also contains the observation gain settings (TBN and DRX) and the TBW data bit-mode and sample 
+number options.  Options are also available to change the setup of the ARX filters and gains.  These 
+options, however, cannot be fined tuned for a particular antenna and set all antennas to the same value.<br /><br />
+
+<i>Note:</i> Caution should be used when making changes in the Advanced MCS Settings menu as changes could 
+have unintended consequences on the observations. For questions regarding these settings please contact 
+LWA staff or an experienced LWA observer.
 <br /><a href="#top">Top</a>
 </a>
 </p>
@@ -102,9 +117,12 @@ This window also contains the observation gain settings (TBN and DRX)
 <p>
 <a name="limits">
 <h6>Limitations</h6>
+Current limitations in the capabilities of Session GUI are:<br />
 <ul>
+	<li>Explicit checking for overlapping observations is not preformed.</li>
 	<li>Stepped observations (OBS_MODE = STEPPED) are not currently supported.</li>
-	<li>Some columns are editable that should not be, e.g., &quot;ID&quot;.</li>
+	<li>The post-acquisition data reduction procedures are not yet defined, therefore reduction options 
+	are not specified in Session GUI.</li>
 </ul>
 <br /><a href="#top">Top</a>
 </a>
