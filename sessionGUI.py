@@ -1027,7 +1027,7 @@ class SDFCreator(wx.Frame):
 	
 	def parseFile(self, filename):
 		"""
-		Given a filename, parse the file using the sdf.parse() method and 
+		Given a filename, parse the file using the sdf.parseSDF() method and 
 		update all of the various aspects of the GUI (observation list, mode, 
 		button, menu items, etc.).
 		"""
@@ -1037,8 +1037,7 @@ class SDFCreator(wx.Frame):
 		self.initSDF()
 		
 		print "Parsing file '%s'" % filename
-		fh = open(filename, 'r')
-		self.project = sdf.parse(fh)
+		self.project = sdf.parseSDF(filename)
 		self.setMenuButtons(self.project.sessions[0].observations[0].mode)
 		if self.project.sessions[0].observations[0].mode == 'TBW':
 			self.mode = 'TBW'
@@ -1048,7 +1047,6 @@ class SDFCreator(wx.Frame):
 			self.mode = 'DRX'
 		else:
 			pass
-		fh.close()
 		
 		try:
 			self.project.sessions[0].tbwBits = self.project.sessions[0].observations[0].bits

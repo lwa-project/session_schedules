@@ -118,6 +118,9 @@ def index(req):
 			junk, message = output[-1].split('FATAL: ', 1)
 			errors.append( {'line': lineNumbers[-2], 'message': message} )
 	
+	# Parse the file into a sdf.Project instance
+	tmpProject = parseSDF(tmpFile)
+	
 	# Cleanup the temporary file and directory
 	os.unlink(tmpFile)
 	os.rmdir(tmpDir)
@@ -127,4 +130,4 @@ def index(req):
 			'numObs': numObsP, 'totDur': totDurP}
 	
 	template = env.get_template('validator-results.html')
-	return template.render(tpss=tpss, sdf=file, project=parse(file))
+	return template.render(tpss=tpss, sdf=file, project=tmpProject)

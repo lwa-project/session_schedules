@@ -191,9 +191,7 @@ def index(req):
 		fh.close()
 		
 		# Run the file through the parser
-		fh = open(tmpFile, 'r')
-		project = parse(fh)
-		fh.close()
+		project = parseSDF(tmpFile)
 		
 		# Cleanup the temporary file and directory
 		os.unlink(tmpFile)
