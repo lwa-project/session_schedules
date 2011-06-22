@@ -378,6 +378,14 @@ class SDFCreator(wx.Frame):
 		Create a new SD session.
 		"""
 		
+		if self.edited:
+			dialog = wx.MessageDialog(self, 'The current session defintion file has changes that have not been saved.\n\nStart a new session anyways?', 'Confirm New', style=wx.YES_NO|wx.NO_DEFAULT|wx.ICON_QUESTION)
+			
+			if dialog.ShowModal() == wx.ID_YES:
+				pass
+			else:
+				return False
+		
 		self.filename = ''
 		self.edited = True
 		self.badEdit = False
@@ -398,6 +406,14 @@ class SDFCreator(wx.Frame):
 		"""
 		Load an existing SD file.
 		"""
+		
+		if self.edited:
+			dialog = wx.MessageDialog(self, 'The current session defintion file has changes that have not been saved.\n\nOpen a new file anyways?', 'Confirm Open', style=wx.YES_NO|wx.NO_DEFAULT|wx.ICON_QUESTION)
+			
+			if dialog.ShowModal() == wx.ID_YES:
+				pass
+			else:
+				return False
 		
 		dialog = wx.FileDialog(self, "Select a SD File", self.dirname, '', 'Text Files (*.txt)|*.txt|All Files (*.*)|*.*', wx.OPEN)
 		
@@ -761,6 +777,11 @@ class SDFCreator(wx.Frame):
 		dialog.SetDescription("""GUI for creating session definition files to define observations with the Long Wavelength Array.""")
 		dialog.SetWebSite('http://lwa.unm.edu')
 		dialog.AddDeveloper(__author__)
+		
+		# Debuggers/testers
+		dialog.AddDocWriter(__author__)
+		dialog.AddDocWriter("Chenoa Tremblay")
+		dialog.AddDocWriter("Aaron Gibson")
 		
 		wx.AboutBox(dialog)
 	
@@ -1780,7 +1801,7 @@ class AdvancedInfo(wx.Frame):
 				obs.gain = self.parent.project.sessions[0].drxGain
 		
 		self.parent.edited = True
-		self.setSaveButton()
+		self.parent.setSaveButton()
 
 		self.Close()
 	
@@ -1798,7 +1819,7 @@ class AdvancedInfo(wx.Frame):
 		elif cb.GetValue() == 'Never':
 			out = 0
 		else:
-			t, u = cb.GetValue().split(1)
+			t, u = cb.GetValue().split(None, 1)
 			if u.find('minute') >= 0:
 				out = int(t)
 			else:
