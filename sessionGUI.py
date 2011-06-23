@@ -1337,7 +1337,7 @@ class ObserverInfo(wx.Frame):
 		try:
 			junk = int(self.observerIDEntry.GetValue())
 			if junk < 1:
-				self.displayError('Observer ID must be positive', title='Observer ID Error')
+				self.displayError('Observer ID must be greater than zero', title='Observer ID Error')
 				return False
 		except ValueError as err:
 			self.displayError('Observer ID must be numeric', details=err, title='Observer ID Error')
@@ -1346,7 +1346,7 @@ class ObserverInfo(wx.Frame):
 		try:
 			junk = int(self.sessionIDEntry.GetValue())
 			if junk < 1:
-				self.displayError('Session ID must be positive', title='Session ID Error')
+				self.displayError('Session ID must be greater than zero', title='Session ID Error')
 				return False
 		except ValueError as err:
 			self.displayError('Session ID must be numeric', details=err, title='Session ID Error')
@@ -1383,6 +1383,9 @@ class ObserverInfo(wx.Frame):
 		self.parent.setMenuButtons(self.parent.mode)
 		if self.parent.listControl.GetColumnCount() == 0:
 			self.parent.addColumns()
+		
+		self.parent.edited = True
+		self.parent.setSaveButton()
 		
 		self.Close()
 		
