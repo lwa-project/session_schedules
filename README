@@ -17,7 +17,11 @@ software.  Simply run the scripts in the SessionSchedules directory.
 Python Contents
 ---------------
 sdf.py
-  Module for reading in, validating, and writing SDFs
+  Module for reading in, validating, and writing SDFs.
+
+estimateData.py
+  Simple command-line utility for estimating the data volume for a TBN or 
+  DRX observation.
 
 sessionGUI.py
   wxPython GUI for creating SDF from scratch or modifying existing SDF for
