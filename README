@@ -29,6 +29,9 @@ sessionGUI.py
   with SDFs including a name resolver, a graphical observation layout, and 
   a data volume estimator.
 
+shiftSDF.py
+  Simple script to shift the start time of a SDF file to a new UTC date/time.
+
 resolve.py
   Apache/python script to provide a web-based name resolver.
 
