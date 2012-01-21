@@ -58,13 +58,15 @@ def index(req):
 		for keyword in ['sessionName', 'sessionID', 'sessionComments', 'dataReturnMethod']:
 			sessionInfo[keyword] = req.form.getfirst(keyword, None)
 		
+		po = ProjectOffice()
 		observer = Observer(projectInfo['lastName']+', '+projectInfo['firstName'], projectInfo['observerID'])
-		project = Project(observer, projectInfo['projectName'], projectInfo['projectID'], comments=projectInfo['projectComments'])
+		project = Project(observer, projectInfo['projectName'], projectInfo['projectID'], comments=projectInfo['projectComments'], projectOffice=po)
 		session = Session(sessionInfo['sessionName'], sessionInfo['sessionID'], dataReturnMethod=sessionInfo['dataReturnMethod'], comments=sessionInfo['sessionComments'])
 		
 		numObs = 1
 		observations = []
 		observationsSimple = []
+		project.projectOffice.observations.append( [] )
 		while req.form.getfirst('obsName%i' % numObs, None) is not None:
 			obsName = req.form.getfirst('obsName%i' % numObs, None)
 			obsTarget = req.form.getfirst('obsTarget%i' % numObs, None)
@@ -162,6 +164,7 @@ def index(req):
 										'filter': obsFilter, 'steps': stepsSimple, 'comments': obsComments, 'mode': obsMode} )
 										
 			numObs = numObs + 1
+			project.projectOffice.observations[0].append( 'None' )
 					
 		session.observations = observations
 		project.sessions = [session,]
