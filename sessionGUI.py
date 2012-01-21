@@ -3,11 +3,18 @@
 
 import os
 import sys
-import cStringIO as StringIO
+import math
+import ephem
+try:
+	import cStringIO as StringIO
+except ImportError:
+	import StringIO
 
 import conflict
 
 from lsl.common.dp import fS
+from lsl.common.stations import lwa1
+from lsl.astro import MJD_OFFSET, DJD_OFFSET
 from lsl.reader.tbn import filterCodes as TBNFilters
 from lsl.reader.drx import filterCodes as DRXFilters
 try:
@@ -1897,7 +1904,10 @@ class SessionDisplay(wx.Frame):
 		self.initEvents()
 		self.Show()
 		
-		self.initPlot()
+		if self.parent.mode == 'DRX':
+			self.initPlotDRX()
+		else:
+			self.initPlot()
 		
 	def initUI(self):
 		"""
@@ -1990,6 +2000,117 @@ class SessionDisplay(wx.Frame):
 				ax.set_major_locator( tkr )
 				ax.set_minor_locator( tkr )
 				
+		## Draw
+		self.canvas.draw()
+		self.connect()
+		
+	def initPlotDRX(self):
+		"""
+		Test function to plot source elevation for the observations.
+		"""
+		
+		self.obs = self.parent.project.sessions[0].observations
+
+		if len(self.obs) == 0:
+			return False
+		
+		## Find the earliest observation
+		self.earliest = conflict.unravelObs(self.obs)[0][0]
+		
+		self.figure.clf()
+		self.ax1 = self.figure.gca()
+		
+		## The actual observations
+		observer = lwa1.getObserver()
+		
+		i = 0
+		for o in self.obs:
+			t = []
+			el = []
+			
+			if o.mode not in ('TBW', 'TBN', 'STEPPED'):
+				## Get the source
+				src = o.getFixedBody()
+				
+				dt = 0.0
+				stepSize = o.dur / 1000.0 / 300
+				if stepSize < 30.0:
+					stepSize = 30.0
+				
+				## Find its elevation over the course of the observation
+				while dt < o.dur/1000.0:
+					observer.date = o.mjd + (o.mpm/1000.0 + dt)/3600/24.0 + MJD_OFFSET - DJD_OFFSET
+					src.compute(observer)
+				
+					el.append( float(src.alt) * 180.0 / math.pi )
+					t.append( o.mjd + (o.mpm/1000.0 + dt) / (3600.0*24.0) - self.earliest )
+				
+					dt += stepSize
+					
+				## Make sure we get the end of the observation
+				dt = o.dur/1000.0
+				observer.date = o.mjd + (o.mpm/1000.0 + dt)/3600/24.0 + MJD_OFFSET - DJD_OFFSET
+				src.compute(observer)
+				
+				el.append( float(src.alt) * 180.0 / math.pi )
+				t.append( o.mjd + (o.mpm/1000.0 + dt) / (3600.0*24.0) - self.earliest )
+				
+				## Plot the elevation over time
+				self.ax1.plot(t, el, label='%s' % o.target)
+				
+				## Draw the observation limits
+				self.ax1.vlines(o.mjd + o.mpm/1000.0 / (3600.0*24.0) - self.earliest, 0, 90, linestyle=':')
+				self.ax1.vlines(o.mjd + (o.mpm/1000.0 + o.dur/1000.0) / (3600.0*24.0) - self.earliest, 0, 90, linestyle=':')
+				
+				i += 1
+				
+			elif o.mode == 'STEPPED':
+				t0 = o.mjd + (o.mpm/1000.0) / (3600.0*24.0) - self.earliest
+				for s in o.steps:
+					## Get the source
+					src = s.getFixedBody()
+					
+					## Figure out if we have RA/Dec or az/alt
+					if src is not None:
+						observer.date = t0 + MJD_OFFSET - DJD_OFFSET
+						src.compute(observer)
+						alt = float(src.alt) * 180.0 / math.pi
+					else:
+						alt = s.c2
+						
+					el.append( alt )
+					t.append( t0 )
+					t0 += (s.dur/1000.0) / (3600.0*24.0)
+					
+				## Plot the elevation over time
+				self.ax1.plot(t, el, label='%s' % o.target)
+				
+				## Draw the observation limits
+				self.ax1.vlines(o.mjd + o.mpm/1000.0 / (3600.0*24.0) - self.earliest, 0, 90, linestyle=':')
+				self.ax1.vlines(o.mjd + (o.mpm/1000.0 + o.dur/1000.0) / (3600.0*24.0) - self.earliest, 0, 90, linestyle=':')
+				
+				i += 1
+				
+			else:
+				pass
+			
+		## Add a legend
+		handles, labels = self.ax1.get_legend_handles_labels()
+		self.ax1.legend(handles[:i], labels[:i], loc=0)
+			
+		## Second set of x axes
+		self.ax1.xaxis.tick_bottom()
+		self.ax1.set_ylim([0, 90])
+		self.ax2 = self.figure.add_axes(self.ax1.get_position(), sharey=self.ax1, frameon=False)
+		self.ax2.xaxis.tick_top()
+		self.ax2.set_xlim([self.ax1.get_xlim()[0]*24.0, self.ax1.get_xlim()[1]*24.0])
+			
+		## Labels
+		self.ax1.set_xlabel('MJD-%i [days]' % self.earliest)
+		self.ax1.set_ylabel('Elevation [deg.]')
+		self.ax2.set_xlabel('Session Elapsed Time [hours]')
+		self.ax2.xaxis.set_label_position('top')
+		
 		## Draw
 		self.canvas.draw()
 		self.connect()
