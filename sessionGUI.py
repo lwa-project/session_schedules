@@ -818,8 +818,19 @@ class SDFCreator(wx.Frame):
 			"""
 			Special conversion function for deal with RA values.
 			"""
-
-			value = float(text)
+			
+			fields = text.split(':')
+			fields = [float(f) for f in fields]
+			sign = 1
+			if fields[0] < 0:
+				sign = -1
+			fields[0] = abs(fields[0])
+			
+			value = 0
+			for f,d in zip(fields, [1.0, 60.0, 3600.0]):
+				value += (f / d)
+			value *= sign
+			
 			if value <= 0 or value >= 24:
 				raise ValueError("RA value must be 0 < RA < 24")
 			else:
@@ -829,8 +840,19 @@ class SDFCreator(wx.Frame):
 			"""
 			Special conversion function for dealing with dec. values.
 			"""
-
-			value = float(text)
+			
+			fields = text.split(':')
+			fields = [float(f) for f in fields]
+			sign = 1
+			if fields[0] < 0:
+				sign = -1
+			fields[0] = abs(fields[0])
+			
+			value = 0
+			for f,d in zip(fields, [1.0, 60.0, 3600.0]):
+				value += (f / d)
+			value *= sign
+			
 			if value < -90 or value > 90:
 				raise ValueError("Dec values must be -90 <= dec <= 90")
 			else:
