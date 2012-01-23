@@ -29,6 +29,7 @@ def index(req):
 		projectInfo = {}
 		for keyword in ['firstName', 'lastName', 'observerID', 'projectName', 'projectID', 'projectComments']:
 			projectInfo[keyword] = req.form.getfirst(keyword, None)
+		projectInfo['projectComments'] = projectInfo['projectComments'].replace('\n', ';;')
 		projectInfo['sessionMode'] = sessionMode
 		
 		sess['projectInfo'] = projectInfo
@@ -71,6 +72,7 @@ def index(req):
 			obsName = req.form.getfirst('obsName%i' % numObs, None)
 			obsTarget = req.form.getfirst('obsTarget%i' % numObs, None)
 			obsComments = req.form.getfirst('obsComments%i' % numObs, None)
+			obsComments = obsComments.replace('\n', ';;')
 			obsStart = req.form.getfirst('obsStart%i' % numObs, None)
 			if projectInfo['sessionMode'] == 'TBW':
 				obsBits = int(req.form.getfirst('bits', 12))

@@ -1228,7 +1228,7 @@ class ObserverInfo(wx.Frame):
 		if self.parent.project.name != '':
 			pnameText.SetValue(self.parent.project.name)
 		if self.parent.project.comments != '' and self.parent.project.comments is not None:
-			pcomsText.SetValue(self.parent.project.comments)
+			pcomsText.SetValue(self.parent.project.comments.replace(';;', '\n'))
 		
 		sizer.Add(prj, pos=(row+0,0), span=(1,5), flag=wx.ALIGN_CENTER, border=5)
 		
@@ -1264,7 +1264,7 @@ class ObserverInfo(wx.Frame):
 		if self.parent.project.sessions[0].name != '':
 			snameText.SetValue(self.parent.project.sessions[0].name)
 		if self.parent.project.sessions[0].comments != '' and self.parent.project.sessions[0].comments is not None:
-			scomsText.SetValue(self.parent.project.sessions[0].comments)
+			scomsText.SetValue(self.parent.project.sessions[0].comments.replace(';;', '\n'))
 		
 		tid = wx.StaticText(panel, label='Session Type')
 		tbwRB = wx.RadioButton(panel, -1, 'Transient Buffer-Wide (TBW)', style=wx.RB_GROUP)
@@ -1403,11 +1403,11 @@ class ObserverInfo(wx.Frame):
 		
 		self.parent.project.id = self.projectIDEntry.GetValue()
 		self.parent.project.name = self.projectTitleEntry.GetValue()
-		self.parent.project.comments = self.projectCommentsEntry.GetValue()
+		self.parent.project.comments = self.projectCommentsEntry.GetValue().replace('\n', ';;')
 		
 		self.parent.project.sessions[0].id = int(self.sessionIDEntry.GetValue())
 		self.parent.project.sessions[0].name = self.sessionTitleEntry.GetValue()
-		self.parent.project.sessions[0].comments = self.sessionCommentsEntry.GetValue()
+		self.parent.project.sessions[0].comments = self.sessionCommentsEntry.GetValue().replace('\n', ';;')
 		
 		if self.drsuButton.GetValue():
 			self.parent.project.sessions[0].dataReturnMethod = 'DRSU'
