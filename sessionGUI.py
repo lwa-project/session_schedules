@@ -983,6 +983,21 @@ class SDFCreator(wx.Frame):
 			self.listControl.SetStringItem(index, 7, "%i" % obs.filter)
 		
 		if self.mode == 'DRX':
+			def dec2sexstr(value, signed=True):
+				sign = 1
+				if value < 0:
+					sign = -1
+				value = abs(value)
+				
+				d = sign*int(value)
+				m = int(value*60) % 60
+				s = float(value*3600) % 60
+				
+				if signed:
+					return '%+03i:%02i:%04.1f' % (d, m, s)
+				else:
+					return '%02i:%02i:%05.2f' % (d, m, s)
+			
 			self.listControl.SetStringItem(index, 5, obs.duration)
 			if obs.mode == 'TRK_SOL':
 				self.listControl.SetStringItem(index, 6, "Sun")
@@ -991,8 +1006,8 @@ class SDFCreator(wx.Frame):
 				self.listControl.SetStringItem(index, 6, "Jupiter")
 				self.listControl.SetStringItem(index, 7, "--")
 			else:
-				self.listControl.SetStringItem(index, 6, "%.6f" % obs.ra)
-				self.listControl.SetStringItem(index, 7, "%+.6f" % obs.dec)
+				self.listControl.SetStringItem(index, 6, dec2sexstr(obs.ra, signed=False))
+				self.listControl.SetStringItem(index, 7, dec2sexstr(obs.dec, signed=True))
 			self.listControl.SetStringItem(index, 8, "%.6f" % (obs.freq1*fS/2**32 / 1e6))
 			self.listControl.SetStringItem(index, 9, "%.6f" % (obs.freq2*fS/2**32 / 1e6))
 			self.listControl.SetStringItem(index, 10, "%i" % obs.filter)
