@@ -55,7 +55,7 @@ def index(req):
 	# Run the parser/validator.  This uses a copy of Steve's tpss program.  tpss is run
 	# to level to to make sure that the file is valid.  If the exit status is not '2', 
 	# the file is taken to be invalid.
-	validator = subprocess.Popen([_tpss, tmpFile, '2', '1'], bufsize=-1, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	validator = subprocess.Popen([_tpss, tmpFile, '2', '0'], bufsize=-1, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 	stdout, stderr = validator.communicate()
 	status = validator.wait()
 	if status == 2:
