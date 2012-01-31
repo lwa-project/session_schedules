@@ -9,6 +9,7 @@ try:
 	import cStringIO as StringIO
 except ImportError:
 	import StringIO
+from datetime import datetime
 
 import conflict
 
@@ -157,6 +158,9 @@ class SDFCreator(wx.Frame):
 	def __init__(self, parent, title, args=[]):
 		wx.Frame.__init__(self, parent, title=title, size=(750,500))
 		
+		self.scriptPath = os.path.abspath(__file__)
+		self.scriptPath = os.path.split(self.scriptPath)[0]
+		
 		self.dirname = ''
 		self.toolbar = None
 		self.statusbar = None
@@ -292,35 +296,35 @@ class SDFCreator(wx.Frame):
 		
 		# Toolbar
 		self.toolbar = self.CreateToolBar()
-		self.toolbar.AddLabelTool(ID_NEW, '', wx.Bitmap('icons/new.png'), shortHelp='New', 
+		self.toolbar.AddLabelTool(ID_NEW, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'new.png')), shortHelp='New', 
 								longHelp='Clear the existing setup and start a new project/session')
-		self.toolbar.AddLabelTool(ID_OPEN, '', wx.Bitmap('icons/open.png'), shortHelp='Open', 
+		self.toolbar.AddLabelTool(ID_OPEN, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'open.png')), shortHelp='Open', 
 								longHelp='Open and load an existing SD file')
-		self.toolbar.AddLabelTool(ID_SAVE, '', wx.Bitmap('icons/save.png'), shortHelp='Save', 
+		self.toolbar.AddLabelTool(ID_SAVE, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'save.png')), shortHelp='Save', 
 								longHelp='Save the current setup')
-		self.toolbar.AddLabelTool(ID_SAVE_AS, '', wx.Bitmap('icons/save-as.png'), shortHelp='Save as', 
+		self.toolbar.AddLabelTool(ID_SAVE_AS, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'save-as.png')), shortHelp='Save as', 
 								longHelp='Save the current setup to a new SD file')
-		self.toolbar.AddLabelTool(ID_QUIT, '', wx.Bitmap('icons/exit.png'), shortHelp='Quit', 
+		self.toolbar.AddLabelTool(ID_QUIT, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'exit.png')), shortHelp='Quit', 
 								longHelp='Quit (without saving)')
 		self.toolbar.AddSeparator()
-		self.toolbar.AddLabelTool(ID_ADD_TBW, 'tbw', wx.Bitmap('icons/tbw.png'), shortHelp='Add TBW', 
+		self.toolbar.AddLabelTool(ID_ADD_TBW, 'tbw', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'tbw.png')), shortHelp='Add TBW', 
 								longHelp='Add a new all-sky TBW observation to the list')
-		self.toolbar.AddLabelTool(ID_ADD_TBN, 'tbn', wx.Bitmap('icons/tbn.png'), shortHelp='Add TBN', 
+		self.toolbar.AddLabelTool(ID_ADD_TBN, 'tbn', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'tbn.png')), shortHelp='Add TBN', 
 								longHelp='Add a new all-sky TBN observation to the list')
-		self.toolbar.AddLabelTool(ID_ADD_DRX_RADEC,  'drx-radec',  wx.Bitmap('icons/drx-radec.png'),  shortHelp='Add DRX - RA/Dec', 
+		self.toolbar.AddLabelTool(ID_ADD_DRX_RADEC,  'drx-radec',  wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'drx-radec.png')),  shortHelp='Add DRX - RA/Dec', 
 								longHelp='Add a new beam forming DRX observation that tracks the sky (ra/dec)')
-		self.toolbar.AddLabelTool(ID_ADD_DRX_SOLAR,  'drx-solar',  wx.Bitmap('icons/drx-solar.png'),  shortHelp='Add DRX - Solar', 
+		self.toolbar.AddLabelTool(ID_ADD_DRX_SOLAR,  'drx-solar',  wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'drx-solar.png')),  shortHelp='Add DRX - Solar', 
 								longHelp='Add a new beam forming DRX observation that tracks the Sun')
-		self.toolbar.AddLabelTool(ID_ADD_DRX_JOVIAN, 'drx-jovian', wx.Bitmap('icons/drx-jovian.png'), shortHelp='Add DRX - Jovian', 
+		self.toolbar.AddLabelTool(ID_ADD_DRX_JOVIAN, 'drx-jovian', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'drx-jovian.png')), shortHelp='Add DRX - Jovian', 
 								longHelp='Add a new beam forming DRX observation that tracks Jupiter')
-		self.toolbar.AddLabelTool(ID_ADD_STEPPED,  'stepped', wx.Bitmap('icons/stepped.png'), shortHelp='Add DRX - Stepped', 
+		self.toolbar.AddLabelTool(ID_ADD_STEPPED,  'stepped', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'stepped.png')), shortHelp='Add DRX - Stepped', 
 								longHelp='Add a new beam forming DRX observation with custom position and frequency stepping')
-		self.toolbar.AddLabelTool(ID_REMOVE, '', wx.Bitmap('icons/remove.png'), shortHelp='Remove Selected', 
+		self.toolbar.AddLabelTool(ID_REMOVE, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'remove.png')), shortHelp='Remove Selected', 
 								longHelp='Remove the selected observations from the list')
-		self.toolbar.AddLabelTool(ID_VALIDATE, '', wx.Bitmap('icons/validate.png'), shortHelp='Validate Observations', 
+		self.toolbar.AddLabelTool(ID_VALIDATE, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'validate.png')), shortHelp='Validate Observations', 
 								longHelp='Validate the current set of parameters and observations')
 		self.toolbar.AddSeparator()
-		self.toolbar.AddLabelTool(ID_HELP, '', wx.Bitmap('icons/help.png'), shortHelp='Help', 
+		self.toolbar.AddLabelTool(ID_HELP, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'help.png')), shortHelp='Help', 
 								longHelp='Display a brief help message for this program')
 		self.toolbar.Realize()
 		
@@ -502,7 +506,7 @@ class SDFCreator(wx.Frame):
 		id = self.listControl.GetItemCount() + 1
 		bits = self.project.sessions[0].tbwBits
 		samples = self.project.sessions[0].tbwSamples
-		self.project.sessions[0].observations.append( sdf.TBW('tbw-%i' % id, 'All-Sky', 'UTC 2011 01 01 00:00:00.000', samples, bits=bits) )
+		self.project.sessions[0].observations.append( sdf.TBW('tbw-%i' % id, 'All-Sky', 'UTC %i 01 01 00:00:00.000' % datetime.now().year, samples, bits=bits) )
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
 		self.edited = True
@@ -515,7 +519,7 @@ class SDFCreator(wx.Frame):
 		
 		id = self.listControl.GetItemCount() + 1
 		gain = self.project.sessions[0].tbnGain
-		self.project.sessions[0].observations.append( sdf.TBN('tbn-%i' % id, 'All-Sky', 'UTC 2011 01 01 00:00:00.000', '00:00:00.000', 38e6, 7) )
+		self.project.sessions[0].observations.append( sdf.TBN('tbn-%i' % id, 'All-Sky', 'UTC %i 01 01 00:00:00.000' % datetime.now().year, '00:00:00.000', 38e6, 7) )
 		self.project.sessions[0].observations[-1].gain = gain
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
@@ -529,7 +533,7 @@ class SDFCreator(wx.Frame):
 		
 		id = self.listControl.GetItemCount() + 1
 		gain = self.project.sessions[0].drxGain
-		self.project.sessions[0].observations.append( sdf.DRX('drx-%i' % id, 'target-%i' % id, 'UTC 2011 01 01 00:00:00.000', '00:00:00.000', 0.0, 0.0, 38e6, 74e6, 7) )
+		self.project.sessions[0].observations.append( sdf.DRX('drx-%i' % id, 'target-%i' % id, 'UTC %i 01 01 00:00:00.000' % datetime.now().year, '00:00:00.000', 0.0, 0.0, 38e6, 74e6, 7) )
 		self.project.sessions[0].observations[-1].gain = gain
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
@@ -543,7 +547,7 @@ class SDFCreator(wx.Frame):
 		
 		id = self.listControl.GetItemCount() + 1
 		gain = self.project.sessions[0].drxGain
-		self.project.sessions[0].observations.append( sdf.Solar('solar-%i' % id, 'target-%i' % id, 'UTC 2011 01 01 00:00:00.000', '00:00:00.000', 38e6, 74e6, 7) )
+		self.project.sessions[0].observations.append( sdf.Solar('solar-%i' % id, 'target-%i' % id, 'UTC %i 01 01 00:00:00.000' % datetime.now().year, '00:00:00.000', 38e6, 74e6, 7) )
 		self.project.sessions[0].observations[-1].gain = gain
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
@@ -557,7 +561,7 @@ class SDFCreator(wx.Frame):
 		
 		id = self.listControl.GetItemCount() + 1
 		gain = self.project.sessions[0].drxGain
-		self.project.sessions[0].observations.append( sdf.Jovian('jovian-%i' % id, 'target-%i' % id, 'UTC 2011 01 01 00:00:00.000', '00:00:00.000', 38e6, 74e6, 7) )
+		self.project.sessions[0].observations.append( sdf.Jovian('jovian-%i' % id, 'target-%i' % id, 'UTC %i 01 01 00:00:00.000' % datetime.now().year, '00:00:00.000', 38e6, 74e6, 7) )
 		self.project.sessions[0].observations[-1].gain = gain
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
@@ -778,7 +782,7 @@ class SDFCreator(wx.Frame):
 		
 		dialog = wx.AboutDialogInfo()
 		
-		dialog.SetIcon(wx.Icon('icons/lwa.png', wx.BITMAP_TYPE_PNG))
+		dialog.SetIcon(wx.Icon(os.path.join(self.scriptPath, 'icons', 'lwa.png'), wx.BITMAP_TYPE_PNG))
 		dialog.SetName('Session GUI')
 		dialog.SetVersion(__version__)
 		dialog.SetDescription("""GUI for creating session definition files to define observations with the Long Wavelength Array.""")
