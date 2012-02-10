@@ -89,6 +89,9 @@ def main(args):
 	print " "
 	# Update the observations
 	for i in xrange(nObs):
+		start = tStart[i].strftime("%Z %Y %m %d %H:%M:%S.%f")
+		start = start[:-4]
+
 		utc = Time(tStart[i], format=Time.FORMAT_PY_DATE)
 		mjd = int(utc.utc_mjd)
 		
@@ -102,6 +105,7 @@ def main(args):
 		
 		project.sessions[0].observations[i].mjd = mjd
 		project.sessions[0].observations[i].mpm = mpm
+		project.sessions[0].observations[i].start = start
 
 	# Save
 	fh = open(outputSDF, 'w')
