@@ -44,9 +44,10 @@ resolve.py
   Apache/python script to provide a web-based name resolver.
 
 validator.py
-  Apache/python script to validate SDFs via the validation interfaces 
-  available in sdf.py and with the tpss executable build from MCS JR5.  
-  This validator runs tpss up to level 2.
+  Apache/python script to validate SDFs via the validation interfaces available 
+  in sdf.py and with the tpss executable.  This validator runs tpss up to level 2.  
+  The script can also be run from the command line with a single SDF file as an 
+  input to validate that file again tpss.
 
 session-definition.py
   Apache/python script to provide a web interface to creating SDFs.  The 
