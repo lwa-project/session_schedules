@@ -2000,14 +2000,8 @@ class SessionDisplay(wx.Frame):
 		
 		## Find the earliest observation
 		self.earliest = conflict.unravelObs(self.obs)[0][0]
-		
-		## Assign beams (DRX modes only)
-		if mode in ('TBW', 'TBN'):
-			yls = [0]*len(self.obs)
-			tkr = NullLocator()
-		else:
-			yls = conflict.assignBeams(self.obs, nBeams=4)
-			tkr = None
+		yls = [0]*len(self.obs)
+		tkr = NullLocator()
 		
 		self.figure.clf()
 		self.ax1 = self.figure.gca()
