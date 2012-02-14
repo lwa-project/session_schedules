@@ -32,6 +32,14 @@ sessionGUI.py
 shiftSDF.py
   Simple script to shift the start time of a SDF file to a new UTC date/time.
 
+jov2radec.py
+  Script to convert TRK_JOV observation to TRK_RADEC observations using the
+  position of Jupiter at the midpoint of the observation.
+
+sol2radec.py
+  Script to convert TRK_SOL observation to TRK_RADEC observations using the
+  position of the Sun at the midpoint of the observation.
+
 resolve.py
   Apache/python script to provide a web-based name resolver.
 
