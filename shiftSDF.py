@@ -90,7 +90,7 @@ def main(args):
 	# Update the observations
 	for i in xrange(nObs):
 		start = tStart[i].strftime("%Z %Y %m %d %H:%M:%S.%f")
-		start = start[:-4]
+		start = start[:-3]
 
 		utc = Time(tStart[i], format=Time.FORMAT_PY_DATE)
 		mjd = int(utc.utc_mjd)

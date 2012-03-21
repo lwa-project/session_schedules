@@ -2,11 +2,12 @@
 # -*- coding: utf-8 -*-
 
 """
-Script to shift an SDF file in time based on the first observation.  This
-could be useful for moving SDF files around in time without observer intervention.
+Script to shift an SDF file in time based on the first observation.  This scipts
+keeps track of the LST and will shift an observation to the same LST on a new UTC
+date.
 
 Usage:
-  shiftSDF.py <input_SDF> <output_SDF>
+  shiftSDFLST.py <input_SDF> <output_SDF>
 
 Options:
   None
@@ -36,7 +37,7 @@ formatString = '%Y/%m/%d %H:%M:%S.%f %Z'
 
 
 solarDay    = timedelta(seconds=24*3600, microseconds=0)
-siderealDay = timedelta(seconds=23*3600+56*60+4, microseconds=90531)
+siderealDay = timedelta(seconds=23*3600+56*60+4, microseconds=91000)
 siderealRegression = solarDay - siderealDay
 
 print solarDay, siderealDay, siderealRegression
@@ -69,25 +70,28 @@ def main(args):
 	print " "
 	print "Enter the new UTC start date:"
 	tNewStart = raw_input('YYYY/MM/DD-> ')
-	tNewStart = datetime.strptime(tNewStart+min(tStart).strftime(' %H:%M:%S'), '%Y/%m/%d %H:%M:%S')
-	tNewStart = _UTC.localize(tNewStart)
-	print tNewStart
-	
-	days = (tNewStart - min(tStart)).days
-	siderealShift = tNewStart - (siderealRegression*days)
-	print siderealShift1
-	
-	sys.exit()
 	try:
-		tNewStart = datetime.strptime(tNewStart, '%Y/%m/%d %H:%M:%S.%f')
-	except ValueError:
-		try:
-			tNewStart = datetime.strptime(tNewStart, '%Y/%m/%d %H:%M:%S')
-		except Exception, e:
-			print "Error: %s" % str(e)
-			sys.exit(1)
-		
+		tNewStart = datetime.strptime(tNewStart+min(tStart).strftime(' %H:%M:%S'), '%Y/%m/%d %H:%M:%S')
+	except Exception, e:
+		print "Error: %s" % str(e)
+		sys.exit(1)
 	tNewStart = _UTC.localize(tNewStart)
+	
+	# Figure out a new start time on the correct day
+	diff = ((tNewStart - min(tStart)).days) * siderealRegression
+	## Try to make sure that the timedelta object is less than 1 day
+	while diff.days > 0:
+		diff -= siderealDay
+	while diff.days < -1:
+		diff += siderealDay
+	## Come up with the new start time
+	siderealShift = tNewStart - diff
+	## Another check to make sure we are are the right day
+	if siderealShift.date() < tNewStart.date():
+		siderealShift += siderealDay
+	if siderealShift.date() > tNewStart.date():
+		siderealShift -= siderealDay
+	tNewStart = siderealShift
 	tShift = tNewStart - min(tStart)
 	
 	# Get the LST at the new start
@@ -106,7 +110,7 @@ def main(args):
 	# Update the observations
 	for i in xrange(nObs):
 		start = tStart[i].strftime("%Z %Y %m %d %H:%M:%S.%f")
-		start = start[:-4]
+		start = start[:-3]
 
 		utc = Time(tStart[i], format=Time.FORMAT_PY_DATE)
 		mjd = int(utc.utc_mjd)
@@ -125,7 +129,7 @@ def main(args):
 
 	# Save
 	fh = open(outputSDF, 'w')
-	fh.write( project.render() )
+	fh.write( project.render(verbose=True) )
 	fh.close()
 
 
