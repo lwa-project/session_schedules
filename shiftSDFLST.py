@@ -129,7 +129,7 @@ def main(args):
 
 	# Save
 	fh = open(outputSDF, 'w')
-	fh.write( project.render(verbose=True) )
+	fh.write( project.render() )
 	fh.close()
 
 
