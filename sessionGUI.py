@@ -36,7 +36,7 @@ from matplotlib.figure import Figure
 from matplotlib.ticker import NullFormatter, NullLocator
 
 
-__version__ = "0.2"
+__version__ = "0.3"
 __revision__ = "$Rev$"
 __author__ = "Jayce Dowell"
 
@@ -1162,7 +1162,7 @@ class ObserverInfo(wx.Frame):
 	"""
 	
 	def __init__(self, parent):
-		wx.Frame.__init__(self, parent, title='Observer Information', size=(800,685))
+		wx.Frame.__init__(self, parent, title='Observer Information', size=(800,715))
 		
 		self.parent = parent
 		
@@ -1173,7 +1173,7 @@ class ObserverInfo(wx.Frame):
 	def initUI(self):
 		row = 0
 		panel = wx.Panel(self)
-		sizer = wx.GridBagSizer(5, 5)
+		sizer = wx.GridBagSizer(5, 6)
 		
 		font = wx.SystemSettings_GetFont(wx.SYS_SYSTEM_FONT)
 		font.SetPointSize(font.GetPointSize()+2)
@@ -1198,18 +1198,18 @@ class ObserverInfo(wx.Frame):
 			fnameText.SetValue(self.parent.project.observer.first)
 			lnameText.SetValue(self.parent.project.observer.last)
 		
-		sizer.Add(obs, pos=(row+0,0), span=(1,5), flag=wx.ALIGN_CENTER, border=5)
+		sizer.Add(obs, pos=(row+0,0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
 		
 		sizer.Add(oid, pos=(row+1, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(oidText, pos=(row+1, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(oidText, pos=(row+1, 1), span=(1, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		
 		sizer.Add(fname, pos=(row+2, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(fnameText, pos=(row+2, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(fnameText, pos=(row+2, 1), span=(1, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		sizer.Add(lname, pos=(row+3, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(lnameText, pos=(row+3, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(lnameText, pos=(row+3, 1), span=(1, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		
 		line = wx.StaticLine(panel)
-		sizer.Add(line, pos=(row+4, 0), span=(1, 5), flag=wx.EXPAND|wx.BOTTOM, border=10)
+		sizer.Add(line, pos=(row+4, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
 		
 		row += 5
 		
@@ -1234,18 +1234,18 @@ class ObserverInfo(wx.Frame):
 		if self.parent.project.comments != '' and self.parent.project.comments is not None:
 			pcomsText.SetValue(self.parent.project.comments.replace(';;', '\n'))
 		
-		sizer.Add(prj, pos=(row+0,0), span=(1,5), flag=wx.ALIGN_CENTER, border=5)
+		sizer.Add(prj, pos=(row+0,0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
 		
 		sizer.Add(pid, pos=(row+1, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(pidText, pos=(row+1, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(pidText, pos=(row+1, 1), span=(1, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		
 		sizer.Add(pname, pos=(row+2, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(pnameText, pos=(row+2, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(pnameText, pos=(row+2, 1), span=(1, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		sizer.Add(pcoms, pos=(row+3, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(pcomsText, pos=(row+3, 1), span=(4, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(pcomsText, pos=(row+3, 1), span=(4, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		
 		line = wx.StaticLine(panel)
-		sizer.Add(line, pos=(row+7, 0), span=(1, 5), flag=wx.EXPAND|wx.BOTTOM, border=10)
+		sizer.Add(line, pos=(row+7, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
 		
 		row += 8
 		
@@ -1300,29 +1300,69 @@ class ObserverInfo(wx.Frame):
 		did = wx.StaticText(panel, label='Data Return Method')
 		drsuRB = wx.RadioButton(panel, -2, 'DRSU', style=wx.RB_GROUP)
 		usbRB = wx.RadioButton(panel, -2, 'USB Harddrive (4 max)')
-		redRB = wx.RadioButton(panel, -2, 'Archive (describe reduction in session comments)')
-		if self.parent.project.sessions[0].dataReturnMethod == 'DRSU':
+		drsRB = wx.RadioButton(panel, -2, 'DR spectrometer')
+		redRB = wx.RadioButton(panel, -2, 'Archive (describe in comments)')
+		
+		nchn = wx.StaticText(panel, label='Channels')
+		nchnText = wx.TextCtrl(panel)
+		nint = wx.StaticText(panel, label='FFTs/int.')
+		nintText = wx.TextCtrl(panel)
+		
+		if self.parent.project.sessions[0].dataReturnMethod == 'DR Spectrometer' or (self.parent.project.sessions[0].spcSetup[0] != 0 and self.parent.project.sessions[0].spcSetup[1] != 0):
+			drsuRB.SetValue(False)
+			usbRB.SetValue(False)
+			drsRB.SetValue(True)
+			redRB.SetValue(False)
+			
+			nchnText.SetValue("%i" % self.parent.project.sessions[0].spcSetup[0])
+			nintText.SetValue("%i" % self.parent.project.sessions[0].spcSetup[1])
+			
+		elif self.parent.project.sessions[0].dataReturnMethod == 'DRSU':
 			drsuRB.SetValue(True)
 			usbRB.SetValue(False)
+			drsRB.SetValue(False)
 			redRB.SetValue(False)
+			
+			nchnText.SetValue("32")
+			nintText.SetValue("6144")
 		elif self.parent.project.sessions[0].dataReturnMethod == 'USB Harddrives':
 			drsuRB.SetValue(False)
 			usbRB.SetValue(True)
+			drsRB.SetValue(False)
 			redRB.SetValue(False)
+			
+			nchnText.SetValue("32")
+			nintText.SetValue("6144")
 		else:
 			drsuRB.SetValue(False)
 			usbRB.SetValue(False)
+			drsRB.SetValue(False)
 			redRB.SetValue(True)
+			
+			nchnText.SetValue("32")
+			nintText.SetValue("6144")
+			
+		if self.parent.mode != '':
+			if self.parent.mode == 'TBW':
+				drsRB.Disable()
+				nchnText.Disable()
+				nintText.Disable()
+			elif self.parent.mode == 'TBN':
+				drsRB.Disable()
+				nchnText.Disable()
+				nintText.Disable()
+			else:
+				pass
 		
-		sizer.Add(ses, pos=(row+0, 0), span=(1,5), flag=wx.ALIGN_CENTER, border=5)
+		sizer.Add(ses, pos=(row+0, 0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
 		
 		sizer.Add(sid, pos=(row+1, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(sidText, pos=(row+1, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(sidText, pos=(row+1, 1), span=(1, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		
 		sizer.Add(sname, pos=(row+2, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(snameText, pos=(row+2, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(snameText, pos=(row+2, 1), span=(1, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		sizer.Add(scoms, pos=(row+3, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(scomsText, pos=(row+3, 1), span=(4, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(scomsText, pos=(row+3, 1), span=(4, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		sizer.Add(tid, pos=(row+7,0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		sizer.Add(tbwRB, pos=(row+7,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		sizer.Add(tbnRB, pos=(row+8,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
@@ -1330,12 +1370,18 @@ class ObserverInfo(wx.Frame):
 		sizer.Add(did, pos=(row+10,0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		sizer.Add(drsuRB, pos=(row+10,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		sizer.Add(usbRB, pos=(row+11,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(redRB, pos=(row+12,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(drsRB, pos=(row+12,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(nchn, pos=(row+12,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(nchnText, pos=(row+12,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(nint, pos=(row+12,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(nintText, pos=(row+12,5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		
+		sizer.Add(redRB, pos=(row+13,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		
 		line = wx.StaticLine(panel)
-		sizer.Add(line, pos=(row+13, 0), span=(1, 5), flag=wx.EXPAND|wx.BOTTOM, border=10)
+		sizer.Add(line, pos=(row+14, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
 		
-		row += 14
+		row += 15
 		
 		#
 		# Buttons
@@ -1343,8 +1389,8 @@ class ObserverInfo(wx.Frame):
 		
 		ok = wx.Button(panel, ID_OBS_INFO_OK, 'Ok', size=(90, 28))
 		cancel = wx.Button(panel, ID_OBS_INFO_CANCEL, 'Cancel', size=(90, 28))
-		sizer.Add(ok, pos=(row+0, 3))
-		sizer.Add(cancel, pos=(row+0, 4), flag=wx.RIGHT|wx.BOTTOM, border=5)
+		sizer.Add(ok, pos=(row+0, 4))
+		sizer.Add(cancel, pos=(row+0, 5), flag=wx.RIGHT|wx.BOTTOM, border=5)
 		
 		sizer.AddGrowableCol(1)
 		sizer.AddGrowableRow(8)
@@ -1371,6 +1417,9 @@ class ObserverInfo(wx.Frame):
 		self.drxButton = drxRB
 		self.drsuButton = drsuRB
 		self.usbButton = usbRB
+		self.drsButton = drsRB
+		self.nchnText = nchnText
+		self.nintText = nintText
 		self.redButton = redRB 
 		
 	def initEvents(self):
@@ -1415,10 +1464,18 @@ class ObserverInfo(wx.Frame):
 		
 		if self.drsuButton.GetValue():
 			self.parent.project.sessions[0].dataReturnMethod = 'DRSU'
+			self.parent.project.sessions[0].spcSetup = [0, 0]
 		elif self.usbButton.GetValue():
 			self.parent.project.sessions[0].dataReturnMethod = 'USB Harddrives'
+			self.parent.project.sessions[0].spcSetup = [0, 0]
+		elif self.drsButton.GetValue():
+			self.parent.project.sessions[0].dataReturnMethod = 'DR Spectrometer'
+			nchn = int(self.nchnText.GetValue())
+			nint = int(self.nintText.GetValue())
+			self.parent.project.sessions[0].spcSetup = [nchn, nint]
 		else:
-			self.parent.project.sessions[0].dataReturnMethod = 'Reduced per session comments'
+			self.parent.project.sessions[0].dataReturnMethod = 'Reduced per comments'
+			self.parent.project.sessions[0].spcSetup = [0, 0]
 		
 		if self.tbwButton.GetValue():
 			self.parent.mode = 'TBW'
@@ -1467,7 +1524,7 @@ class AdvancedInfo(wx.Frame):
 		if parent.mode == 'TBW':
 			size = (830, 575)
 		else:
-			size = (830, 550)
+			size = (830, 580)
 
 		wx.Frame.__init__(self, parent, title='Advanced Settings', size=size)
 		
@@ -1489,6 +1546,8 @@ class AdvancedInfo(wx.Frame):
 		tbnGain.insert(0, 'MCS Decides')
 		drxGain = ['%i' % i for i in xrange(13)]
 		drxGain.insert(0, 'MCS Decides')
+		drxBeam = ['%i' %i for i in xrange(1, 5)]
+		drxBeam.insert(0, 'MCS Decides')
 		intervals = ['MCS Decides', 'Never', '1 minute', '5 minutes', '15 minutes', '30 minutes', '1 hour']
 		aspFilters = ['MCS Decides', 'Split', 'Full', 'Reduced', 'Off']
 		aspAttn = ['%i' % i for i in xrange(16)]
@@ -1719,16 +1778,25 @@ class AdvancedInfo(wx.Frame):
 				dgainText.SetStringSelection('MCS Decides')
 			else:
 				dgainText.SetStringSelection('%i' % self.parent.project.sessions[0].drxGain)
-			
+				
+			dbeam = wx.StaticText(panel, label='Beam')
+			dbeamText = wx.ComboBox(panel, -1, value='MCS Decides', choices=drxBeam, style=wx.CB_READONLY)
+			if self.parent.project.sessions[0].drxBeam == -1:
+				dbeamText.SetStringSelection('MCS Decides')
+			else:
+				dbeamText.SetStringSelection('%i' % self.parent.project.sessions[0].drxBeam)
+				
 			sizer.Add(drx, pos=(row+0,0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
 			
 			sizer.Add(dgain, pos=(row+1, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 			sizer.Add(dgainText, pos=(row+1, 1), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			sizer.Add(dbeam, pos=(row+2, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			sizer.Add(dbeamText, pos=(row+2, 1), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 			
 			line = wx.StaticLine(panel)
-			sizer.Add(line, pos=(row+2, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
+			sizer.Add(line, pos=(row+3, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
 			
-			row += 3
+			row += 4
 
 		#
 		# Buttons
@@ -1769,6 +1837,7 @@ class AdvancedInfo(wx.Frame):
 		
 		if self.parent.mode == 'DRX':
 			self.drxGain = dgainText
+			self.drxBeam = dbeamText
 
 		self.aspFlt = aspComboFlt
 		self.aspAT1 = aspComboAT1
@@ -1841,6 +1910,7 @@ class AdvancedInfo(wx.Frame):
 			
 		if self.parent.mode == 'DRX':
 			self.parent.project.sessions[0].drxGain = self.__parseGainCombo(self.drxGain)
+			self.parent.project.sessions[0].drxBeam = self.__parseGainCombo(self.drxBeam)
 		
 		for obs in self.parent.project.sessions[0].observations:
 			if obs.mode == 'TBW':
