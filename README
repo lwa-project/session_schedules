@@ -32,6 +32,10 @@ sessionGUI.py
 shiftSDF.py
   Simple script to shift the start time of a SDF file to a new UTC date/time.
 
+shiftSDFLST.py
+  Version of shiftSDF.py that deals with shifting observations to the same LST
+  on a new UTC day.
+
 jov2radec.py
   Script to convert TRK_JOV observation to TRK_RADEC observations using the
   position of Jupiter at the midpoint of the observation.
