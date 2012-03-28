@@ -15,7 +15,7 @@ import conflict
 
 from lsl.common.dp import fS
 from lsl.common.stations import lwa1
-from lsl.astro import MJD_OFFSET, DJD_OFFSET
+from lsl.astro import deg_to_dms, deg_to_hms, MJD_OFFSET, DJD_OFFSET
 from lsl.reader.tbn import filterCodes as TBNFilters
 from lsl.reader.drx import filterCodes as DRXFilters
 try:
@@ -2460,15 +2460,27 @@ class ResolveTarget(wx.Frame):
 			coordsys = (line[2].replace('\n', '').split('='))[1]
 			ra = (line[3].replace('\n', '').split('='))[1]
 			dec = (line[4].replace('\n', '').split('='))[1]
+
+			temp = deg_to_hms(float(ra))
+			raS = "%i:%02i:%05.2f" % (temp.hours, temp.minutes, temp.seconds)
+			temp = deg_to_dms(float(dec))
+			decS = "%+i:%02i:%04.1f" % (temp.degrees, temp.minutes, temp.seconds)
 		
-			self.raText.SetValue("%.6f" % (float(ra)/15.0,))
-			self.decText.SetValue("%+.6f" % (float(dec),))
+			#self.raText.SetValue("%.6f" % (float(ra)/15.0,))
+			#self.decText.SetValue("%+.6f" % (float(dec),))
+			self.raText.SetValue(raS)
+			self.decText.SetValue(decS)
 			self.srvText.SetValue(service[0:-2])
 
 			if self.observationID != -1:
 				self.appli.Enable(True)
 
 		except IOError:
+			self.raText.SetValue("---")
+			self.decText.SetValue("---")
+			self.srvText.SetValue("Error resolving target")
+		
+		except ValueError:
 			self.raText.SetValue("---")
 			self.decText.SetValue("---")
 			self.srvText.SetValue("Error resolving target")

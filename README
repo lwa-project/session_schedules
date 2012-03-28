@@ -30,22 +30,20 @@ sessionGUI.py
   a data volume estimator.
 
 shiftSDF.py
-  Simple script to shift the start time of a SDF file to a new UTC date/time.
-
-shiftSDFLST.py
-  Version of shiftSDF.py that deals with shifting observations to the same LST
-  on a new UTC day.
-
-jov2radec.py
-  Script to convert TRK_JOV observation to TRK_RADEC observations using the
-  position of Jupiter at the midpoint of the observation.
-
-sol2radec.py
-  Script to convert TRK_SOL observation to TRK_RADEC observations using the
-  position of the Sun at the midpoint of the observation.
+  Multi-purpose tool for shifting SDF files.  This utility allows the operator
+  to:
+    * Move a SDF file to a new start date/time
+    * Move a SDF file to a new UTC date but the same LST
+    * Apply a pointing correction (currently ~430 seconds in RA) to
+      the observations
+    * Switch the session ID to a new value
+    * Convert TRK_SOL and TRK_JOV observations to TRK_RADEC
+    * Only update one of the above and leave the time alone
+    * Print out the contents of the SDF file in an easy-to-digest manner
 
 resolve.py
-  Apache/python script to provide a web-based name resolver.
+  Apache/python script to provide a web-based name resolver.  The resolver can
+  also be run from the command line with a source name.
 
 validator.py
   Apache/python script to validate SDFs via the validation interfaces available 
