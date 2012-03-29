@@ -261,7 +261,9 @@ def main(args):
 				print "Enter the new UTC start date:"
 				tNewStart = raw_input('YYYY/MM/DD-> ')
 				try:
-					tNewStart = date.strptime(tNewStart, '%Y/%m/%d')
+					fields = tNewStart.split('/', 2)
+					fields = [int(f) for f in fields]
+					tNewStart = date(fields[0], fields[1], fields[2])
 					tNewStart = datetime.combine(tNewStart, min(tStart).time())
 				except Exception, e:
 					print "Error: %s" % str(e)
