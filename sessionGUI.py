@@ -18,10 +18,7 @@ from lsl.common.stations import lwa1
 from lsl.astro import deg_to_dms, deg_to_hms, MJD_OFFSET, DJD_OFFSET
 from lsl.reader.tbn import filterCodes as TBNFilters
 from lsl.reader.drx import filterCodes as DRXFilters
-try:
-	from lsl.common import sdf
-except ImportError:
-	import sdf
+from lsl.common import sdf
 
 import wx
 import wx.html as html

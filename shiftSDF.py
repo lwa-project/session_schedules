@@ -27,10 +27,7 @@ from datetime import datetime, date, time, timedelta
 from lsl.common.stations import lwa1
 from lsl.transform import Time
 from lsl.astro import utcjd_to_unix, MJD_OFFSET
-try:
-	from lsl.common import sdf
-except ImportError:
-	import sdf
+from lsl.common import sdf
 
 
 __version__ = "0.1"

@@ -8,7 +8,6 @@ building MCS0030 compliant session definition files (SDFs).  Session
 Schedules builds off of the LSL 0.4.x framework for working with LWA
 data and also depends on the following python modules:
   * pytz
-  * jinja2
   * wxPython
 
 No installation (e.g., python setup.py install) is required to use the
@@ -16,9 +15,6 @@ software.  Simply run the scripts in the SessionSchedules directory.
 
 Python Contents
 ---------------
-sdf.py
-  Module for reading in, validating, and writing SDFs.
-
 estimateData.py
   Simple command-line utility for estimating the data volume for a TBN or 
   DRX observation.

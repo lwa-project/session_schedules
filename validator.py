@@ -16,7 +16,7 @@ import tempfile
 import subprocess
 from jinja2 import Environment, FileSystemLoader
 
-from sdf import *
+from lsl.common.sdf import *
 
 
 __version__ = "0.1"
