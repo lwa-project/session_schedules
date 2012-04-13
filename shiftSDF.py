@@ -214,6 +214,8 @@ def main(args):
 				drxBeam = "%i" % drxBeam
 		print " DRX Beam: %s" % drxBeam
 		print " DR Spectrometer used? %s" % drspec
+		if drspec == 'Yes':
+			print " -> %i channels, %i windows/integration" % tuple(project.sessions[0].spcSetup)
 		
 		print " "
 		print " Number of observations: %i" % nObs
