@@ -83,7 +83,8 @@ def getObsStartStop(obs):
 
 class FilesListCtrl(wx.ListCtrl, CheckListCtrlMixin):
 	"""
-	Class that combines an editable list with check boxes.
+	Class that combines a list with check boxes.  This is used for making the remove files
+	dialog actually work.
 	"""
 	
 	def __init__(self, parent, **kwargs):
@@ -92,6 +93,12 @@ class FilesListCtrl(wx.ListCtrl, CheckListCtrlMixin):
 
 
 class Visualization_GUI(object):
+	"""
+	Class to handle the parsing and plotting of the SDF files selected in the GUI.  The
+	loadFiles() function relies on the 'filenames' attribute of the parent to be a list 
+	of valid SDF filenames.
+	"""
+	
 	def __init__(self, frame, observer=lwa1.getObserver()):
 		self.frame = frame
 		self.observer = observer
@@ -109,12 +116,17 @@ class Visualization_GUI(object):
 		self.unqiueProjects = []
 	
 	def loadFiles(self):
+		"""
+		Load in the SDF files listed in self.parent.filenames and compute the free time.
+		"""
+		
 		sessionSDFs = []
 		sessionNames = []
 		sessionBeams = []
 		sessionStarts = []
 		sessionDurations = []
 	
+		# Loop over filenames
 		for filename in self.frame.filenames:
 			project = sdf.parseSDF(filename)
 			pID = project.id
@@ -134,12 +146,14 @@ class Visualization_GUI(object):
 			sessionStarts.append(sessionStart)
 			sessionDurations.append(duration)
 			
+		# Find unique project identifiers
 		uniqueProjects = []
 		for name in sessionNames:
 			pID, sID = name.split('_', 1)
 			if pID not in uniqueProjects:
 				uniqueProjects.append(pID)
-			
+		
+		# Save the data
 		self.sessionSDFs = sessionSDFs
 		self.sessionNames = sessionNames
 		self.sessionBeams = sessionBeams
@@ -147,6 +161,7 @@ class Visualization_GUI(object):
 		self.sessionDurations = sessionDurations
 		self.uniqueProjects = uniqueProjects
 		
+		# Compute the free time
 		self.getFreeTime()
 		
 		try:
@@ -155,38 +170,46 @@ class Visualization_GUI(object):
 			pass
 		self.connect()
 		
-	def getFreeTime(self):
+	def getFreeTime(self, step=timedelta(seconds=900)):
+		"""
+		Using the list of SDFs read in by loadFiles(), find times when nothing is 
+		scheduled and save these 'free' times to self.freePeriods.  This attribute
+		contains a list of two-element tuples (free time start, stop).
+		"""
+		
 		startMin = min(self.sessionStarts)
 		startMax = max(self.sessionStarts)
 		
-		# Find free time
+		# Find free time in 15 minutes chunks
 		frees = []
 		tNow = round15Minutes(startMin)
-		freeLength = timedelta(seconds=900)
 		while tNow <= startMax:
 			free = True
+			# Loop over SDFs
 			for start,duration in zip(self.sessionStarts, self.sessionDurations):
 				if tNow >= start and tNow <= start+duration:
 					free = False
-				if tNow+freeLength >= start and tNow+freeLength <= start+duration:
+				if tNow+step >= start and tNow+step <= start+duration:
 					free = False
 			if free:
 				frees.append(tNow)
-			tNow += timedelta(seconds=900)
+			tNow += step
+		
+		# Use the free times to come up with free periods
 		freePeriods = [[frees[0], frees[0]],]
 		for free in frees:
-			if free-freePeriods[-1][1] <= freeLength:
+			if free-freePeriods[-1][1] <= step:
 				freePeriods[-1][1] = free
 			else:
 				freePeriods.append([free, free])
-				
+		
+		# Save
 		self.freePeriods = freePeriods
 		
 	def getSolarElevation(self, step=timedelta(seconds=900)):
 		"""
-		Given an ephem.Observer instance, a start datetime, and a stop
-		datetime, return a two-element tuple of the time and altitude 
-		for the Sun in 15 minute steps.
+		Using the time range of all loaded SDFs, return a two-element tuple of the 
+		time and altitude for the Sun in 15 minute steps.
 		"""
 		
 		# Find out how long we need to compute the position of the Sun
@@ -220,9 +243,8 @@ class Visualization_GUI(object):
 
 	def getJovianElevation(self, step=timedelta(seconds=900)):
 		"""
-		Given an ephem.Observer instance, a start datetime, and a stop
-		datetime, return a two-element tuple of the time and altitude 
-		for Jupiter in 15 minute steps.
+		Using the time range of all loaded SDFs, return a two-element tuple of the 
+		time and altitude for Jupiter in 15 minute steps.
 		"""
 		
 		# Find out how long we need to compute the position of the Sun
@@ -254,6 +276,10 @@ class Visualization_GUI(object):
 		return numpy.array(points), numpy.array(alts)
 		
 	def draw(self):
+		"""
+		Shows the sessions.
+		"""
+		
 		self.frame.figure.clf()
 		self.ax1 = self.frame.figure.gca()
 		
@@ -280,7 +306,7 @@ class Visualization_GUI(object):
 			self.ax1.barh(-0.5, d/24, left=free1, alpha=0.2, height=1.0, color='r', hatch='/')
 			self.ax1.text(free1+duration/2, 0, '%i:%02i' % (int(d), int((d-int(d))*60)), size=10, horizontalalignment='center', verticalalignment='center', rotation='vertical')
 			
-		# Plot Sun elevation
+		# Plot Sun elevation in a way that indicates day and night (if needed)
 		if self.showDayNight:
 			points, alts = self.getSolarElevation()
 			points = points.reshape(-1, 1, 2)
@@ -291,7 +317,7 @@ class Visualization_GUI(object):
 			lc.set_linewidth(5)
 			self.ax1.add_collection(lc)
 			
-		# Plot Jupiter elevation
+		# Plot Jupiter's elevation (if needed)
 		if self.showJupiter:
 			points, alts = self.getJovianElevation()
 			points = points.reshape(-1, 1, 2)
@@ -302,7 +328,7 @@ class Visualization_GUI(object):
 			lc.set_linewidth(5)
 			self.ax1.add_collection(lc)
 			
-		# Fix the x axis labels
+		# Fix the x axis labels so that we have both MT and UT
 		self.ax2 = self.ax1.twiny()
 		self.ax2.set_xticks(self.ax1.get_xticks())
 		self.ax2.set_xlim(self.ax1.get_xlim())
@@ -313,7 +339,7 @@ class Visualization_GUI(object):
 		self.ax2.set_xlabel('Time [Mountain]')
 		self.frame.figure.autofmt_xdate()
 		
-		# Fix the y axis labels
+		# Fix the y axis labels to use beams, free time, etc.
 		if self.showDayNight:
 			lower = 6
 		else:
@@ -330,9 +356,8 @@ class Visualization_GUI(object):
 		
 	def describeSDF(self, sdfIndex):
 		"""
-		Given an ephem.Observer instance and a sdf.project instance, display the
-		SDF file in a descriptive manner.  This function returns a string (like a
-		__str__ call).
+		Given an self.sessionSDFs index, display the SDF file in a descriptive manner.
+		This function returns a string (like a __str__ call).
 		"""
 		
 		# Get the SDF in question
@@ -411,13 +436,15 @@ class Visualization_GUI(object):
 		
 	def describeFree(self, freeIndex):
 		"""
-		Describe a block of free time.
+		Given a self.freePeriods index, describe a block of free time.  This function 
+		returns a string (like a __str__ call).
 		"""
 		
+		# UT and MT
 		fUT = self.freePeriods[freeIndex]
 		fMT = (fUT[0].astimezone(_MST), fUT[1].astimezone(_MST))
 		d = fUT[1] - fUT[0]
-						
+		
 		out  = ""
 		out += "Free time between %s and %s\n" % (fUT[0].strftime(formatString), fUT[1].strftime(formatString))
 		out += "               -> %s and %s\n" % (fMT[0].strftime(formatString), fMT[1].strftime(formatString))
@@ -434,7 +461,7 @@ class Visualization_GUI(object):
 		
 	def on_press(self, event):
 		"""
-		On button press we will see if the mouse is over us and store some data
+		On button press we will see if the mouse is over us and display some data
 		"""
 		
 		if event.inaxes:
@@ -452,7 +479,9 @@ class Visualization_GUI(object):
 						self.frame.info.SetValue(self.describeSDF(i))
 			
 	def disconnect(self):
-		'disconnect all the stored connection ids'
+		"""
+		Disconnect all the stored connection IDs.
+		"""
 		
 		self.frame.figure1.canvas.mpl_disconnect(self.cidpress)
 
@@ -465,6 +494,10 @@ ID_SHOW_JUPITER = 21
 ID_ABOUT = 30
 
 class MainWindow(wx.Frame):
+	"""
+	Main wxPython window for displaying the sessions and adding/removing files.
+	"""
+	
 	def __init__(self, parent, id):
 		self.dirname = ''
 		self.scriptPath = os.path.abspath(__file__)
@@ -546,7 +579,7 @@ class MainWindow(wx.Frame):
 		
 	def initEvents(self):
 		"""
-		Set all of the various events in the data range window.
+		Set all of the various events in the main window.
 		"""
 		
 		# File menu events
@@ -583,12 +616,16 @@ class MainWindow(wx.Frame):
 		
 	def onRemoveFiles(self, event):
 		"""
-		Remove of file or files.
+		Remove a file or files.
 		"""
 		
 		RemoveFilesDialog(self)
 		
 	def onDayNight(self, event):
+		"""
+		Toggle whether or not the day/night indicator is shown.
+		"""
+		
 		if event.Checked():
 			self.data.showDayNight = True
 		else:
@@ -596,6 +633,10 @@ class MainWindow(wx.Frame):
 		self.data.draw()
 	
 	def onJupiter(self, event):
+		"""
+		Toggle whether or not the Jupiter visibility indicator is shown.
+		"""
+		
 		if event.Checked():
 			self.data.showJupiter = True
 		else:
@@ -604,7 +645,7 @@ class MainWindow(wx.Frame):
 		
 	def onAbout(self, event):
 		"""
-		Display a ver very very bried 'about' window.
+		Display a ver very very brief 'about' window.
 		"""
 		
 		dialog = wx.AboutDialogInfo()
@@ -612,7 +653,7 @@ class MainWindow(wx.Frame):
 		dialog.SetIcon(wx.Icon(os.path.join(self.scriptPath, 'icons', 'lwa.png'), wx.BITMAP_TYPE_PNG))
 		dialog.SetName('Visualize Sessions')
 		dialog.SetVersion(__version__)
-		dialog.SetDescription("""GUI for displaying the current LWA1 schedule via its SDFs.""")
+		dialog.SetDescription("""GUI for displaying the current\nLWA1 schedule via its SDFs.""")
 		dialog.SetWebSite('http://lwa.unm.edu')
 		dialog.AddDeveloper(__author__)
 		
@@ -642,11 +683,16 @@ class MainWindow(wx.Frame):
 		return self.toolbar
 
 
-ID_LISTCTRL = 100
-ID_OK = 101
-ID_CANCEL = 102
+ID_REMOVE_LISTCTRL = 100
+ID_REMOVE_OK = 101
+ID_REMOVE_CANCEL = 102
 
 class RemoveFilesDialog(wx.Frame):
+	"""
+	Class to implement a window that displays a checkable list of filenames so 
+	that the selected files can be removed from the plot window.
+	"""
+	
 	def __init__(self, parent):
 		wx.Frame.__init__(self, parent, title='Select Files to Remove', size=(600,300))
 		
@@ -658,47 +704,72 @@ class RemoveFilesDialog(wx.Frame):
 		self.Show()
 		
 	def initUI(self):
+		"""
+		Start the user interface.
+		"""
+		
 		# File list
 		hbox = wx.BoxSizer(wx.VERTICAL)
 		panel = wx.Panel(self, -1)
 		
-		self.listControl = FilesListCtrl(panel, id=ID_LISTCTRL)
+		self.listControl = FilesListCtrl(panel, id=ID_REMOVE_LISTCTRL)
 		self.listControl.parent = self
 		hbox.Add(self.listControl, 1, wx.EXPAND)
 		
 		# Buttons
-		ok = wx.Button(panel, ID_OK, 'Ok', size=(90, 28))
-		cancel = wx.Button(panel, ID_CANCEL, 'Cancel', size=(90, 28))
+		ok = wx.Button(panel, ID_REMOVE_OK, 'Ok', size=(90, 28))
+		cancel = wx.Button(panel, ID_REMOVE_CANCEL, 'Cancel', size=(90, 28))
 		hbox.Add(ok)
 		hbox.Add(cancel)
 		
 		panel.SetSizer(hbox)
 		
 	def initEvents(self):
-		self.Bind(wx.EVT_BUTTON, self.onOK, id=ID_OK)
-		self.Bind(wx.EVT_BUTTON, self.onCancel, id=ID_CANCEL)
+		"""
+		Set all of the various events in the file removable window.
+		"""
+		
+		self.Bind(wx.EVT_BUTTON, self.onOK, id=ID_REMOVE_OK)
+		self.Bind(wx.EVT_BUTTON, self.onCancel, id=ID_REMOVE_CANCEL)
 		
 	def loadFiles(self):
-		self.listControl.InsertColumn(0, 'Filename', width=600)
+		"""
+		Setup the checkable list and populate it with what is currently loaded.
+		"""
 		
+		# Add the filename column
+		self.listControl.InsertColumn(0, 'Filename', width=550)
+		
+		# Fill!
 		for i,filename in enumerate(self.parent.filenames):
 			index = self.listControl.InsertStringItem(i, filename)
 	
 	def onOK(self, event):
+		"""
+		Process the checklist and remove as necessary.
+		"""
+		
+		# Build a list of filenames to remove
 		toRemove = []
 		for i in xrange(self.listControl.GetItemCount()):
 			if self.listControl.IsChecked(i):
 				toRemove.append( self.parent.filenames[i] )
 		
+		# Remove them
 		for filename in toRemove:
 			self.parent.filenames.remove(filename)
-			
+		
+		# Reload the SDFs and update the plot if needed
 		if len(toRemove) > 0:
 			self.parent.data.loadFiles()
 			self.parent.data.draw()
 		self.Close()
 	
 	def onCancel(self, event):
+		"""
+		Quit without deleting any files.
+		"""
+		
 		self.Close()
 
 
@@ -713,6 +784,7 @@ def main(args):
 		frame.data.draw()
 		
 	app.MainLoop()
+
 
 if __name__ == "__main__":
 	main(sys.argv[1:])
