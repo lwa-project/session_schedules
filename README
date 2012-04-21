@@ -37,6 +37,9 @@ shiftSDF.py
     * Only update one of the above and leave the time alone
     * Print out the contents of the SDF file in an easy-to-digest manner
 
+visualizeSessions.py
+  Tool for operators to examine multiple SDFs at the same time.
+
 resolve.py
   Apache/python script to provide a web-based name resolver.  The resolver can
   also be run from the command line with a source name.

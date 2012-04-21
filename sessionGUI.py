@@ -774,7 +774,7 @@ class SDFCreator(wx.Frame):
 	
 	def onAbout(self, event):
 		"""
-		Display a ver very very bried 'about' window.
+		Display a ver very very brief 'about' window.
 		"""
 		
 		dialog = wx.AboutDialogInfo()
