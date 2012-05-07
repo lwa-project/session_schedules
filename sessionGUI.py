@@ -2610,6 +2610,9 @@ class ScheduleWindow(wx.Frame):
 		
 		self.parent.project.sessions[0].comments = oldComments
 		
+		self.parent.edited = True
+		self.parent.setSaveButton()
+		
 		self.Close()
 
 	def onCancel(self, event):
