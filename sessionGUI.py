@@ -131,17 +131,18 @@ ID_SAVE_AS = 14
 ID_QUIT = 15
 
 ID_INFO = 21
-ID_ADD_TBW = 22
-ID_ADD_TBN = 23
-ID_ADD_DRX_RADEC = 24
-ID_ADD_DRX_SOLAR = 25
-ID_ADD_DRX_JOVIAN = 26
-ID_ADD_STEPPED = 27
-ID_REMOVE = 28
-ID_VALIDATE = 29
-ID_TIMESERIES = 30
-ID_RESOLVE = 31
-ID_ADVANCED = 32
+ID_SCHEDULE = 22
+ID_ADD_TBW = 23
+ID_ADD_TBN = 24
+ID_ADD_DRX_RADEC = 25
+ID_ADD_DRX_SOLAR = 26
+ID_ADD_DRX_JOVIAN = 27
+ID_ADD_STEPPED = 28
+ID_REMOVE = 29
+ID_VALIDATE = 30
+ID_TIMESERIES = 31
+ID_RESOLVE = 32
+ID_ADVANCED = 33
 
 ID_DATA_VOLUME = 41
 
@@ -236,6 +237,9 @@ class SDFCreator(wx.Frame):
 		# Observer menu items
 		info = wx.MenuItem(obsMenu, ID_INFO, 'Observer/&Project Info.')
 		obsMenu.AppendItem(info)
+		sch = wx.MenuItem(obsMenu, ID_SCHEDULE, 'Sc&heduling')
+		obsMenu.AppendItem(sch)
+		obsMenu.AppendSeparator()
 		add = wx.Menu()
 		addTBW = wx.MenuItem(add, ID_ADD_TBW, 'TB&W')
 		add.AppendItem(addTBW)
@@ -355,6 +359,7 @@ class SDFCreator(wx.Frame):
 		
 		# Observer menu events
 		self.Bind(wx.EVT_MENU, self.onInfo, id=ID_INFO)
+		self.Bind(wx.EVT_MENU, self.onSchedule, id=ID_SCHEDULE)
 		self.Bind(wx.EVT_MENU, self.onAddTBW, id=ID_ADD_TBW)
 		self.Bind(wx.EVT_MENU, self.onAddTBN, id=ID_ADD_TBN)
 		self.Bind(wx.EVT_MENU, self.onAddDRXR, id=ID_ADD_DRX_RADEC)
@@ -494,6 +499,13 @@ class SDFCreator(wx.Frame):
 		"""
 		
 		ObserverInfo(self)
+		
+	def onSchedule(self, event):
+		"""
+		Open up a dialog to set the scheduling.
+		"""
+		
+		ScheduleWindow(self)
 		
 	def onAddTBW(self, event):
 		"""
@@ -2508,6 +2520,97 @@ class ResolveTarget(wx.Frame):
 						self.appli.Enable(False)
 				except ValueError as err:
 					print '[%i] Error: %s' % (os.getpid(), str(err))
+
+	def onCancel(self, event):
+		self.Close()
+
+
+ID_SCHEDULE_APPLY = 612
+ID_SCHEDULE_CANCEL = 613
+
+class ScheduleWindow(wx.Frame):
+	def __init__ (self, parent):	
+		wx.Frame.__init__(self, parent, title='Session Scheduling', size=(375, 150))
+		
+		self.parent = parent
+		
+		self.initUI()
+		self.initEvents()
+		self.Show()
+		
+	def initUI(self):
+		row = 0
+		panel = wx.Panel(self)
+		sizer = wx.GridBagSizer(3, 3)
+		
+		font = wx.SystemSettings_GetFont(wx.SYS_SYSTEM_FONT)
+		font.SetPointSize(font.GetPointSize()+2)
+		
+		src = wx.StaticText(panel, label='Rescheduling Options:')
+		src.SetFont(font)
+		sizer.Add(src, pos=(row+0, 0), span=(1, 3), flag=wx.ALIGN_CENTER, border=5)
+		row += 1
+		
+		sidereal = wx.RadioButton(panel, -1, 'Sidereal time fixed, date changable')
+		solar = wx.RadioButton(panel, -1, 'UTC time fixed, date changable')
+		fixed = wx.RadioButton(panel, -1, 'Use only specfied date/time')
+		
+		if self.parent.project.sessions[0].comments.find('ScheduleSolarMovable') != -1:
+			sidereal.SetValue(False)
+			solar.SetValue(True)
+			fixed.SetValue(False)
+		elif self.parent.project.sessions[0].comments.find('ScheduleFixed') != -1:
+			sidereal.SetValue(Flase)
+			solar.SetValue(False)
+			fixed.SetValue(True)
+		else:
+			sidereal.SetValue(True)
+			solar.SetValue(False)
+			fixed.SetValue(False)
+		
+		sizer.Add(sidereal, pos=(row+0, 0))
+		sizer.Add(solar, pos=(row+1, 0))
+		sizer.Add(fixed, pos=(row+2, 0))
+		row += 3
+		
+		line = wx.StaticLine(panel)
+		sizer.Add(line, pos=(row+0, 0), span=(1, 3), flag=wx.EXPAND|wx.BOTTOM, border=10)
+		row += 1
+		
+		appli = wx.Button(panel, ID_SCHEDULE_APPLY, 'Apply', size=(90, 28))
+		cancel = wx.Button(panel, ID_SCHEDULE_CANCEL, 'Cancel', size=(90, 28))
+		
+		sizer.Add(appli, pos=(row+0, 0))
+		sizer.Add(cancel, pos=(row+0, 1))
+		
+		panel.SetSizerAndFit(sizer)
+		
+		self.sidereal = sidereal
+		self.solar = solar
+		self.fixed = fixed
+		
+	def initEvents(self):
+		self.Bind(wx.EVT_BUTTON, self.onApply, id=ID_SCHEDULE_APPLY)
+		self.Bind(wx.EVT_BUTTON, self.onCancel, id=ID_SCHEDULE_CANCEL)
+		
+	def onApply(self, event):
+		oldComments = self.parent.project.sessions[0].comments
+		oldComments = oldComments.replace('ScheduleSiderealMovable', '')
+		oldComments = oldComments.replace('ScheduleSolarMovable', '')
+		oldComments = oldComments.replace('SchedulFixed', '')
+		
+		if self.sidereal.GetValue():
+			oldComments += 'ScheduleSiderealMovable'
+		elif self.solar.GetValue():
+			oldComments += 'ScheduleSolarMovable'
+		elif self.fixed.GetValue():
+			oldComments += 'ScheduleFixed'
+		else:
+			pass
+		
+		self.parent.project.sessions[0].comments = oldComments
+		
+		self.Close()
 
 	def onCancel(self, event):
 		self.Close()
