@@ -40,6 +40,9 @@ shiftSDF.py
 visualizeSessions.py
   Tool for operators to examine multiple SDFs at the same time.
 
+efficianado.py
+  Script to pack a collection of SDFs into the smallest possible time period.
+
 resolve.py
   Apache/python script to provide a web-based name resolver.  The resolver can
   also be run from the command line with a source name.
