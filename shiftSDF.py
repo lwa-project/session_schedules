@@ -86,7 +86,7 @@ def parseOptions(args):
 	config['makeRADec'] = False
 	config['updatePointing'] = False
 	config['pointingErrorRA'] = -430 / 3600.0	# hours
-	config['pointingErrorDec'] = 0 / 3600.0		# degrees
+	config['pointingErrorDec'] = -3600 / 3600.0		# degrees
 
 	# Read in and process the command line flags
 	try:
@@ -467,9 +467,9 @@ def main(args):
 			dec = project.sessions[0].observations[i].dec - config['pointingErrorDec']
 			## Make sure dec is in bounds
 			if dec > 90:
-				dec = 90
+				dec = 180 - dec
 			if dec < -90:
-				dec = -90
+				dec = -180 - dec
 			
 			print " Position shifting"
 			print "  RA:   %9.6f ->  %9.6f hours" % (project.sessions[0].observations[i].ra, ra)

@@ -169,7 +169,6 @@ class SDFCreator(wx.Frame):
 		
 		self.initUI()
 		self.initEvents()
-		self.CreateStatusBar()
 		self.Show()
 		
 		if len(args) > 0:
