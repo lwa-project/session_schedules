@@ -1306,10 +1306,10 @@ class ObserverInfo(wx.Frame):
 			drxRB.SetValue(False)
 			
 		did = wx.StaticText(panel, label='Data Return Method')
-		drsuRB = wx.RadioButton(panel, -2, 'DRSU', style=wx.RB_GROUP)
-		usbRB = wx.RadioButton(panel, -2, 'USB Harddrive (4 max)')
-		drsRB = wx.RadioButton(panel, -2, 'DR spectrometer')
-		redRB = wx.RadioButton(panel, -2, 'Archive (describe in comments)')
+		drsuRB = wx.RadioButton(panel, -1, 'DRSU', style=wx.RB_GROUP)
+		usbRB = wx.RadioButton(panel, -1, 'USB Harddrive (4 max)')
+		drsRB = wx.RadioButton(panel, -1, 'DR spectrometer')
+		redRB = wx.RadioButton(panel, -1, 'Archive (describe in comments)')
 		
 		nchn = wx.StaticText(panel, label='Channels')
 		nchnText = wx.TextCtrl(panel)
