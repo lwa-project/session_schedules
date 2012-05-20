@@ -397,7 +397,7 @@ def main(args):
 			
 			# Calculate the position of Jupiter at this time and convert the
 			# RA value to decimal hours and the Dec. value to decimal degrees.
-			observer.date = tMid.strftime(formatString)
+			observer.date = tMid.strftime("%Y/%m/%d %H:%M:%S")
 			Sun.compute(observer)
 			sRA = float(Sun.ra) * 180.0 / math.pi / 15.0
 			sDec = float(Sun.dec) * 180.0 /math.pi
@@ -432,7 +432,7 @@ def main(args):
 			
 			# Calculate the position of Jupiter at this time and convert the
 			# RA value to decimal hours and the Dec. value to decimal degrees.
-			observer.date = tMid.strftime(formatString)
+			observer.date = tMid.strftime("%Y/%m/%d %H:%M:%S")
 			Jupiter.compute(observer)
 			jRA = float(Jupiter.ra) * 180.0 / math.pi / 15.0
 			jDec = float(Jupiter.dec) * 180.0 /math.pi

@@ -1303,7 +1303,7 @@ class ObserverInfo(wx.Frame):
 		else:
 			tbwRB.SetValue(False)
 			tbnRB.SetValue(False)
-			drxRB.SetValue(False)
+			drxRB.SetValue(True)
 			
 		did = wx.StaticText(panel, label='Data Return Method')
 		drsuRB = wx.RadioButton(panel, -1, 'DRSU', style=wx.RB_GROUP)
