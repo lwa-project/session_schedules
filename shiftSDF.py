@@ -19,6 +19,7 @@ $LastChangedDate: 2012-03-21 17:14:20 -0600 (Wed, 21 Mar 2012) $
 import os
 import sys
 import pytz
+import math
 import ephem
 import getopt
 
