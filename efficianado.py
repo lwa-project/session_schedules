@@ -10,10 +10,11 @@ Usage:
 
 Options:
   -h, --help             Display this help message
-  -m, --maintenance      Add a maintenance day (9 to 17 MT)
+  -m, --maintenance      Add a maintenance day (YYYY/MM/DD; 9 to 17 MT)
   -l, --limits           Schedule search limit in days (default 14 days)
   -p, --population-size  GA population size (default 1,000)
   -g, --generations      Number of generations to use (default 250)
+  -v, --verbose          Be verbose about shifting operations
   
 $Revision$
 $LastChangedBy$
@@ -84,10 +85,11 @@ Usage: efficianado.py [OPTIONS] YYYY/MM/DD SDF1 [SDF2 [...]]
 
 Options:
 -h, --help             Display this help message
--m, --maintenance      Add a maintenance day (9 to 17 MT)
+-m, --maintenance      Add a maintenance day (YYYY/MM/DD; 9 to 17 MT)
 -l, --limits           Schedule search limit in days (default 14 days)
 -p, --population-size  GA population size (default 1,000)
 -g, --generations      Number of generations to use (default 250)
+-v, --verbose          Be verbose about shifting operations
 """
 
 	if exitCode is not None:
@@ -106,23 +108,23 @@ def parseOptions(args):
 	config['maintenance'] = []
 	config['popSize'] = 1000
 	config['generations'] = 200
-	config['makeRADec'] = False
-	config['updatePointing'] = False
+	config['verbose'] = False
+	config['makeRADec'] = True
+	config['updatePointing'] = True
 	config['pointingErrorRA'] = pc[0]
 	config['pointingErrorDec'] = pc[1]
 	config['args'] = []
 	
  	# Read in and process the command line flags
 	try:
-		opts, args = getopt.getopt(args, "hm:l:p:g:", ["help", "maintenance=", "limits=", "population-size=", "generations="])
+		opts, args = getopt.getopt(args, "hm:l:p:g:v", ["help", "maintenance=", "limits=", "population-size=", "generations=", "verbose"])
 	except getopt.GetoptError, err:
 		# Print help information and exit:
 		print str(err) # will print something like "option -a not recognized"
-        #usage(exitCode=2)
+		usage(exitCode=2)
         
     # Work through opts
 	for opt, value in opts:
-		print opt, value
 		if opt in ('-h', '--help'):
 			usage(exitCode=0)
 		elif opt in ('-m', '--maintenance'):
@@ -133,6 +135,8 @@ def parseOptions(args):
 			config['popSize'] = int(value)
 		elif opt in ('-g', '--generations'):
 			config['generations'] = int(value)
+		elif opt in ('-v', '--verbose'):
+			config['verbose'] = True
 		else:
 			assert False
         
@@ -493,10 +497,11 @@ class gas(object):
 		or solar days.
 		"""
 		
-		def __init__(self, projects, sessionLag=sessionLag, mode='Sidereal', observer=lwa1.getObserver()):
+		def __init__(self, projects, sessionLag=sessionLag, mode='Sidereal', observer=lwa1.getObserver(), verbose=False):
 			self.projects = projects
 			self.mode = mode
 			self.observer = observer
+			self.verbose = verbose
 			
 			tStart = []
 			tStop  = []
@@ -590,13 +595,12 @@ class gas(object):
 					diff = tStart[i] - utcMidnight
 					mpm = int(round((diff.seconds + diff.microseconds/1000000.0)*1000.0))
 					
-					
-					
-					print " Time shifting %s, session %i" % (project.id, project.sessions[0].id)
-					print "  Now at %s" % start
-					print "  MJD: %8i -> %8i" % (project.sessions[0].observations[i].mjd, mjd)
-					print "  MPM: %8i -> %8i" % (project.sessions[0].observations[i].mpm, mpm)
-					print "  LST: %8s -> %8s" % (str(lst[i])[:8], str(newLST)[:8])
+					if self.verbose:
+						print " Time shifting %s, session %i" % (project.id, project.sessions[0].id)
+						print "  Now at %s" % start
+						print "  MJD: %8i -> %8i" % (project.sessions[0].observations[i].mjd, mjd)
+						print "  MPM: %8i -> %8i" % (project.sessions[0].observations[i].mpm, mpm)
+						print "  LST: %8s -> %8s" % (str(lst[i])[:8], str(newLST)[:8])
 					
 					project.sessions[0].observations[i].mjd = mjd
 					project.sessions[0].observations[i].mpm = mpm
@@ -606,10 +610,11 @@ class gas(object):
 		
 			return output
 
-	def __init__(self, start, nOffsets=100, searchLimits=10):
+	def __init__(self, start, nOffsets=100, searchLimits=10, verbose=False):
 		self.start = start
 		self.nOffsets = nOffsets
 		self.searchLimits = searchLimits - 1
+		self.verbose = verbose
 		self.maintenance = []
 		
 		self.offsets = []
@@ -675,7 +680,6 @@ class gas(object):
 			# Get the LST at the start
 			observer.date = sessionStart.strftime('%Y/%m/%d %H:%M:%S')
 			lst = observer.sidereal_time()
-			print project.id, project.sessions[0].id, lst
 			
 			# Get the schedule mode
 			if project.sessions[0].comments.find('ScheduleSolarMovable') != -1:
@@ -714,19 +718,23 @@ class gas(object):
 					continue
 						
 				if len(group) > 4:
-					print "-> Group too large, breaking"
+					print "-> Group of %i too large, breaking" % len(group)
+					subGroupSize = len(group)-1
+					while len(group) % subGroupSize != 0:
+						subGroupSize -= 1
+					print "  -> Grouping in sets of %i" % subGroupSize
 					
-					for i in xrange(len(group)/4 + 1):
-						subGroup = group[i*4:(i+1)*4]
+					for i in xrange(len(group)/subGroupSize + 1):
+						subGroup = group[i*subGroupSize:(i+1)*subGroupSize]
 						if len(subGroup) == 0:
 							continue
 						
-						print "   -> Found group of %i sessions (%s) at LST ~%s of type %s" % (len(subGroup), subGroup[0].id, ephem.hours(lst/3600.0/24*2*numpy.pi), mode)
-						sessions.append(self.SimultaneousBlock(subGroup, mode=mode, observer=observer))
+						print "    -> Found group of %i sessions (%s) at LST ~%s of type %s" % (len(subGroup), subGroup[0].id, ephem.hours(lst/3600.0/24*2*numpy.pi), mode)
+						sessions.append(self.SimultaneousBlock(subGroup, mode=mode, observer=observer, verbose=self.verbose))
 						
 				else:
 					print "-> Found group of %i sessions (%s) at LST ~%s of type %s" % (len(group), group[0].id, ephem.hours(lst/3600.0/24*2*numpy.pi), mode)
-					sessions.append(self.SimultaneousBlock(group, mode=mode, observer=observer))
+					sessions.append(self.SimultaneousBlock(group, mode=mode, observer=observer, verbose=self.verbose))
 		
 		print "Total number of sessionettes is %i" % len(sessions)
 		self.projects = sessions
@@ -819,26 +827,33 @@ class gas(object):
 		extenction and interation controls.
 		"""
 		
+		iterScale = numpy.floor(numpy.log10(nIterations)) + 1
+		formatString = "Iteration %%%ii of %%%ii -> Fitness range is %%.3f to %%.3f with a mean of %%.3f" % (iterScale, iterScale)
+		
 		fMin = []
 		fMax = []
 		fMean = []
 		fStd = []
 		
+		# Go...
 		for i in xrange(nIterations):
+			## Perform the evolution (elite children, crossover children, 
+			## and mutation childern fill new next generation.
 			self.__evolve()
-			#f = []
-			#for o in self.offsets:
-				#f.append(self.fitness(o))
-			#f = numpy.array(f)
+			
+			## Compute the fitness for all individuals
 			f = self.fitness()
-				
+			
+			## Get the good, the bad, and the ugly
 			fMin.append(f.min())
 			fMax.append(f.max())
 			fMean.append(f.mean())
 			fStd.append(f.std())
 			
-			print i, nIterations, f.max(), f.min(), f.mean()
+			## Report on the progress
+			print formatString % (i+1, nIterations, f.max(), f.min(), f.mean())
 			
+			## Get ready for an extinction...
 			if i % extinctionInterval == 0 and i != 0:
 				limit = numpy.ceil(-f.max())
 				if limit > self.searchLimits:
@@ -849,13 +864,15 @@ class gas(object):
 				cut = numpy.where( f < -limit )[0]
 				if len(cut) == 0:
 					cut = random.sample(range(self.nOffsets), int(round(self.nOffsets*0.5)))
-				print f[good].max(), f.max()
-				print f[cut].max(), f.max()
+					good = [g for g in good if g not in cut]
+				print 'Extinction -> Surviver schedule range is %.3f to %.3f days' % (-f[good].max(), -f[good].min())
+				print 'Extinction -> Schedule ranges %.3f to %.3f days perish' % (-f[cut].max(), -f[cut].min())
 				for c in cut:
 					self.offsets[c] =  [random.randint(0, self.searchLimits) for p in xrange(self.nProjects)]
 					
-				print 'Extinction:', self.searchLimits, len(good), len(cut)
-			
+				print 'Extinction -> New schedule search limit is %i days; %i survive, %i perish' % (self.searchLimits, len(good), len(cut))
+		
+		print " "
 		return fMax, fMin, fMean, fStd
 	
 	def getBest(self):
@@ -1045,7 +1062,7 @@ def main(args):
 	print " "
 	
 	## Actually run the schedule
-	g = gas(startWeek, nOffsets=config['popSize'], searchLimits=config['limit'])
+	g = gas(startWeek, nOffsets=config['popSize'], searchLimits=config['limit'], verbose=config['verbose'])
 	g.defineProjects(sessionSDFs)
 	g.setMaintenance(maintenance)
 	g.validateParameters()
@@ -1065,6 +1082,8 @@ def main(args):
 	# already exists then clean it out.
 	schedule = []
 	scheduleDir = startWeek.strftime("Schedule_%y%m%d")
+	print "Saving new SDFs in directory '%s'" % scheduleDir
+	print " "
 	try:
 		os.mkdir(scheduleDir)
 	except OSError:
@@ -1076,33 +1095,33 @@ def main(args):
 				
 	sidCounter = {}
 	for project in g.getBest():
-		# Convert TRK_SOL and TRK_JOV to TRK_RADEC
-		project = makeRADec(project, verbose=True)
+		## Convert TRK_SOL and TRK_JOV to TRK_RADEC
+		project = makeRADec(project, verbose=config['verbose'])
 		
-		# Apply the pointing correction
-		project = makePointingCorrection(project, corrRA=config['pointingErrorRA'], corrDec=config['pointingErrorDec'], verbose=True)
+		## Apply the pointing correction
+		project = makePointingCorrection(project, corrRA=config['pointingErrorRA'], corrDec=config['pointingErrorDec'], verbose=config['verbose'])
 		
-		# Get project and session IDs (one of these will need to be remapped...)
+		## Get project and session IDs (one of these will need to be remapped...)
 		pID = project.id
 		try:
-			project.sessions[0].id = sidCounter[pID] + 1
+			project.sessions[0].id = sidCounter[pID]
 			sidCounter[pID] += 1
 		except KeyError:
 			sidCounter[pID] = woy*100
-			project.sessions[0].id = sidCounter[pID] + 1
+			project.sessions[0].id = sidCounter[pID]
 			sidCounter[pID] += 1
 		
-		# Get the start of the session
+		## Get the start of the session
 		sessionStart = [getObsStartStop(o)[0] for o in project.sessions[0].observations]
 		sessionStart = min(sessionStart)
 		
-		# Get the mode
+		## Get the mode string
 		if project.sessions[0].observations[0].mode in ('TBW', 'TBN'):
 			mode = 'TB'
 		else:
 			mode = 'B%i' % project.sessions[0].drxBeam
 		
-		# Save
+		## Save
 		filename = "%s_%04i_%s_%s.sdf" % (pID, project.sessions[0].id, sessionStart.strftime("%y%m%d_%H%M"), mode)
 		
 		fh = open(os.path.join(scheduleDir, filename), 'w')
@@ -1113,8 +1132,11 @@ def main(args):
 		fh.write( project.render() )
 		fh.close()
 		
+		## Save for the plotting
 		schedule.append( project )
 	
+	# Create the new lists for the plotting routines and print information 
+	# about the scheduled efficiency.
 	sessionSDFs = []
 	sessionLSTs = []
 	sessionNames = []
@@ -1124,11 +1146,11 @@ def main(args):
 	
 	beamHours = 0
 	for project in schedule:
-		# Get project and session IDs (one of these will need to be remapped...)
+		## Get project and session IDs (one of these will need to be remapped...)
 		pID = project.id
 		sID = project.sessions[0].id
 		
-		# Get the beam and session start, stop, and duration
+		## Get the beam and session start, stop, and duration
 		if project.sessions[0].observations[0].mode in ('TBW', 'TBN'):
 			beam = 5
 		else:
@@ -1137,7 +1159,7 @@ def main(args):
 		sessionStop  = getObsStartStop(project.sessions[0].observations[-1])[1] + sessionLag
 		duration = sessionStop-sessionStart
 		
-		# Get the LST at the start
+		## Get the LST at the start
 		observer.date = sessionStart.strftime('%Y/%m/%d %H:%M:%S')
 		lst = observer.sidereal_time()
 		
@@ -1148,6 +1170,7 @@ def main(args):
 		sessionStarts.append(sessionStart)
 		sessionDurations.append(duration)
 		
+		## Get the number of beam hours used
 		for obs in project.sessions[0].observations:
 			start, stop = getObsStartStop(obs)
 			diff = stop - start
@@ -1158,12 +1181,16 @@ def main(args):
 	scheduleDuration = sessionStarts[last] + sessionDurations[last] - sessionStarts[first]
 	scheduleDuration = scheduleDuration.seconds/3600.0 + scheduleDuration.days*24
 	
-	print beamHours, 4*scheduleDuration, beamHours / scheduleDuration / 4
+	print "Beam Usage Summary:"
+	print "  Scheduled:  %7.2f" % (beamHours,)
+	print "  Possible:   %7.2f" % (4*scheduleDuration,)
+	print "  Efficiency: %6.1f%%" % (100.0*beamHours / scheduleDuration / 4,)
 	
-	# Plotting
+	# Interactive Schedule Plotting
 	fig = plt.figure()
 	ax = fig.gca()
 	
+	# Find the unique project IDs so we can color them all the same
 	uniqueProjects = []
 	for name in sessionNames:
 		pID, sID = name.split('_', 1)

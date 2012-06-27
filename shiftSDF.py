@@ -345,6 +345,11 @@ def main(args):
 	print "Shifting session ID from %i to %i" % (project.sessions[0].id, sid)
 	project.sessions[0].id = sid
 	
+	#
+	# Check to see if pointing corrections have already been applied
+	#
+	if project.projectOffset.sessions[0].find('Position Shift? Yes') != -1:
+		config['updatePointing'] = False
 	
 	#
 	# Go! (apply the changes to the observations)
