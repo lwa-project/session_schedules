@@ -835,23 +835,29 @@ class gas(object):
 		fMean = []
 		fStd = []
 		
-		# Go...
+		# Go... (but do it in is such a way that is it easy for the user to 
+		# stop it and move on)
 		for i in xrange(nIterations):
-			## Perform the evolution (elite children, crossover children, 
-			## and mutation childern fill new next generation.
-			self.__evolve()
+			try:
+				## Perform the evolution (elite children, crossover children, 
+				## and mutation childern fill new next generation.
+				self.__evolve()
 			
-			## Compute the fitness for all individuals
-			f = self.fitness()
+				## Compute the fitness for all individuals
+				f = self.fitness()
 			
-			## Get the good, the bad, and the ugly
-			fMin.append(f.min())
-			fMax.append(f.max())
-			fMean.append(f.mean())
-			fStd.append(f.std())
-			
-			## Report on the progress
-			print formatString % (i+1, nIterations, f.max(), f.min(), f.mean())
+				## Get the good, the bad, and the ugly
+				fMin.append(f.min())
+				fMax.append(f.max())
+				fMean.append(f.mean())
+				fStd.append(f.std())
+				
+				## Report on the progress
+				print formatString % (i+1, nIterations, f.max(), f.min(), f.mean())
+				
+			except KeyboardInterrupt:
+				print "\nInterrupted after %i iterations..." % i
+				break
 			
 			## Get ready for an extinction...
 			if i % extinctionInterval == 0 and i != 0:
@@ -871,7 +877,7 @@ class gas(object):
 					self.offsets[c] =  [random.randint(0, self.searchLimits) for p in xrange(self.nProjects)]
 					
 				print 'Extinction -> New schedule search limit is %i days; %i survive, %i perish' % (self.searchLimits, len(good), len(cut))
-		
+				
 		print " "
 		return fMax, fMin, fMean, fStd
 	
