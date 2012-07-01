@@ -348,7 +348,7 @@ def main(args):
 	#
 	# Check to see if pointing corrections have already been applied
 	#
-	if project.projectOffset.sessions[0].find('Position Shift? Yes') != -1:
+	if project.projectOffice.sessions[0].find('Position Shift? Yes') != -1:
 		config['updatePointing'] = False
 	
 	#
