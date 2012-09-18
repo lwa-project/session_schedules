@@ -3,8 +3,10 @@
 
 import os
 import sys
+import copy
 import math
 import ephem
+import getopt
 try:
 	import cStringIO as StringIO
 except ImportError:
@@ -33,9 +35,64 @@ from matplotlib.figure import Figure
 from matplotlib.ticker import NullFormatter, NullLocator
 
 
-__version__ = "0.3"
+__version__ = "0.4"
 __revision__ = "$Rev$"
 __author__ = "Jayce Dowell"
+
+
+ALLOW_TBW_TBN_SAME_SDF = True
+
+
+def usage(exitCode=None):
+	print """sessionGUI.py - GUI for making all sorts of session definition files (SDFs) for
+LWA1.
+
+Usage: sessionGUI.py [OPTIONS] [input_SDF_file]
+
+Options:
+-h, --help          Display this help information
+-d, --drsu-size     Perform storage calcuations assuming the specified DRSU 
+                    size in TB
+"""
+
+	if exitCode is not None:
+		sys.exit(exitCode)
+	else:
+		return True
+
+
+def parseOptions(args):
+	config = {}
+	config['drsuSize'] = sdf._DRSUCapacityTB
+
+	# Read in and process the command line flags
+	try:
+		opts, args = getopt.getopt(args, "hd:", ["help", "drsu-size="])
+	except getopt.GetoptError, err:
+		# Print help information and exit:
+		print str(err) # will print something like "option -a not recognized"
+		usage(exitCode=2)
+	
+	# Work through opts
+	for opt, value in opts:
+		if opt in ('-h', '--help'):
+			usage(exitCode=0)
+		elif opt in ('-d', '--drsu-size'):
+			config['drsuSize'] = int(value)
+		else:
+			assert False
+	
+	# Make sure we have a sane DRSU size
+	try:
+		assert(config['drsuSize'] > 0)
+	except AssertionError:
+		raise RuntimeError("Invalid DRSU size of %i TB (%i B)" % (config['drsuSize'], config['drsuSize']*1024**4))
+	
+	# Add in arguments
+	config['args'] = args
+
+	# Return configuration
+	return config
 
 
 class ObservationListCtrl(wx.ListCtrl, TextEditMixin, CheckListCtrlMixin):
@@ -47,7 +104,164 @@ class ObservationListCtrl(wx.ListCtrl, TextEditMixin, CheckListCtrlMixin):
 		wx.ListCtrl.__init__(self, parent, style=wx.LC_REPORT, **kwargs)
 		TextEditMixin.__init__(self)
 		CheckListCtrlMixin.__init__(self)
+		
+		self.nSelected = 0
+		self.parent = parent
+		
+	def setCheckDependant(self, index=None):
+		"""
+		Update various menu entried and toolbar actions depending on what is selected.
+		"""
+		
+		if self.nSelected == 0:
+			# Edit menu - disabled
+			try:
+				self.parent.editmenu['cut'].Enable(False)
+				self.parent.editmenu['copy'].Enable(False)
+			except KeyError, AttributeError:
+				pass
+				
+			# Stepped observation edits - disabled
+			try:
+				self.parent.obsmenu['steppedEdit'].Enable(False)
+				self.parent.toolbar.EnableTool(ID_EDIT_STEPPED, False)
+			except KeyError, AttributeError:
+				pass
+				
+		elif self.nSelected == 1:
+			# Edit menu - enabled
+			try:
+				self.parent.editmenu['cut'].Enable(True)
+				self.parent.editmenu['copy'].Enable(True)
+			except KeyError, AttributeError:
+				pass
+			
+			# Stepped observation edits - enbled if there is an index and it is STEPPED, 
+			# disabled otherwise
+			if index is not None:
+				if self.parent.project.sessions[0].observations[index].mode == 'STEPPED':
+					try:
+						self.parent.obsmenu['steppedEdit'].Enable(True)
+						self.parent.toolbar.EnableTool(ID_EDIT_STEPPED, True)
+					except KeyError, AttributeError:
+						pass
+				else:
+					try:
+						self.parent.obsmenu['steppedEdit'].Enable(False)
+						self.parent.toolbar.EnableTool(ID_EDIT_STEPPED, False)
+					except KeyError, AttributeError:
+						pass
+			else:
+				# Stepped observation edits - disabled
+				try:
+					self.parent.obsmenu['steppedEdit'].Enable(False)
+					self.parent.toolbar.EnableTool(ID_EDIT_STEPPED, False)
+				except KeyError, AttributeError:
+					pass
+					
+		else:
+			# Edit menu - enabled
+			try:
+				self.parent.editmenu['cut'].Enable(True)
+				self.parent.editmenu['copy'].Enable(True)
+			except KeyError, AttributeError:
+				pass
+				
+			# Stepped observation edits - disabled
+			try:
+				self.parent.obsmenu['steppedEdit'].Enable(False)
+				self.parent.toolbar.EnableTool(ID_EDIT_STEPPED, False)
+			except KeyError, AttributeError:
+				pass
+		
+	def OnCheckItem(self, index, flag):
+		"""
+		Overwrite the default OnCheckItem function so that we can control the enabling
+		and disabling of the STEPPED step editor button/menu item.
+		"""
+		
+		if flag:
+			self.nSelected += 1
+		else:
+			self.nSelected -= 1
+		
+		self.setCheckDependant(index=index)
+		CheckListCtrlMixin.OnCheckItem(self, index, flag)
+		
+	def OpenEditor(self, col, row):
+		"""
+		Overwrite the default OpenEditor function so that select columns
+		are not actually editable.
+		"""
+		
+		if col in [0,]:
+			pass
+		elif self.parent.project.sessions[0].observations[row].mode == 'TBW' and col in [5, 6, 7]:
+			pass
+		elif self.parent.project.sessions[0].observations[row].mode in ['TRK_SOL', 'TRK_JOV'] and col in [6, 7]:
+			pass
+		elif self.parent.project.sessions[0].observations[row].mode == 'STEPPED' and col in [5, 6, 7, 8, 9, 11]:
+			pass
+		else:
+			TextEditMixin.OpenEditor(self, col, row)
 
+
+class SteppedListCtrl(wx.ListCtrl, TextEditMixin, CheckListCtrlMixin):
+	"""
+	Class that combines an editable list with check boxes.
+	"""
+	
+	def __init__(self, parent, **kwargs):
+		wx.ListCtrl.__init__(self, parent, style=wx.LC_REPORT, **kwargs)
+		TextEditMixin.__init__(self)
+		CheckListCtrlMixin.__init__(self)
+		
+		self.nSelected = 0
+		self.parent = parent
+		
+	def setCheckDependant(self, index=None):
+		"""
+		Update various menu entried and toolbar actions depending on what is selected.
+		"""
+		
+		if self.nSelected == 0:
+			# Edit menu - disabled
+			try:
+				self.parent.editmenu['cut'].Enable(False)
+				self.parent.editmenu['copy'].Enable(False)
+			except KeyError, AttributeError:
+				pass
+			
+		elif self.nSelected == 1:
+			# Edit menu - enabled
+			try:
+				self.parent.editmenu['cut'].Enable(True)
+				self.parent.editmenu['copy'].Enable(True)
+			except KeyError, AttributeError:
+				pass
+				
+		else:
+			# Edit menu - enabled
+			try:
+				self.parent.editmenu['cut'].Enable(True)
+				self.parent.editmenu['copy'].Enable(True)
+			except KeyError, AttributeError:
+				pass
+			
+	def OnCheckItem(self, index, flag):
+		"""
+		Overwrite the default OnCheckItem function so that we can control the enabling
+		and disabling of the STEPPED step editor button/menu item.
+		"""
+		
+		if flag:
+			self.nSelected += 1
+		else:
+			self.nSelected -= 1
+		
+		self.setCheckDependant(index=index)
+		CheckListCtrlMixin.OnCheckItem(self, index, flag)
+		
 	def OpenEditor(self, col, row):
 		"""
 		Overwrite the default OpenEditor class so that select columns
@@ -55,8 +269,6 @@ class ObservationListCtrl(wx.ListCtrl, TextEditMixin, CheckListCtrlMixin):
 		"""
 		
 		if col in [0,]:
-			pass
-		elif self.parent.project.sessions[0].observations[row].mode in ['TRK_SOL', 'TRK_JOV'] and col in [6, 7]:
 			pass
 		else:
 			TextEditMixin.OpenEditor(self, col, row)
@@ -137,23 +349,31 @@ ID_ADD_TBN = 24
 ID_ADD_DRX_RADEC = 25
 ID_ADD_DRX_SOLAR = 26
 ID_ADD_DRX_JOVIAN = 27
-ID_ADD_STEPPED = 28
-ID_REMOVE = 29
-ID_VALIDATE = 30
-ID_TIMESERIES = 31
-ID_RESOLVE = 32
-ID_ADVANCED = 33
+ID_ADD_STEPPED_RADEC = 28
+ID_ADD_STEPPED_AZALT = 29
+ID_EDIT_STEPPED = 30
+ID_REMOVE = 31
+ID_VALIDATE = 40
+ID_TIMESERIES = 41
+ID_RESOLVE = 42
+ID_ADVANCED = 43
 
-ID_DATA_VOLUME = 41
+ID_DATA_VOLUME = 51
 
-ID_HELP = 51
-ID_FILTER_INFO = 52
-ID_ABOUT = 53
+ID_HELP = 61
+ID_FILTER_INFO = 62
+ID_ABOUT = 63
 
-ID_LISTCTRL = 61
+ID_LISTCTRL = 71
+
+ID_CUT = 81
+ID_COPY = 82
+ID_PASTE_BEFORE = 83
+ID_PASTE_AFTER = 84
+ID_PASTE_END = 85
 
 class SDFCreator(wx.Frame):
-	def __init__(self, parent, title, args=[]):
+	def __init__(self, parent, title, config={}):
 		wx.Frame.__init__(self, parent, title=title, size=(750,500))
 		
 		self.scriptPath = os.path.abspath(__file__)
@@ -163,7 +383,10 @@ class SDFCreator(wx.Frame):
 		self.toolbar = None
 		self.statusbar = None
 		self.savemenu = None
+		self.editmenu = {}
 		self.obsmenu = {}
+		
+		self.buffer = None
 		
 		self.initSDF()
 		
@@ -171,10 +394,12 @@ class SDFCreator(wx.Frame):
 		self.initEvents()
 		self.Show()
 		
-		if len(args) > 0:
-			self.filename = args[0]
+		sdf._DRSUCapacityTB = config['drsuSize']
+		
+		if len(config['args']) > 0:
+			self.filename = config['args'][0]
 			self.parseFile(self.filename)
-			if self.mode == 'TBW':
+			if self.mode == 'TBW' and not ALLOW_TBW_TBN_SAME_SDF:
 				self.finfo.Enable(False)
 			else:
 				self.finfo.Enable(True)
@@ -213,6 +438,7 @@ class SDFCreator(wx.Frame):
 		menubar = wx.MenuBar()
 		
 		fileMenu = wx.Menu()
+		editMenu = wx.Menu()
 		obsMenu = wx.Menu()
 		dataMenu = wx.Menu()
 		helpMenu = wx.Menu()
@@ -233,6 +459,27 @@ class SDFCreator(wx.Frame):
 		# Save the 'save' menu item
 		self.savemenu = save
 		
+		# Edit menu items
+		cut = wx.MenuItem(editMenu, ID_CUT, 'C&ut Selected Observation')
+		editMenu.AppendItem(cut)
+		cpy = wx.MenuItem(editMenu, ID_COPY, '&Copy Selected Observation')
+		editMenu.AppendItem(cpy)
+		pstb = wx.MenuItem(editMenu, ID_PASTE_BEFORE, '&Paste Before Selected')
+		editMenu.AppendItem(pstb)
+		psta = wx.MenuItem(editMenu, ID_PASTE_AFTER, '&Paste After Selected')
+		editMenu.AppendItem(psta)
+		pste = wx.MenuItem(editMenu, ID_PASTE_END, '&Paste at End of List')
+		editMenu.AppendItem(pste)
+		
+		# Save menu items and disable all of them
+		self.editmenu['cut'] = cut
+		self.editmenu['copy'] = cpy
+		self.editmenu['pasteBefore'] = pstb
+		self.editmenu['pasteAfter'] = psta
+		self.editmenu['pasteEnd'] = pste
+		for k in self.editmenu.keys():
+			self.editmenu[k].Enable(False)
+		
 		# Observer menu items
 		info = wx.MenuItem(obsMenu, ID_INFO, 'Observer/&Project Info.')
 		obsMenu.AppendItem(info)
@@ -251,8 +498,12 @@ class SDFCreator(wx.Frame):
 		add.AppendItem(addDRXS)
 		addDRXJ = wx.MenuItem(add, ID_ADD_DRX_JOVIAN, 'DRX - &Jovian')
 		add.AppendItem(addDRXJ)
-		addStepped = wx.MenuItem(add, ID_ADD_STEPPED, 'DRX - Ste&pped')
-		add.AppendItem(addStepped)
+		addSteppedRADec = wx.MenuItem(add, ID_ADD_STEPPED_RADEC, 'DRX - Ste&pped - RA/Dec')
+		add.AppendItem(addSteppedRADec)
+		addSteppedAzAlt = wx.MenuItem(add, ID_ADD_STEPPED_AZALT, 'DRX - Ste&pped - Az/Alt')
+		add.AppendItem(addSteppedAzAlt)
+		editStepped = wx.MenuItem(add, ID_EDIT_STEPPED, 'DRX - Edit Selected Stepped Obs.')
+		add.AppendItem(editStepped)
 		obsMenu.AppendMenu(-1, '&Add', add)
 		remove = wx.MenuItem(obsMenu, ID_REMOVE, '&Remove Selected')
 		obsMenu.AppendItem(remove)
@@ -266,14 +517,15 @@ class SDFCreator(wx.Frame):
 		advanced = wx.MenuItem(obsMenu, ID_ADVANCED, 'Advanced &Settings')
 		obsMenu.AppendItem(advanced)
 		
-		# Save menu items and disable stepped observations (for now)
+		# Save menu items
 		self.obsmenu['tbn'] = addTBN
 		self.obsmenu['tbw'] = addTBW
 		self.obsmenu['drx-radec'] = addDRXR
 		self.obsmenu['drx-solar'] = addDRXS
 		self.obsmenu['drx-jovian'] = addDRXJ
-		self.obsmenu['stepped'] = addStepped
-		addStepped.Enable(False)
+		self.obsmenu['steppedRADec'] = addSteppedRADec
+		self.obsmenu['steppedAzAlt'] = addSteppedAzAlt
+		self.obsmenu['steppedEdit'] = editStepped
 		
 		# Data menu items
 		volume = wx.MenuItem(obsMenu, ID_DATA_VOLUME, '&Estimated Data Volume')
@@ -289,6 +541,7 @@ class SDFCreator(wx.Frame):
 		helpMenu.AppendItem(about)
 		
 		menubar.Append(fileMenu, '&File')
+		menubar.Append(editMenu, '&Edit')
 		menubar.Append(obsMenu,  '&Observations')
 		menubar.Append(dataMenu, '&Data')
 		menubar.Append(helpMenu, '&Help')
@@ -317,8 +570,12 @@ class SDFCreator(wx.Frame):
 								longHelp='Add a new beam forming DRX observation that tracks the Sun')
 		self.toolbar.AddLabelTool(ID_ADD_DRX_JOVIAN, 'drx-jovian', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'drx-jovian.png')), shortHelp='Add DRX - Jovian', 
 								longHelp='Add a new beam forming DRX observation that tracks Jupiter')
-		self.toolbar.AddLabelTool(ID_ADD_STEPPED,  'stepped', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'stepped.png')), shortHelp='Add DRX - Stepped', 
-								longHelp='Add a new beam forming DRX observation with custom position and frequency stepping')
+		self.toolbar.AddLabelTool(ID_ADD_STEPPED_RADEC,  'stepped', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'stepped-radec.png')), shortHelp='Add DRX - Stepped - RA/Dec', 
+								longHelp='Add a new beam forming DRX observation with custom RA/Dec position and frequency stepping')
+		self.toolbar.AddLabelTool(ID_ADD_STEPPED_AZALT,  'stepped', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'stepped-azalt.png')), shortHelp='Add DRX - Stepped - Az/Alt', 
+								longHelp='Add a new beam forming DRX observation with custom az/alt position and frequency stepping')
+		self.toolbar.AddLabelTool(ID_EDIT_STEPPED,  'step', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'stepped-edit.png')), shortHelp='Edit Selected Stepped Observation', 
+								longHelp='Add and edit steps for the currently selected stepped observation')
 		self.toolbar.AddLabelTool(ID_REMOVE, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'remove.png')), shortHelp='Remove Selected', 
 								longHelp='Remove the selected observations from the list')
 		self.toolbar.AddLabelTool(ID_VALIDATE, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'validate.png')), shortHelp='Validate Observations', 
@@ -327,9 +584,6 @@ class SDFCreator(wx.Frame):
 		self.toolbar.AddLabelTool(ID_HELP, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'help.png')), shortHelp='Help', 
 								longHelp='Display a brief help message for this program')
 		self.toolbar.Realize()
-		
-		# Disable stepped observations (for now)
-		self.toolbar.EnableTool(ID_ADD_STEPPED, False)
 		
 		# Status bar
 		self.statusbar = self.CreateStatusBar()
@@ -356,6 +610,13 @@ class SDFCreator(wx.Frame):
 		self.Bind(wx.EVT_MENU, self.onSaveAs, id=ID_SAVE_AS)
 		self.Bind(wx.EVT_MENU, self.onQuit, id=ID_QUIT)
 		
+		# Edit menu events
+		self.Bind(wx.EVT_MENU, self.onCut, id=ID_CUT)
+		self.Bind(wx.EVT_MENU, self.onCopy, id=ID_COPY)
+		self.Bind(wx.EVT_MENU, self.onPasteBefore, id=ID_PASTE_BEFORE)
+		self.Bind(wx.EVT_MENU, self.onPasteAfter, id=ID_PASTE_AFTER)
+		self.Bind(wx.EVT_MENU, self.onPasteEnd, id=ID_PASTE_END)
+		
 		# Observer menu events
 		self.Bind(wx.EVT_MENU, self.onInfo, id=ID_INFO)
 		self.Bind(wx.EVT_MENU, self.onSchedule, id=ID_SCHEDULE)
@@ -364,7 +625,9 @@ class SDFCreator(wx.Frame):
 		self.Bind(wx.EVT_MENU, self.onAddDRXR, id=ID_ADD_DRX_RADEC)
 		self.Bind(wx.EVT_MENU, self.onAddDRXS, id=ID_ADD_DRX_SOLAR)
 		self.Bind(wx.EVT_MENU, self.onAddDRXJ, id=ID_ADD_DRX_JOVIAN)
-		self.Bind(wx.EVT_MENU, self.onAddStepped, id=ID_ADD_STEPPED)
+		self.Bind(wx.EVT_MENU, self.onAddSteppedRADec, id=ID_ADD_STEPPED_RADEC)
+		self.Bind(wx.EVT_MENU, self.onAddSteppedAzAlt, id=ID_ADD_STEPPED_AZALT)
+		self.Bind(wx.EVT_MENU, self.onEditStepped, id=ID_EDIT_STEPPED)
 		self.Bind(wx.EVT_MENU, self.onRemove, id=ID_REMOVE)
 		self.Bind(wx.EVT_MENU, self.onValidate, id=ID_VALIDATE)
 		self.Bind(wx.EVT_MENU, self.onResolve, id=ID_RESOLVE)
@@ -409,7 +672,7 @@ class SDFCreator(wx.Frame):
 		self.initSDF()
 		ObserverInfo(self)
 
-		if self.mode == 'TBW':
+		if self.mode == 'TBW' and not ALLOW_TBW_TBN_SAME_SDF:
 			self.finfo.Enable(False)
 		else:
 			self.finfo.Enable(True)
@@ -491,6 +754,88 @@ class SDFCreator(wx.Frame):
 					self.displayError('Error saving to %s' % self.filename, details=err, title='Save Error')
 				
 			dialog.Destroy()
+			
+	def onCopy(self, event):
+		"""
+		Copy the selected observation(s) to the buffer.
+		"""
+		
+		self.buffer = []
+		for i in xrange(self.listControl.GetItemCount()):
+			if self.listControl.IsChecked(i):
+				self.buffer.append( copy.deepcopy(self.project.sessions[0].observations[i]) )
+				
+		self.editmenu['pasteBefore'].Enable(True)
+		self.editmenu['pasteAfter'].Enable(True)
+		self.editmenu['pasteEnd'].Enable(True)
+	
+	def onCut(self, event):
+		self.onCopy(event)
+		self.onRemove(event)
+		
+	def onPasteBefore(self, event):
+		firstChecked = None
+		
+		for i in xrange(self.listControl.GetItemCount()):
+			if self.listControl.IsChecked(i):
+				firstChecked = i
+				break
+				
+		if firstChecked is not None:
+			id = firstChecked
+			
+			for obs in self.buffer[::-1]:
+				self.project.sessions[0].observations.insert(id, obs)
+				self.addObservation(self.project.sessions[0].observations[id], id)
+				
+			self.edited = True
+			self.setSaveButton()
+			
+		# Re-number the remaining rows to keep the display clean
+		for i in xrange(self.listControl.GetItemCount()):
+			item = self.listControl.GetItem(i, 0)
+			item.SetText('%i' % (i+1))
+			self.listControl.SetItem(item)
+			self.listControl.RefreshItem(item.GetId())
+	
+	def onPasteAfter(self, event):
+		lastChecked = None
+		
+		for i in xrange(self.listControl.GetItemCount()):
+			if self.listControl.IsChecked(i):
+				lastChecked = i
+				
+		if lastChecked is not None:
+			id = lastChecked + 1
+			
+			for obs in self.buffer[::-1]:
+				self.project.sessions[0].observations.insert(id, obs)
+				self.addObservation(self.project.sessions[0].observations[id], id)
+				
+			self.edited = True
+			self.setSaveButton()
+			
+		# Re-number the remaining rows to keep the display clean
+		for i in xrange(self.listControl.GetItemCount()):
+			item = self.listControl.GetItem(i, 0)
+			item.SetText('%i' % (i+1))
+			self.listControl.SetItem(item)
+			self.listControl.RefreshItem(item.GetId())
+	
+	def onPasteEnd(self, event):
+		"""
+		Paste the selected observation(s) at the end of the current session.
+		"""
+		
+		if self.buffer is not None:
+			for obs in self.buffer:
+				id = self.listControl.GetItemCount() + 1
+				
+				self.project.sessions[0].observations.append( obs )
+				self.addObservation(self.project.sessions[0].observations[-1], id)
+				
+			self.edited = True
+			self.setSaveButton()
 	
 	def onInfo(self, event):
 		"""
@@ -576,12 +921,52 @@ class SDFCreator(wx.Frame):
 		self.edited = True
 		self.setSaveButton()
 	
-	def onAddStepped(self, event):
+	def onAddSteppedRADec(self, event):
 		"""
-		Open up the advanced preferences window.
+		Add a RA/Dec stepped observation block.
 		"""
 		
-		pass
+		id = self.listControl.GetItemCount() + 1
+		gain = self.project.sessions[0].drxGain
+		self.project.sessions[0].observations.append( sdf.Stepped('stps-%i' % id, 'radec-%i' % id, 'UTC %i 01 01 00:00:00.000' % datetime.now().year, 7, RADec=True) )
+		self.project.sessions[0].observations[-1].gain = gain
+		self.addObservation(self.project.sessions[0].observations[-1], id)
+		
+		self.edited = True
+		self.setSaveButton()
+		
+	def onAddSteppedAzAlt(self, event):
+		"""
+		Add a Az/Alt stepped observation block.
+		"""
+		
+		id = self.listControl.GetItemCount() + 1
+		gain = self.project.sessions[0].drxGain
+		self.project.sessions[0].observations.append( sdf.Stepped('stps-%i' % id, 'azalt-%i' % id, 'UTC %i 01 01 00:00:00.000' % datetime.now().year, 7, RADec=False) )
+		self.project.sessions[0].observations[-1].gain = gain
+		self.addObservation(self.project.sessions[0].observations[-1], id)
+		
+		self.edited = True
+		self.setSaveButton()
+		
+	def onEditStepped(self, event):
+		"""
+		Add or edit steps to the currently selected stepped observtion.
+		"""
+		
+		nChecked = 0
+		whichChecked = None
+		for i in xrange(self.listControl.GetItemCount()):
+			if self.listControl.IsChecked(i):
+				whichChecked = i
+				nChecked += 1
+				
+		if nChecked != 1:
+			return False
+		if self.project.sessions[0].observations[i].mode != 'STEPPED':
+			return False
+			
+		SteppedWindow(self, whichChecked)
 	
 	def onEdit(self, event):
 		"""
@@ -592,7 +977,12 @@ class SDFCreator(wx.Frame):
 		obsAttr = event.GetColumn()
 		self.SetStatusText('')
 		try:
-			newData = self.coerceMap[obsAttr](event.GetText())
+			# Catch for deaing with the new TBN tuning range of 5 to 93 MHz
+			isTBN = (self.project.sessions[0].observations[obsIndex].mode == 'TBN')
+			if self.coerceMap[obsAttr].__name__ == "freqConv":
+				newData = self.coerceMap[obsAttr](event.GetText(), tbn=isTBN)
+			else:
+				newData = self.coerceMap[obsAttr](event.GetText())
 			
 			oldData = getattr(self.project.sessions[0].observations[obsIndex], self.columnMap[obsAttr])
 			setattr(self.project.sessions[0].observations[obsIndex], self.columnMap[obsAttr], newData)
@@ -648,10 +1038,14 @@ class SDFCreator(wx.Frame):
 			i = bad - 1
 			self.listControl.DeleteItem(i)
 			del self.project.sessions[0].observations[i]
+			self.listControl.nSelected -= 1
 			bad = stillBad(self.listControl)
 			
 			self.edited = True
 			self.setSaveButton()
+			
+		# Update the check controlled features
+		self.listControl.setCheckDependant()
 		
 		# Re-number the remaining rows to keep the display clean
 		for i in xrange(self.listControl.GetItemCount()):
@@ -870,14 +1264,20 @@ class SDFCreator(wx.Frame):
 			else:
 				return value
 
-		def freqConv(text):
+		def freqConv(text, tbn=False):
 			"""
 			Special conversion function for dealing with frequencies.
 			"""
+			
+			lowerLimit = 219130984
+			upperLimit = 1928352663
+			if tbn:
+				lowerLimit = 109565492
+				upperLimit = 2037918156
 
 			value = float(text)*1e6
 			freq = int(round(value * 2**32 / fS))
-			if freq < 219130984 or freq > 1928352663:
+			if freq < lowerLimit or freq > upperLimit:
 				raise ValueError("Frequency of %.6f MHz is out of the DP tuning range" % (value/1e6,))
 			else:
 				return value
@@ -923,9 +1323,9 @@ class SDFCreator(wx.Frame):
 		for i in xrange(5):
 			self.coerceMap.append(str)
 		
-		if self.mode == 'TBW':
+		if self.mode == 'TBW' and not ALLOW_TBW_TBN_SAME_SDF:
 			pass
-		elif self.mode == 'TBN':
+		elif self.mode == 'TBN' or (self.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF):
 			width += 125 + 125 + 85
 			self.listControl.InsertColumn(5, 'Duration', width=125)
 			self.listControl.InsertColumn(6, 'Frequency (MHz)', width=125)
@@ -980,7 +1380,9 @@ class SDFCreator(wx.Frame):
 			stored in self.project
 		"""
 		
-		index = self.listControl.InsertStringItem(sys.maxint, str(id))
+		listIndex = id
+		
+		index = self.listControl.InsertStringItem(listIndex, str(id))
 		self.listControl.SetStringItem(index, 1, obs.name)
 		self.listControl.SetStringItem(index, 2, obs.target)
 		if obs.comments is not None:
@@ -988,11 +1390,25 @@ class SDFCreator(wx.Frame):
 		else:
 			self.listControl.SetStringItem(index, 3, 'None provided')
 		self.listControl.SetStringItem(index, 4, obs.start)
-			
+		
 		if self.mode == 'TBN':
-			self.listControl.SetStringItem(index, 5, obs.duration)
-			self.listControl.SetStringItem(index, 6, "%.6f" % (obs.freq1*fS/2**32 / 1e6))
-			self.listControl.SetStringItem(index, 7, "%i" % obs.filter)
+			if ALLOW_TBW_TBN_SAME_SDF and obs.mode == 'TBW':
+				self.listControl.SetStringItem(index, 5, obs.duration)
+				self.listControl.SetStringItem(index, 6, "--")
+				self.listControl.SetStringItem(index, 7, "--")
+			else:
+				self.listControl.SetStringItem(index, 5, obs.duration)
+				self.listControl.SetStringItem(index, 6, "%.6f" % (obs.freq1*fS/2**32 / 1e6))
+				self.listControl.SetStringItem(index, 7, "%i" % obs.filter)
+		elif self.mode == 'TBW':
+			if ALLOW_TBW_TBN_SAME_SDF and obs.mode == 'TBW':
+				self.listControl.SetStringItem(index, 5, obs.duration)
+				self.listControl.SetStringItem(index, 6, "--")
+				self.listControl.SetStringItem(index, 7, "--")
+			elif ALLOW_TBW_TBN_SAME_SDF and obs.mode == 'TBN':
+				self.listControl.SetStringItem(index, 5, obs.duration)
+				self.listControl.SetStringItem(index, 6, "%.6f" % (obs.freq1*fS/2**32 / 1e6))
+				self.listControl.SetStringItem(index, 7, "%i" % obs.filter)
 		
 		if self.mode == 'DRX':
 			def dec2sexstr(value, signed=True):
@@ -1010,24 +1426,35 @@ class SDFCreator(wx.Frame):
 				else:
 					return '%02i:%02i:%05.2f' % (d, m, s)
 			
-			self.listControl.SetStringItem(index, 5, obs.duration)
+			if obs.mode == 'STEPPED':
+				obs.getDuration()
+				self.listControl.SetStringItem(index, 5, obs.duration)
+				self.listControl.SetStringItem(index, 8, "--")
+				self.listControl.SetStringItem(index, 9, "--")
+				self.listControl.SetStringItem(index, 11, "--")
+			else:
+				self.listControl.SetStringItem(index, 5, obs.duration)
+				self.listControl.SetStringItem(index, 8, "%.6f" % (obs.freq1*fS/2**32 / 1e6))
+				self.listControl.SetStringItem(index, 9, "%.6f" % (obs.freq2*fS/2**32 / 1e6))
+				if obs.MaxSNR:
+					self.listControl.SetStringItem(index, 11, "Yes")
+				else:
+					self.listControl.SetStringItem(index, 11, "No")
+				
 			if obs.mode == 'TRK_SOL':
 				self.listControl.SetStringItem(index, 6, "Sun")
 				self.listControl.SetStringItem(index, 7, "--")
 			elif obs.mode == 'TRK_JOV':
 				self.listControl.SetStringItem(index, 6, "Jupiter")
 				self.listControl.SetStringItem(index, 7, "--")
+			elif obs.mode == 'STEPPED':
+				self.listControl.SetStringItem(index, 6, "STEPPED")
+				self.listControl.SetStringItem(index, 7, "RA/Dec" if obs.RADec else "Az/Alt")
 			else:
 				self.listControl.SetStringItem(index, 6, dec2sexstr(obs.ra, signed=False))
 				self.listControl.SetStringItem(index, 7, dec2sexstr(obs.dec, signed=True))
-			self.listControl.SetStringItem(index, 8, "%.6f" % (obs.freq1*fS/2**32 / 1e6))
-			self.listControl.SetStringItem(index, 9, "%.6f" % (obs.freq2*fS/2**32 / 1e6))
 			self.listControl.SetStringItem(index, 10, "%i" % obs.filter)
-			if obs.MaxSNR:
-				self.listControl.SetStringItem(index, 11, "Yes")
-			else:
-				self.listControl.SetStringItem(index, 11, "No")
-			
+	
 	def setSaveButton(self):
 		"""
 		Control that data of the various 'save' options based on the value of
@@ -1051,56 +1478,76 @@ class SDFCreator(wx.Frame):
 		
 		if mode == 'tbw':
 			self.obsmenu['tbw'].Enable(True)
-			self.obsmenu['tbn'].Enable(False)
+			self.obsmenu['tbn'].Enable(ALLOW_TBW_TBN_SAME_SDF & True)
 			self.obsmenu['drx-radec'].Enable(False)
 			self.obsmenu['drx-solar'].Enable(False)
 			self.obsmenu['drx-jovian'].Enable(False)
-			self.obsmenu['stepped'].Enable(False)
+			self.obsmenu['steppedRADec'].Enable(False)
+			self.obsmenu['steppedAzAlt'].Enable(False)
+			self.obsmenu['steppedEdit'].Enable(False)
 			
 			self.toolbar.EnableTool(ID_ADD_TBW, True)
-			self.toolbar.EnableTool(ID_ADD_TBN, False)
+			self.toolbar.EnableTool(ID_ADD_TBN, ALLOW_TBW_TBN_SAME_SDF & True)
 			self.toolbar.EnableTool(ID_ADD_DRX_RADEC,  False)
 			self.toolbar.EnableTool(ID_ADD_DRX_SOLAR,  False)
 			self.toolbar.EnableTool(ID_ADD_DRX_JOVIAN, False)
+			self.toolbar.EnableTool(ID_ADD_STEPPED_RADEC, False)
+			self.toolbar.EnableTool(ID_ADD_STEPPED_AZALT, False)
+			self.toolbar.EnableTool(ID_EDIT_STEPPED, False)
 		elif mode == 'tbn':
-			self.obsmenu['tbw'].Enable(False)
+			self.obsmenu['tbw'].Enable(ALLOW_TBW_TBN_SAME_SDF & True)
 			self.obsmenu['tbn'].Enable(True)
 			self.obsmenu['drx-radec'].Enable(False)
 			self.obsmenu['drx-solar'].Enable(False)
 			self.obsmenu['drx-jovian'].Enable(False)
-			self.obsmenu['stepped'].Enable(False)
+			self.obsmenu['steppedRADec'].Enable(False)
+			self.obsmenu['steppedAzAlt'].Enable(False)
+			self.obsmenu['steppedEdit'].Enable(False)
 			
-			self.toolbar.EnableTool(ID_ADD_TBW, False)
+			self.toolbar.EnableTool(ID_ADD_TBW, ALLOW_TBW_TBN_SAME_SDF & True)
 			self.toolbar.EnableTool(ID_ADD_TBN, True)
 			self.toolbar.EnableTool(ID_ADD_DRX_RADEC,  False)
 			self.toolbar.EnableTool(ID_ADD_DRX_SOLAR,  False)
 			self.toolbar.EnableTool(ID_ADD_DRX_JOVIAN, False)
+			self.toolbar.EnableTool(ID_ADD_STEPPED_RADEC, False)
+			self.toolbar.EnableTool(ID_ADD_STEPPED_AZALT, False)
+			self.toolbar.EnableTool(ID_EDIT_STEPPED, False)
 		elif mode[0:3] == 'trk' or mode[0:3] == 'drx':
 			self.obsmenu['tbw'].Enable(False)
 			self.obsmenu['tbn'].Enable(False)
 			self.obsmenu['drx-radec'].Enable(True)
 			self.obsmenu['drx-solar'].Enable(True)
 			self.obsmenu['drx-jovian'].Enable(True)
-			self.obsmenu['stepped'].Enable(False)
+			self.obsmenu['steppedRADec'].Enable(True)
+			self.obsmenu['steppedAzAlt'].Enable(True)
+			self.obsmenu['steppedEdit'].Enable(False)
 			
 			self.toolbar.EnableTool(ID_ADD_TBW, False)
 			self.toolbar.EnableTool(ID_ADD_TBN, False)
 			self.toolbar.EnableTool(ID_ADD_DRX_RADEC,  True)
 			self.toolbar.EnableTool(ID_ADD_DRX_SOLAR,  True)
 			self.toolbar.EnableTool(ID_ADD_DRX_JOVIAN, True)
+			self.toolbar.EnableTool(ID_ADD_STEPPED_RADEC, True)
+			self.toolbar.EnableTool(ID_ADD_STEPPED_AZALT, True)
+			self.toolbar.EnableTool(ID_EDIT_STEPPED, False)
 		else:
 			self.obsmenu['tbw'].Enable(False)
 			self.obsmenu['tbn'].Enable(False)
 			self.obsmenu['drx-radec'].Enable(False)
 			self.obsmenu['drx-solar'].Enable(False)
 			self.obsmenu['drx-jovian'].Enable(False)
-			self.obsmenu['stepped'].Enable(False)
+			self.obsmenu['steppedRADec'].Enable(False)
+			self.obsmenu['steppedAzAlt'].Enable(False)
+			self.obsmenu['steppedEdit'].Enable(False)
 			
 			self.toolbar.EnableTool(ID_ADD_TBW, False)
 			self.toolbar.EnableTool(ID_ADD_TBN, False)
 			self.toolbar.EnableTool(ID_ADD_DRX_RADEC,  False)
 			self.toolbar.EnableTool(ID_ADD_DRX_SOLAR,  False)
 			self.toolbar.EnableTool(ID_ADD_DRX_JOVIAN, False)
+			self.toolbar.EnableTool(ID_ADD_STEPPED_RADEC, False)
+			self.toolbar.EnableTool(ID_ADD_STEPPED_AZALT, False)
+			self.toolbar.EnableTool(ID_EDIT_STEPPED, False)
 	
 	def parseFile(self, filename):
 		"""
@@ -1129,7 +1576,9 @@ class SDFCreator(wx.Frame):
 			self.project.sessions[0].tbwBits = self.project.sessions[0].observations[0].bits
 			self.project.sessions[0].tbwSamples = self.project.sessions[0].observations[0].samples
 		except:
-			pass
+			if self.mode == 'TBN' and ALLOW_TBW_TBN_SAME_SDF:
+				self.project.sessions[0].tbwBits = 12
+				self.project.sessions[0].tbwSamples = 12000000
 		self.project.sessions[0].tbnGain = self.project.sessions[0].observations[0].gain
 		self.project.sessions[0].drxGain = self.project.sessions[0].observations[0].gain
 		
@@ -1529,7 +1978,9 @@ ID_ADV_INFO_CANCEL = 312
 
 class AdvancedInfo(wx.Frame):
 	def __init__(self, parent):
-		if parent.mode == 'TBW':
+		if parent.mode == 'TBW'and ALLOW_TBW_TBN_SAME_SDF:
+			size = (830, 675)
+		elif parent.mode == 'TBW':
 			size = (830, 575)
 		else:
 			size = (830, 580)
@@ -1721,7 +2172,7 @@ class AdvancedInfo(wx.Frame):
 		# TBW
 		#
 		
-		if self.parent.mode == 'TBW':
+		if self.parent.mode == 'TBW' or (self.parent.mode == 'TBN' and ALLOW_TBW_TBN_SAME_SDF):
 			tbw = wx.StaticText(panel, label='TBW-Specific Information')
 			tbw.SetFont(font)
 			
@@ -1751,7 +2202,7 @@ class AdvancedInfo(wx.Frame):
 		# TBN
 		#
 		
-		if self.parent.mode == 'TBN':
+		if self.parent.mode == 'TBN' or (self.parent.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF):
 			tbn = wx.StaticText(panel, label='TBN-Specific Information')
 			tbn.SetFont(font)
 			
@@ -1836,11 +2287,11 @@ class AdvancedInfo(wx.Frame):
 		self.incSMIB = incSMIB
 		self.incDESG = incDESG
 		
-		if self.parent.mode == 'TBW':
+		if self.parent.mode == 'TBW' or (self.parent.mode == 'TBN' and ALLOW_TBW_TBN_SAME_SDF):
 			self.tbwBits = tbitsText
 			self.tbwSamp = tsampText
 		
-		if self.parent.mode == 'TBN':
+		if self.parent.mode == 'TBN' or (self.parent.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF):
 			self.tbnGain = tgainText
 		
 		if self.parent.mode == 'DRX':
@@ -1861,7 +2312,7 @@ class AdvancedInfo(wx.Frame):
 		Save everything into all of the correct places.
 		"""
 
-		if self.parent.mode == 'TBW':
+		if self.parent.mode == 'TBW' or (self.parent.mode == 'TBN' and ALLOW_TBW_TBN_SAME_SDF):
 			tbwBits = int( self.tbwBits.GetValue().split('-')[0] )
 			tbwSamp = int( self.tbwSamp.GetValue() )
 			if tbwSamp < 0:
@@ -1909,11 +2360,11 @@ class AdvancedInfo(wx.Frame):
 			self.parent.project.sessions[0].aspAT2[i] = aspAT2
 			self.parent.project.sessions[0].aspATS[i] = aspATS
 
-		if self.parent.mode == 'TBW':
+		if self.parent.mode == 'TBW' or (self.parent.mode == 'TBN' and ALLOW_TBW_TBN_SAME_SDF):
 			self.parent.project.sessions[0].tbwBits = int( self.tbwBits.GetValue().split('-')[0] )
 			self.parent.project.sessions[0].tbwSamples = int( self.tbwSamp.GetValue() )
 			
-		if self.parent.mode == 'TBN':
+		if self.parent.mode == 'TBN' or (self.parent.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF):
 			self.parent.project.sessions[0].tbnGain = self.__parseGainCombo(self.tbnGain)
 			
 		if self.parent.mode == 'DRX':
@@ -1921,10 +2372,10 @@ class AdvancedInfo(wx.Frame):
 			self.parent.project.sessions[0].drxBeam = self.__parseGainCombo(self.drxBeam)
 		
 		for obs in self.parent.project.sessions[0].observations:
-			if obs.mode == 'TBW':
+			if obs.mode == 'TBW' or (self.parent.mode == 'TBN' and ALLOW_TBW_TBN_SAME_SDF):
 				obs.bits = self.parent.project.sessions[0].tbwBits
 				obs.samples = self.parent.project.sessions[0].tbwSamples
-			elif obs.mode == 'TBN':
+			elif obs.mode == 'TBN' or (self.parent.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF):
 				obs.gain = self.parent.project.sessions[0].tbnGain
 			else:
 				obs.gain = self.parent.project.sessions[0].drxGain
@@ -2178,7 +2629,8 @@ class SessionDisplay(wx.Frame):
 				i += 1
 				
 			elif o.mode == 'STEPPED':
-				t0 = o.mjd + (o.mpm/1000.0) / (3600.0*24.0) - self.earliest
+				t0 = o.mjd + (o.mpm/1000.0) / (3600.0*24.0)
+				
 				for s in o.steps:
 					## Get the source
 					src = s.getFixedBody()
@@ -2192,8 +2644,10 @@ class SessionDisplay(wx.Frame):
 						alt = s.c2
 						
 					el.append( alt )
-					t.append( t0 )
+					t.append( t0 - self.earliest)
 					t0 += (s.dur/1000.0) / (3600.0*24.0)
+					el.append( alt )
+					t.append( t0 - self.earliest )
 					
 				## Plot the elevation over time
 				self.ax1.plot(t, el, label='%s' % o.target)
@@ -2653,7 +3107,517 @@ class HelpWindow(wx.Frame):
 		panel.SetSizer(vbox)
 
 
+ID_STEPPED_DONE = 701
+ID_STEPPED_ADD_SINGLE_STEP = 711
+ID_STEPPED_REMOVE = 712
+ID_STEPPED_CUT = 713
+ID_STEPPED_COPY = 714
+ID_STEPPED_PASTE_BEFORE = 715
+ID_STEPPED_PASTE_AFTER = 716
+ID_STEPPED_PASTE_END = 717
+ID_STEPPED_LISTCTRL = 721
+
+class SteppedWindow(wx.Frame):
+	def __init__ (self, parent, obsID):
+		self.parent = parent
+		self.obsID = obsID
+		self.obs = self.parent.project.sessions[0].observations[self.obsID]
+		self.RADec = self.obs.RADec
+		
+		title = '%s Stepped Observation #%i' % ("RA/Dec" if self.RADec else "Az/Alt", obsID+1)
+		wx.Frame.__init__(self, parent, title=title, size=(375, 350))
+		
+		self.editmenu = {}
+		self.buffer = None
+		
+		self.initUI()
+		self.initEvents()
+		self.Show()
+		
+		self.loadSteps()
+		
+	def initUI(self):
+		stepType = "RA/Dec" if self.RADec else "Az/Alt"
+		
+		# Menubar
+		menubar = wx.MenuBar()
+		
+		editMenu = wx.Menu()
+		stpMenu = wx.Menu()
+		
+		cut = wx.MenuItem(editMenu, ID_STEPPED_CUT, 'C&ut Selected Observation')
+		editMenu.AppendItem(cut)
+		cpy = wx.MenuItem(editMenu, ID_STEPPED_COPY, '&Copy Selected Observation')
+		editMenu.AppendItem(cpy)
+		pstb = wx.MenuItem(editMenu, ID_STEPPED_PASTE_BEFORE, '&Paste Before Selected')
+		editMenu.AppendItem(pstb)
+		psta = wx.MenuItem(editMenu, ID_STEPPED_PASTE_AFTER, '&Paste After Selected')
+		editMenu.AppendItem(psta)
+		pste = wx.MenuItem(editMenu, ID_STEPPED_PASTE_END, '&Paste at End of List')
+		editMenu.AppendItem(pste)
+		
+		# Save menu items and disable all of them
+		self.editmenu['cut'] = cut
+		self.editmenu['copy'] = cpy
+		self.editmenu['pasteBefore'] = pstb
+		self.editmenu['pasteAfter'] = psta
+		self.editmenu['pasteEnd'] = pste
+		for k in self.editmenu.keys():
+			self.editmenu[k].Enable(False)
+		
+		# Steps Menu
+		addStep = wx.MenuItem(stpMenu, ID_STEPPED_ADD_SINGLE_STEP, 'Add a Step')
+		stpMenu.AppendItem(addStep)
+		remove = wx.MenuItem(stpMenu, ID_STEPPED_REMOVE, '&Remove Selected Step(s)')
+		stpMenu.AppendItem(remove)
+		stpMenu.AppendSeparator()
+		done = wx.MenuItem(stpMenu, ID_STEPPED_DONE, 'Done')
+		stpMenu.AppendItem(done)
+		
+		menubar.Append(editMenu, '&Edit')
+		menubar.Append(stpMenu, '&Steps')
+		self.SetMenuBar(menubar)
+		
+		# Toolbar
+		self.toolbar = self.CreateToolBar()
+		self.toolbar.AddLabelTool(ID_STEPPED_DONE, 'step', wx.Bitmap(os.path.join(self.parent.scriptPath, 'icons', 'stepped-done.png')), shortHelp='Finish making changes', longHelp='Finish making changes to the steps and close the window')
+		self.toolbar.AddSeparator()
+		self.toolbar.AddLabelTool(ID_STEPPED_ADD_SINGLE_STEP,  'step', wx.Bitmap(os.path.join(self.parent.scriptPath, 'icons', 'stepped-add.png')), shortHelp='Add %s Step' % stepType, 
+								longHelp='Add a new %s step with custom position and frequency stepping to to Stepped Observation #%i' % (stepType, self.obsID))
+		self.toolbar.AddLabelTool(ID_STEPPED_REMOVE, '', wx.Bitmap(os.path.join(self.parent.scriptPath, 'icons', 'remove.png')), shortHelp='Remove Selected', 
+								longHelp='Remove the selected step from the step list for Stepped Observation #%i' % self.obsID)
+		self.toolbar.Realize()
+		
+		# Status bar
+		self.statusbar = self.CreateStatusBar()
+		
+		# Observation list
+		hbox = wx.BoxSizer(wx.HORIZONTAL)
+		panel = wx.Panel(self, -1)
+		
+		self.listControl = SteppedListCtrl(panel, id=ID_STEPPED_LISTCTRL)
+		self.listControl.parent = self
+		
+		hbox.Add(self.listControl, 1, wx.EXPAND)
+		panel.SetSizer(hbox)
+		
+	def initEvents(self):
+		# Edit events
+		self.Bind(wx.EVT_MENU, self.onCut, id=ID_STEPPED_CUT)
+		self.Bind(wx.EVT_MENU, self.onCopy, id=ID_STEPPED_COPY)
+		self.Bind(wx.EVT_MENU, self.onPasteBefore, id=ID_STEPPED_PASTE_BEFORE)
+		self.Bind(wx.EVT_MENU, self.onPasteAfter, id=ID_STEPPED_PASTE_AFTER)
+		self.Bind(wx.EVT_MENU, self.onPasteEnd, id=ID_STEPPED_PASTE_END)
+		
+		# Toolbar events
+		self.Bind(wx.EVT_MENU, self.onQuit, id=ID_STEPPED_DONE)
+		self.Bind(wx.EVT_MENU, self.onAddStep, id=ID_STEPPED_ADD_SINGLE_STEP)
+		self.Bind(wx.EVT_MENU, self.onRemove, id=ID_STEPPED_REMOVE)
+		
+		# Step edits
+		self.Bind(wx.EVT_LIST_END_LABEL_EDIT, self.onEdit, id=ID_STEPPED_LISTCTRL)
+		
+		# Window manager close
+		self.Bind(wx.EVT_CLOSE, self.onQuit)
+	
+	def onCopy(self, event):
+		"""
+		Copy the selected step(s) to the buffer.
+		"""
+		
+		self.buffer = []
+		for i in xrange(self.listControl.GetItemCount()):
+			if self.listControl.IsChecked(i):
+				self.buffer.append( copy.deepcopy(self.obs.steps[i]) )
+				
+		self.editmenu['pasteBefore'].Enable(True)
+		self.editmenu['pasteAfter'].Enable(True)
+		self.editmenu['pasteEnd'].Enable(True)
+	
+	def onCut(self, event):
+		self.onCopy(event)
+		self.onRemove(event)
+		
+	def onPasteBefore(self, event):
+		firstChecked = None
+		
+		for i in xrange(self.listControl.GetItemCount()):
+			if self.listControl.IsChecked(i):
+				firstChecked = i
+				break
+				
+		if firstChecked is not None:
+			id = firstChecked
+			
+			for stp in self.buffer[::-1]:
+				self.obs.steps.insert(id, stp)
+				self.addStep(self.obs.steps[id], id)
+				
+			self.parent.edited = True
+			self.parent.setSaveButton()
+			
+		# Re-number the remaining rows to keep the display clean
+		for i in xrange(self.listControl.GetItemCount()):
+			item = self.listControl.GetItem(i, 0)
+			item.SetText('%i' % (i+1))
+			self.listControl.SetItem(item)
+			self.listControl.RefreshItem(item.GetId())
+			
+	def onPasteAfter(self, event):
+		lastChecked = None
+		
+		for i in xrange(self.listControl.GetItemCount()):
+			if self.listControl.IsChecked(i):
+				lastChecked = i
+				
+		if lastChecked is not None:
+			id = lastChecked + 1
+			
+			for stp in self.buffer[::-1]:
+				self.obs.steps.insert(id, stp)
+				self.addStep(self.obs.steps[id], id)
+				
+			self.parent.edited = True
+			self.parent.setSaveButton()
+			
+		# Re-number the remaining rows to keep the display clean
+		for i in xrange(self.listControl.GetItemCount()):
+			item = self.listControl.GetItem(i, 0)
+			item.SetText('%i' % (i+1))
+			self.listControl.SetItem(item)
+			self.listControl.RefreshItem(item.GetId())
+	
+	def onPasteEnd(self, event):
+		"""
+		Paste the selected observation(s) at the end of the current session.
+		"""
+		
+		if self.buffer is not None:
+			for stp in self.buffer:
+				id = self.listControl.GetItemCount() + 1
+				
+				self.obs.steps( stp )
+				self.addStep(self.obs.steps[-1], id)
+				
+			self.parent.edited = True
+			self.parent.setSaveButton()
+	
+	def onAddStep(self, event):
+		"""
+		Add a new step.
+		"""
+		
+		id = self.listControl.GetItemCount() + 1
+		self.obs.steps.append( sdf.BeamStep(0.0, 0.0, '00:00:00.000', 38e6, 74e6, RADec=self.RADec) )
+		self.addStep(self.obs.steps[-1], id)
+	
+	def onEdit(self, event):
+		"""
+		Make the selected change to the underlying observation.
+		"""
+		
+		obsIndex = event.GetIndex()
+		obsAttr = event.GetColumn()
+		self.SetStatusText('')
+		try:
+			newData = self.coerceMap[obsAttr](event.GetText())
+			
+			oldData = getattr(self.obs.steps[obsIndex], self.columnMap[obsAttr])
+			setattr(self.obs.steps[obsIndex], self.columnMap[obsAttr], newData)
+			self.obs.steps[obsIndex].update()
+			self.obs.update()
+			
+			# If the duration has changed, update the main window
+			if self.columnMap[obsAttr] == 'duration':
+				item = self.parent.listControl.GetItem(self.obsID, 5)
+				item.SetText(self.obs.duration)
+				self.parent.listControl.SetItem(item)
+			
+			item = self.listControl.GetItem(obsIndex, obsAttr)
+			if self.listControl.GetItemTextColour(item.GetId()) != (0, 0, 0, 255):
+				self.listControl.SetItemTextColour(item.GetId(), wx.BLACK)
+				self.listControl.RefreshItem(item.GetId())
+				
+			self.parent.edited = True
+			self.parent.setSaveButton()
+			
+			self.badEdit = False
+			self.badEditLocation = (-1, -1)
+		except ValueError as err:
+			print '[%i] Error: %s' % (os.getpid(), str(err))
+			self.SetStatusText('Error: %s' % str(err))
+			
+			item = self.listControl.GetItem(obsIndex, obsAttr)
+			self.listControl.SetItemTextColour(item.GetId(), wx.RED)
+			self.listControl.RefreshItem(item.GetId())
+
+			self.badEdit = True
+			self.badEditLocation = (obsIndex, obsAttr)
+	
+	def onRemove(self, event):
+		"""
+		Remove selected observations from the main window as well as the 
+		self.project.sessions[0].observations list.
+		"""
+		
+		def stillBad(lc):
+			"""
+			Function to recur throught the rows and check to see if any still 
+			need to be removed.  Returns the index+1 of the next element to be
+			removed.
+			
+			Why index+1?  Well... because 0 is interperated as False and 1+ as
+			True.  Thus if any one row is bad, value corresponding to boolean
+			True is returned.
+			"""
+			
+			for i in xrange(lc.GetItemCount()):
+				if lc.IsChecked(i):
+					return i+1
+			return 0
+
+		# While there is still at least one bad row, continue looping and removing
+		# rows
+		bad = stillBad(self.listControl)
+		while bad:
+			i = bad - 1
+			self.listControl.DeleteItem(i)
+			del self.obs.steps[i]
+			bad = stillBad(self.listControl)
+		self.listControl.setCheckDependant()
+		
+		# Re-number the remaining rows to keep the display clean
+		for i in xrange(self.listControl.GetItemCount()):
+			item = self.listControl.GetItem(i, 0)
+			item.SetText('%i' % (i+1))
+			self.listControl.SetItem(item)
+			self.listControl.RefreshItem(item.GetId())
+			
+	def onQuit(self, event):
+		"""
+		Exit out of the step editer.
+		"""
+		
+		self.Destroy()
+		
+	def addColumns(self):
+		"""
+		Add the various columns to the main window based on the type of 
+		observations being defined.
+		"""
+
+		def raConv(text):
+			"""
+			Special conversion function for deal with RA values.
+			"""
+			
+			fields = text.split(':')
+			fields = [float(f) for f in fields]
+			sign = 1
+			if fields[0] < 0:
+				sign = -1
+			fields[0] = abs(fields[0])
+			
+			value = 0
+			for f,d in zip(fields, [1.0, 60.0, 3600.0]):
+				value += (f / d)
+			value *= sign
+			
+			if value <= 0 or value >= 24:
+				raise ValueError("RA value must be 0 < RA < 24")
+			else:
+				return value
+
+		def decConv(text):
+			"""
+			Special conversion function for dealing with dec. values.
+			"""
+			
+			fields = text.split(':')
+			fields = [float(f) for f in fields]
+			sign = 1
+			if fields[0] < 0:
+				sign = -1
+			fields[0] = abs(fields[0])
+			
+			value = 0
+			for f,d in zip(fields, [1.0, 60.0, 3600.0]):
+				value += (f / d)
+			value *= sign
+			
+			if value < -90 or value > 90:
+				raise ValueError("Dec values must be -90 <= dec <= 90")
+			else:
+				return value
+
+		def azConv(text):
+			"""
+			Special conversion functio for azimuth values.
+			"""
+			
+			fields = text.split(':')
+			fields = [float(f) for f in fields]
+			sign = 1
+			if fields[0] < 0:
+				sign = -1
+			fields[0] = abs(fields[0])
+			
+			value = 0
+			for f,d in zip(fields, [1.0, 60.0, 3600.0]):
+				value += (f / d)
+			value *= sign
+			
+			if value < 0 or value > 360:
+				raise ValueError("Azimuth values must be 0 <= dec <= 360")
+			else:
+				return value
+				
+		def altConv(text):
+			"""
+			Special conversion functio for altitude/elevation values.
+			"""
+			
+			fields = text.split(':')
+			fields = [float(f) for f in fields]
+			sign = 1
+			if fields[0] < 0:
+				sign = -1
+			fields[0] = abs(fields[0])
+			
+			value = 0
+			for f,d in zip(fields, [1.0, 60.0, 3600.0]):
+				value += (f / d)
+			value *= sign
+			
+			if value < 0 or value > 90:
+				raise ValueError("Elevation values must be 0 <= dec <= 90")
+			else:
+				return value
+
+		def freqConv(text):
+			"""
+			Special conversion function for dealing with frequencies.
+			"""
+
+			value = float(text)*1e6
+			freq = int(round(value * 2**32 / fS))
+			if freq < 219130984 or freq > 1928352663:
+				raise ValueError("Frequency of %.6f MHz is out of the DP tuning range" % (value/1e6,))
+			else:
+				return value
+		
+		def snrConv(text):
+			"""
+			Special conversion function for dealing with the MaxSNR keyword input.
+			"""
+			
+			text = text.lower().capitalize()
+			if text == 'True' or text == 'Yes':
+				return True
+			elif text == 'False' or text == 'No':
+				return False
+			else:
+				raise ValueError("Unknown boolean conversion of '%s'" % text)
+		
+		width = 50 + 125
+		self.columnMap = []
+		self.coerceMap = []
+		
+		self.listControl.InsertColumn(0, 'ID', width=50)
+		self.listControl.InsertColumn(1, 'Duration', width=125)
+		self.columnMap.append('id')
+		self.columnMap.append('duration')
+		self.coerceMap.append(str)
+		self.coerceMap.append(str)
+		
+		width += 125 + 150 + 150 + 125 + 125 + 125
+		if self.RADec:
+			self.listControl.InsertColumn(2, 'RA (Hour J2000)', width=150)
+			self.listControl.InsertColumn(3, 'Dec (Deg. J2000)', width=150)
+			self.columnMap.append('c1')
+			self.columnMap.append('c2')
+			self.coerceMap.append(raConv)
+			self.coerceMap.append(decConv)
+		else:
+			self.listControl.InsertColumn(2, 'Azimuth (Deg.)', width=150)
+			self.listControl.InsertColumn(3, 'Elevation (Deg.)', width=150)
+			self.columnMap.append('c1')
+			self.columnMap.append('c2')
+			self.coerceMap.append(azConv)
+			self.coerceMap.append(altConv)
+		self.listControl.InsertColumn(4, 'Tuning 1 (MHz)', width=125)
+		self.listControl.InsertColumn(5, 'Tuning 2 (MHz)', width=125)
+		self.listControl.InsertColumn(6, 'Max S/N Beam?', width=125)
+		self.columnMap.append('frequency1')
+		self.columnMap.append('frequency2')
+		self.columnMap.append('MaxSNR')
+		self.coerceMap.append(freqConv)
+		self.coerceMap.append(freqConv)
+		self.coerceMap.append(snrConv)
+		
+		size = self.listControl.GetSize()
+		size[0] = width
+		self.listControl.SetMinSize(size)
+		self.listControl.Fit()
+		size = self.GetSize()
+		size[0] = width
+		self.SetMinSize(size)
+		self.Fit()
+		
+	def addStep(self, step, id):
+		"""
+		Add a step to the currently selected observation
+		
+		.. note::
+			This only updates the list visible on the screen, not the SD list
+			stored in self.obs
+		"""
+		
+		listIndex = id
+		
+		index = self.listControl.InsertStringItem(listIndex, str(id))
+		def dec2sexstr(value, signed=True):
+			sign = 1
+			if value < 0:
+				sign = -1
+			value = abs(value)
+			
+			d = sign*int(value)
+			m = int(value*60) % 60
+			s = float(value*3600) % 60
+			
+			if signed:
+				return '%+03i:%02i:%04.1f' % (d, m, s)
+			else:
+				return '%02i:%02i:%05.2f' % (d, m, s)
+				
+		self.listControl.SetStringItem(index, 1, step.duration)
+		self.listControl.SetStringItem(index, 4, "%.6f" % (step.freq1*fS/2**32 / 1e6))
+		self.listControl.SetStringItem(index, 5, "%.6f" % (step.freq2*fS/2**32 / 1e6))
+		if step.MaxSNR:
+			self.listControl.SetStringItem(index, 6, "Yes")
+		else:
+			self.listControl.SetStringItem(index, 6, "No")
+			
+		self.listControl.SetStringItem(index, 2, dec2sexstr(step.c1, signed=False))
+		self.listControl.SetStringItem(index, 3, dec2sexstr(step.c2, signed=True))
+		
+	def loadSteps(self):
+		"""
+		Read in the steps currenlty defined as part of the observation.
+		"""
+		
+		self.listControl.DeleteAllItems()
+		self.listControl.DeleteAllColumns()
+		self.addColumns()
+		
+		for i, step in enumerate(self.obs.steps):
+			self.addStep(step, i+1)
+
+
 if __name__ == "__main__":
+	config = parseOptions(sys.argv[1:])
+	
 	app = wx.App()
-	SDFCreator(None, title='Session Definition File', args=sys.argv[1:])
+	SDFCreator(None, title='Session Definition File', config=config)
 	app.MainLoop()

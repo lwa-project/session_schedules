@@ -53,9 +53,11 @@ determined by MCS but can be overridden in the <a href="#mcs">advanced settings 
 <p>
 <a name="drx">
 <h6>Beam Forming Modes</h6>
-Beam forming modes tracking the sky, Sun, and Jupiter are avaliable.  For each beam, both tunings are 
-supported with the caveat that both tunings will use the same filter code and gain settings.  Similar 
-to TBN the default gain value can be changed if it has been specified under the <a href="#mcs">advanced settings menu</a>.
+Beam forming modes tracking the sky, Sun, Jupiter, and some stepped observations are avaliable.  For each 
+beam, both tunings are supported with the caveat that both tunings will use the same filter code and gain settings.  Similar to TBN the default gain value can be changed if it has been specified under the <a href="#mcs">advanced settings menu</a>.
+<br /><br />
+The supported stepped observation types are RA/Dec and Az/Alt with the beam forming coefficients calculated 
+by MCS.  Specifying the individual antenna gains and delays is currently not supported.
 <br /><br />
 
 Session GUI supports using the NASA-IPAC and SIMBAD databases to resolve target names listed in the 
@@ -119,10 +121,7 @@ LWA staff or an experienced LWA observer.
 <h6>Limitations</h6>
 Current limitations in the capabilities of Session GUI are:<br />
 <ul>
-	<li>Explicit checking for overlapping observations is not preformed.</li>
-	<li>Stepped observations (OBS_MODE = STEPPED) are not currently supported.</li>
-	<li>The post-acquisition data reduction procedures are not yet defined, therefore reduction options 
-	are not specified in Session GUI.</li>
+	<li>Stepped observations with specified antenna delays and gains are not currently supported.</li>
 </ul>
 <br /><a href="#top">Top</a>
 </a>
