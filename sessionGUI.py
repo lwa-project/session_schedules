@@ -785,7 +785,9 @@ class SDFCreator(wx.Frame):
 			id = firstChecked
 			
 			for obs in self.buffer[::-1]:
-				self.project.sessions[0].observations.insert(id, obs)
+				cObs = copy.deepcopy(obs)
+				
+				self.project.sessions[0].observations.insert(id, cObs)
 				self.addObservation(self.project.sessions[0].observations[id], id)
 				
 			self.edited = True
@@ -809,7 +811,9 @@ class SDFCreator(wx.Frame):
 			id = lastChecked + 1
 			
 			for obs in self.buffer[::-1]:
-				self.project.sessions[0].observations.insert(id, obs)
+				cObs = copy.deepcopy(obs)
+				
+				self.project.sessions[0].observations.insert(id, cObs)
 				self.addObservation(self.project.sessions[0].observations[id], id)
 				
 			self.edited = True
@@ -831,7 +835,9 @@ class SDFCreator(wx.Frame):
 			for obs in self.buffer:
 				id = self.listControl.GetItemCount() + 1
 				
-				self.project.sessions[0].observations.append( obs )
+				cObs = copy.deepcopy(obs)
+				
+				self.project.sessions[0].observations.append(cObs)
 				self.addObservation(self.project.sessions[0].observations[-1], id)
 				
 			self.edited = True
@@ -3250,7 +3256,9 @@ class SteppedWindow(wx.Frame):
 			id = firstChecked
 			
 			for stp in self.buffer[::-1]:
-				self.obs.steps.insert(id, stp)
+				cStp = copy.deepcopy(stp)
+				
+				self.obs.steps.insert(id, cStp)
 				self.addStep(self.obs.steps[id], id)
 				
 			self.parent.edited = True
@@ -3274,7 +3282,9 @@ class SteppedWindow(wx.Frame):
 			id = lastChecked + 1
 			
 			for stp in self.buffer[::-1]:
-				self.obs.steps.insert(id, stp)
+				cStp = copy.deepcopy(stp)
+				
+				self.obs.steps.insert(id, cStp)
 				self.addStep(self.obs.steps[id], id)
 				
 			self.parent.edited = True
@@ -3296,7 +3306,9 @@ class SteppedWindow(wx.Frame):
 			for stp in self.buffer:
 				id = self.listControl.GetItemCount() + 1
 				
-				self.obs.steps( stp )
+				cStp = copy.deepcopy(stp)
+				
+				self.obs.steps(cStp)
 				self.addStep(self.obs.steps[-1], id)
 				
 			self.parent.edited = True
