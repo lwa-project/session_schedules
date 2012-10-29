@@ -2928,14 +2928,12 @@ class ResolveTarget(wx.Frame):
 			coordsys = (line[2].replace('\n', '').split('='))[1]
 			ra = (line[3].replace('\n', '').split('='))[1]
 			dec = (line[4].replace('\n', '').split('='))[1]
-
+			
 			temp = deg_to_hms(float(ra))
 			raS = "%i:%02i:%05.2f" % (temp.hours, temp.minutes, temp.seconds)
 			temp = deg_to_dms(float(dec))
-			decS = "%+i:%02i:%04.1f" % (temp.degrees, temp.minutes, temp.seconds)
-		
-			#self.raText.SetValue("%.6f" % (float(ra)/15.0,))
-			#self.decText.SetValue("%+.6f" % (float(dec),))
+			decS = "%+i:%02i:%04.1f" % ((-1.0 if temp.neg else 1.0)*temp.degrees, temp.minutes, temp.seconds)
+			
 			self.raText.SetValue(raS)
 			self.decText.SetValue(decS)
 			self.srvText.SetValue(service[0:-2])
