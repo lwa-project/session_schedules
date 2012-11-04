@@ -49,9 +49,11 @@ resolve.py
 
 validator.py
   Apache/python script to validate SDFs via the validation interfaces available 
-  in sdf.py and with the tpss executable.  This validator runs tpss up to level 2.  
-  The script can also be run from the command line with a single SDF file as an 
-  input to validate that file again tpss.
+  in sdf.py and with the tpss executable.  This validator runs tpss up to level 2.
+
+validatorCLI.py
+  Script that wraps the above module so that it can be used from the command line
+  to validate a single SDF file.
 
 session-definition.py
   Apache/python script to provide a web interface to creating SDFs.  The 
