@@ -2783,16 +2783,30 @@ class VolumeInfo(wx.Frame):
 		observationCount = 1
 		totalData = 0
 		for obs in self.parent.project.sessions[0].observations:
+			if self.parent.project.sessions[0].spcSetup[0] != 0 and self.parent.project.sessions[0].spcSetup[1] != 0:
+				mode = "%s+SPC" % obs.mode
+				
+				tunes = 2
+				products = 4
+				tlen, icount = self.parent.project.sessions[0].spcSetup
+				sampleRate = obs.filterCodes[obs.filter]
+				duration = obs.getDuration() / 1000.0
+				dataVolume = (64 + tlen*tunes*products*4) / (1.0*tlen*icount/sampleRate) * duration
+			else:
+				mode = obs.mode
+				
+				dataVolume = obs.dataVolume
+			
 			idText = wx.StaticText(panel, label='Observation #%i' % observationCount)
-			tpText = wx.StaticText(panel, label=obs.mode)
-			dvText = wx.StaticText(panel, label='%.2f GB' % (obs.dataVolume/1024.0**3,))
+			tpText = wx.StaticText(panel, label=mode)
+			dvText = wx.StaticText(panel, label='%.2f GB' % (dataVolume/1024.0**3,))
 			
 			sizer.Add(idText, pos=(row+0, 0), flag=wx.ALIGN_LEFT, border=5)
 			sizer.Add(tpText, pos=(row+0, 1), flag=wx.ALIGN_CENTER, border=5)
 			sizer.Add(dvText, pos=(row+0, 2), flag=wx.ALIGN_RIGHT, border=5)
 			
 			observationCount += 1
-			totalData += obs.dataVolume
+			totalData += dataVolume
 			row += 1
 			
 		line = wx.StaticLine(panel)

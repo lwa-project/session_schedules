@@ -65,7 +65,7 @@ def main(args):
 		tlen = int(tlen)
 		icount = int(icount)
 		tunes = 2
-		products = 2
+		products = 4
 		sampleRate = drxFilters[filterCode]
 		
 		# Calculate the DR spectrometer frame size
