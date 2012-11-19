@@ -2791,7 +2791,7 @@ class VolumeInfo(wx.Frame):
 				tlen, icount = self.parent.project.sessions[0].spcSetup
 				sampleRate = obs.filterCodes[obs.filter]
 				duration = obs.getDuration() / 1000.0
-				dataVolume = (64 + tlen*tunes*products*4) / (1.0*tlen*icount/sampleRate) * duration
+				dataVolume = (76 + tlen*tunes*products*4) / (1.0*tlen*icount/sampleRate) * duration
 			else:
 				mode = obs.mode
 				

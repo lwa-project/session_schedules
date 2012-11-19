@@ -69,7 +69,7 @@ def main(args):
 		sampleRate = drxFilters[filterCode]
 		
 		# Calculate the DR spectrometer frame size
-		headerSize = 64
+		headerSize = 76
 		dataSize = tlen*tunes*products*4
 		dataRate = (headerSize+dataSize)/(1.0*tlen*icount/sampleRate)
 	else:
