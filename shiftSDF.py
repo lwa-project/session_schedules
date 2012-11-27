@@ -31,7 +31,7 @@ from lsl.astro import utcjd_to_unix, MJD_OFFSET
 from lsl.common import sdf
 
 
-__version__ = "0.1"
+__version__ = "0.2"
 __revision__ = "$Rev$"
 
 # Date/time manipulation
@@ -52,7 +52,6 @@ this script to:
   * Apply a pointing correction (currently ~430 seconds in RA) to
     the observations
   * Switch the session ID to a new value
-  * Convert TRK_SOL and TRK_JOV observations to TRK_RADEC
   * Only update one of the above and leave the time alone
   * Print out the contents of the SDF file in an easy-to-digest manner
 
@@ -64,7 +63,6 @@ Options:
 -d, --date           Date to use in YYYY/MM/DD format
 -t, --time           Time to use in HH:MM:SS.SSS format
 -s, --sid            Update session ID/New session ID value
--r, --radec          Convert TRK_SOL/TRK_JOV to TRK_RADEC
 -p, --pointing       Update pointing to correct for the pointing error
 -n, --no-update      Do not update the time, only apply other options
 -q, --query          Query the SDF only, make no changes
@@ -84,14 +82,13 @@ def parseOptions(args):
 	config['time'] = None
 	config['date'] = None
 	config['sessionID'] = None
-	config['makeRADec'] = False
 	config['updatePointing'] = False
-	config['pointingErrorRA'] = -430 / 3600.0	# hours
-	config['pointingErrorDec'] = -3600 / 3600.0		# degrees
+	config['pointingErrorRA'] = 0 / 3600.0	# hours
+	config['pointingErrorDec'] = 0 / 3600.0		# degrees
 
 	# Read in and process the command line flags
 	try:
-		opts, args = getopt.getopt(args, "hld:t:s:rpnq", ["help", "lst", "date=", "time=", "sid=", "radec", "pointing", "no-update", "query"])
+		opts, args = getopt.getopt(args, "hld:t:s:pnq", ["help", "lst", "date=", "time=", "sid=", "pointing", "no-update", "query"])
 	except getopt.GetoptError, err:
 		# Print help information and exit:
 		print str(err) # will print something like "option -a not recognized"
@@ -119,8 +116,6 @@ def parseOptions(args):
 				raise RuntimeError("Unknown time: %s" % value)
 		elif opt in ('-s', '--sid'):
 			config['sessionID'] = int(value)
-		elif opt in ('-r', '--radec'):
-			config['makeRADec'] = True
 		elif opt in ('-p', '--pointing'):
 			config['updatePointing'] = True
 		elif opt in ('-n', '--no-update'):
@@ -216,7 +211,21 @@ def main(args):
 		print " DRX Beam: %s" % drxBeam
 		print " DR Spectrometer used? %s" % drspec
 		if drspec == 'Yes':
+			mt = project.sessions[0].spcMetatag
+			if mt is None:
+				mt = '{Stokes=XXYY}'
+			junk, mt = mt.split('=', 1)
+			mt = mt.replace('}', '')
+			
+			if mt in ('XX', 'YY', 'XY', 'YX', 'XXYY', 'XXXYYXYY'):
+				products = len(mt)/2
+				mt = [mt[2*i:2*i+2] for i in xrange(products)]
+			else:
+				products = len(mt)
+				mt = [mt[1*i:1*i+1] for i in xrange(products)]
+				
 			print " -> %i channels, %i windows/integration" % tuple(project.sessions[0].spcSetup)
+			print " -> %i data products (%s)" % (products, ','.join(mt))
 		
 		print " "
 		print " Number of observations: %i" % nObs
@@ -327,8 +336,7 @@ def main(args):
 	# Shift the start times and recompute the MJD and MPM values
 	for i in xrange(nObs):
 		tStart[i] += tShift
-	
-	
+		
 	#
 	# Query and set the new session ID
 	#
@@ -385,77 +393,7 @@ def main(args):
 			project.sessions[0].observations[i].mjd = mjd
 			project.sessions[0].observations[i].mpm = mpm
 			project.sessions[0].observations[i].start = start
-		
-		#
-		# Shift TRK_SOL to TRK_RADEC using the location of the Sun at the
-		# center of the observation
-		#
-		if config['makeRADec'] and project.sessions[0].observations[i].mode == 'TRK_SOL':
-			if len(newPOOC[-1]) != 0:
-				newPOOC[-1] += ';;'
-			newPOOC[-1] += 'Originally TRK_SOL'
 			
-			tStart, tStop = getObsStartStop(project.sessions[0].observations[i])
-			
-			# Find the mid-point of the observation
-			duration = tStop - tStart
-			tMid = tStart + duration // 2
-			
-			# Calculate the position of Jupiter at this time and convert the
-			# RA value to decimal hours and the Dec. value to decimal degrees.
-			observer.date = tMid.strftime("%Y/%m/%d %H:%M:%S")
-			Sun.compute(observer)
-			sRA = float(Sun.ra) * 180.0 / math.pi / 15.0
-			sDec = float(Sun.dec) * 180.0 /math.pi
-			
-			print " Mode shifting"
-			print "  Mode: %s -> TRK_RADEC" % project.sessions[0].observations[i].mode
-			print "  Midpoint: %s" % tMid.strftime(formatString)
-			print "  -> RA:   %9.6f hours" % sRA
-			print "  -> Dec: %+10.6f degrees" % sDec
-			
-			# Update the observation
-			oldObs = project.sessions[0].observations[i]
-			newObs = sdf.DRX(oldObs.name, oldObs.target, oldObs.start, oldObs.duration, sRA, sDec, oldObs.frequency1, oldObs.frequency2, oldObs.filter, MaxSNR=oldObs.MaxSNR, comments=oldObs.comments)
-			
-			# Replace the observation
-			project.sessions[0].observations[i] = newObs
-		
-		#
-		# Shift TRK_JOV to TRK_RADEC using the location of Jupiter at the
-		# center of the observation
-		#
-		if config['makeRADec'] and project.sessions[0].observations[i].mode == 'TRK_JOV':
-			if len(newPOOC[-1]) != 0:
-				newPOOC[-1] += ';;'
-			newPOOC[-1] += 'Originally TRK_JOV'
-			
-			tStart, tStop = getObsStartStop(project.sessions[0].observations[i])
-			
-			# Find the mid-point of the observation
-			duration = tStop - tStart
-			tMid = tStart + duration // 2
-			
-			# Calculate the position of Jupiter at this time and convert the
-			# RA value to decimal hours and the Dec. value to decimal degrees.
-			observer.date = tMid.strftime("%Y/%m/%d %H:%M:%S")
-			Jupiter.compute(observer)
-			jRA = float(Jupiter.ra) * 180.0 / math.pi / 15.0
-			jDec = float(Jupiter.dec) * 180.0 /math.pi
-			
-			print " Mode shifting"
-			print "  Mode: %s -> TRK_RADEC" % project.sessions[0].observations[i].mode
-			print "  Midpoint: %s" % tMid.strftime(formatString)
-			print "  -> RA:   %9.6f hours" % jRA
-			print "  -> Dec: %+10.6f degrees" % jDec
-			
-			# Update the observation
-			oldObs = project.sessions[0].observations[i]
-			newObs = sdf.DRX(oldObs.name, oldObs.target, oldObs.start, oldObs.duration, jRA, jDec, oldObs.frequency1, oldObs.frequency2, oldObs.filter, MaxSNR=oldObs.MaxSNR, comments=oldObs.comments)
-			
-			# Replace the observation
-			project.sessions[0].observations[i] = newObs
-	
 		#
 		# Apply the pointing correction to TRK_RADEC observations
 		#
@@ -489,7 +427,7 @@ def main(args):
 	# Project office comments
 	#
 	# Update the project office comments with this change
-	newPOSC = "Shifted SDF with shiftSDF.py (v%s, %s);;Time Shift? %s;;Mode Shift? %s;;Position Shift? %s" % (__version__, __revision__, 'Yes' if config['updateTime'] else 'No', 'Yes' if config['makeRADec'] else 'No', 'Yes' if config['updatePointing'] else 'No')
+	newPOSC = "Shifted SDF with shiftSDF.py (v%s, %s);;Time Shift? %s;;Position Shift? %s" % (__version__, __revision__, 'Yes' if config['updateTime'] else 'No', 'Yes' if config['updatePointing'] else 'No')
 	
 	if project.projectOffice.sessions[0] is None:
 		project.projectOffice.sessions[0] = newPOSC
