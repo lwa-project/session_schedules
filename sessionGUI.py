@@ -2396,7 +2396,7 @@ class AdvancedInfo(wx.Frame):
 		sizer.Add(cancel, pos=(row+0, 5), flag=wx.RIGHT|wx.BOTTOM, border=5)
 		
 		panel.SetupScrolling(scroll_x=True, scroll_y=True) 
-		panel.SetSizerFit(sizer)
+		panel.SetSizer(sizer)
 		panel.Fit()
 		
 		#
