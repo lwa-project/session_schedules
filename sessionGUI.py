@@ -591,13 +591,13 @@ class SDFCreator(wx.Frame):
 		
 		# Observation list
 		hbox = wx.BoxSizer(wx.HORIZONTAL)
-		panel = wx.Panel(self, -1)
+		self.panel = ScrolledPanel(self, -1)
 		
-		self.listControl = ObservationListCtrl(panel, id=ID_LISTCTRL)
+		self.listControl = ObservationListCtrl(self.panel, id=ID_LISTCTRL)
 		self.listControl.parent = self
 		
 		hbox.Add(self.listControl, 1, wx.EXPAND)
-		panel.SetSizer(hbox)
+		self.panel.SetSizer(hbox)
 	
 	def initEvents(self):
 		"""
@@ -1373,9 +1373,12 @@ class SDFCreator(wx.Frame):
 		size[0] = width
 		self.listControl.SetMinSize(size)
 		self.listControl.Fit()
+		print width, self.GetBestSize(), self.GetMinSize()
+		
 		size = self.GetSize()
 		size[0] = width
-		self.SetMinSize(size)
+		self.SetMinSize((width,-1))
+		self.panel.SetupScrolling(scroll_x=True, scroll_y=False)
 		self.Fit()
 		
 	def addObservation(self, obs, id):
@@ -1626,7 +1629,7 @@ class ObserverInfo(wx.Frame):
 	"""
 	
 	def __init__(self, parent):
-		wx.Frame.__init__(self, parent, title='Observer Information', size=(800,735))
+		wx.Frame.__init__(self, parent, title='Observer Information', size=(825,735))
 		
 		self.parent = parent
 		
@@ -1637,7 +1640,7 @@ class ObserverInfo(wx.Frame):
 	def initUI(self):
 		row = 0
 		panel = ScrolledPanel(self)
-		sizer = wx.GridBagSizer(5, 6)
+		sizer = wx.GridBagSizer(5, 5)
 		
 		font = wx.SystemSettings_GetFont(wx.SYS_SYSTEM_FONT)
 		font.SetPointSize(font.GetPointSize()+2)
@@ -2037,11 +2040,11 @@ ID_ADV_INFO_CANCEL = 312
 class AdvancedInfo(wx.Frame):
 	def __init__(self, parent):
 		if parent.mode == 'TBW'and ALLOW_TBW_TBN_SAME_SDF:
-			size = (830, 675)
+			size = (925, 675)
 		elif parent.mode == 'TBW':
-			size = (830, 575)
+			size = (925, 575)
 		else:
-			size = (830, 580)
+			size = (925, 580)
 
 		wx.Frame.__init__(self, parent, title='Advanced Settings', size=size)
 		
