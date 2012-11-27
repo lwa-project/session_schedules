@@ -1373,10 +1373,9 @@ class SDFCreator(wx.Frame):
 		size[0] = width
 		self.listControl.SetMinSize(size)
 		self.listControl.Fit()
-		print width, self.GetBestSize(), self.GetMinSize()
-		
+	
 		size = self.GetSize()
-		size[0] = width
+		width = min([width, wx.GetDisplaySize()[0]])
 		self.SetMinSize((width,-1))
 		self.panel.SetupScrolling(scroll_x=True, scroll_y=False)
 		self.Fit()
