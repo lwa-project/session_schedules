@@ -35,7 +35,7 @@ from matplotlib.figure import Figure
 from matplotlib.ticker import NullFormatter, NullLocator
 
 
-__version__ = "0.4"
+__version__ = "0.5"
 __revision__ = "$Rev$"
 __author__ = "Jayce Dowell"
 
@@ -1625,7 +1625,7 @@ class ObserverInfo(wx.Frame):
 	"""
 	
 	def __init__(self, parent):
-		wx.Frame.__init__(self, parent, title='Observer Information', size=(800,715))
+		wx.Frame.__init__(self, parent, title='Observer Information', size=(800,735))
 		
 		self.parent = parent
 		
@@ -1770,6 +1770,9 @@ class ObserverInfo(wx.Frame):
 		nchnText = wx.TextCtrl(panel)
 		nint = wx.StaticText(panel, label='FFTs/int.')
 		nintText = wx.TextCtrl(panel)
+		spid = wx.StaticText(panel, label='Data Products')
+		linear = wx.RadioButton(panel, -1, 'Linear', style=wx.RB_GROUP)
+		stokes = wx.RadioButton(panel, -1, 'Stokes')
 		
 		if self.parent.project.sessions[0].dataReturnMethod == 'DR Spectrometer' or (self.parent.project.sessions[0].spcSetup[0] != 0 and self.parent.project.sessions[0].spcSetup[1] != 0):
 			drsuRB.SetValue(False)
@@ -1779,14 +1782,28 @@ class ObserverInfo(wx.Frame):
 			
 			nchnText.SetValue("%i" % self.parent.project.sessions[0].spcSetup[0])
 			nintText.SetValue("%i" % self.parent.project.sessions[0].spcSetup[1])
-			
+			mt = self.parent.project.sessions[0].spcMetatag
+			if mt is None:
+				linear.SetValue(True)
+				stokes.SetValue(False)
+			else:
+				junk, mt = mt.split('=', 1)
+				mt = mt.replace('}', '')
+				
+				if mt in ('XX', 'YY', 'XY', 'YX', 'XXYY', 'XXXYYXYY'):
+					linear.SetValue(True)
+					stokes.SetValue(False)
+				else:
+					linear.SetValue(False)
+					stokes.SetValue(True)
+					
 		elif self.parent.project.sessions[0].dataReturnMethod == 'DRSU':
 			drsuRB.SetValue(True)
 			usbRB.SetValue(False)
 			drsRB.SetValue(False)
 			redRB.SetValue(False)
 			
-			nchnText.SetValue("32")
+			nchnText.SetValue("1024")
 			nintText.SetValue("6144")
 		elif self.parent.project.sessions[0].dataReturnMethod == 'USB Harddrives':
 			drsuRB.SetValue(False)
@@ -1794,8 +1811,10 @@ class ObserverInfo(wx.Frame):
 			drsRB.SetValue(False)
 			redRB.SetValue(False)
 			
-			nchnText.SetValue("32")
+			nchnText.SetValue("1024")
 			nintText.SetValue("6144")
+			linear.SetValue(True)
+			stokes.SetValue(False)
 		else:
 			drsuRB.SetValue(False)
 			usbRB.SetValue(False)
@@ -1804,16 +1823,22 @@ class ObserverInfo(wx.Frame):
 			
 			nchnText.SetValue("32")
 			nintText.SetValue("6144")
+			linear.SetValue(True)
+			stokes.SetValue(False)
 			
 		if self.parent.mode != '':
 			if self.parent.mode == 'TBW':
 				drsRB.Disable()
 				nchnText.Disable()
 				nintText.Disable()
+				linear.Disable()
+				stokes.Disable()
 			elif self.parent.mode == 'TBN':
 				drsRB.Disable()
 				nchnText.Disable()
 				nintText.Disable()
+				linear.Disable()
+				stokes.Disable()
 			else:
 				pass
 		
@@ -1838,13 +1863,16 @@ class ObserverInfo(wx.Frame):
 		sizer.Add(nchnText, pos=(row+12,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		sizer.Add(nint, pos=(row+12,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		sizer.Add(nintText, pos=(row+12,5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(spid, pos=(row+13,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(linear, pos=(row+13,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(stokes, pos=(row+13,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		
-		sizer.Add(redRB, pos=(row+13,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(redRB, pos=(row+14,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		
 		line = wx.StaticLine(panel)
-		sizer.Add(line, pos=(row+14, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
+		sizer.Add(line, pos=(row+15, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
 		
-		row += 15
+		row += 16
 		
 		#
 		# Buttons
@@ -1883,6 +1911,8 @@ class ObserverInfo(wx.Frame):
 		self.drsButton = drsRB
 		self.nchnText = nchnText
 		self.nintText = nintText
+		self.linear = linear
+		self.stokes = stokes
 		self.redButton = redRB 
 		
 	def initEvents(self):
@@ -1928,17 +1958,36 @@ class ObserverInfo(wx.Frame):
 		if self.drsuButton.GetValue():
 			self.parent.project.sessions[0].dataReturnMethod = 'DRSU'
 			self.parent.project.sessions[0].spcSetup = [0, 0]
+			self.parent.project.sessions[0].spcMetatag = None
 		elif self.usbButton.GetValue():
 			self.parent.project.sessions[0].dataReturnMethod = 'USB Harddrives'
 			self.parent.project.sessions[0].spcSetup = [0, 0]
+			self.parent.project.sessions[0].spcMetatag = None
 		elif self.drsButton.GetValue():
 			self.parent.project.sessions[0].dataReturnMethod = 'DR Spectrometer'
 			nchn = int(self.nchnText.GetValue())
 			nint = int(self.nintText.GetValue())
 			self.parent.project.sessions[0].spcSetup = [nchn, nint]
+			
+			mt = self.parent.project.sessions[0].spcMetatag
+			if mt is None:
+				isLinear = True
+			else:
+				junk, mt = mt.split('=', 1)
+				mt = mt.replace('}', '')
+				
+				if mt in ('XX', 'YY', 'XY', 'YX', 'XXYY', 'XXXYYXYY'):
+					isLinear = True
+				else:
+					isLinear = False
+			if self.linear.GetValue() and not isLinear:
+				self.parent.project.sessions[0].spcMetatag = '{Stokes=XXYY}'
+			if self.stokes.GetValue() and isLinear:
+				self.parent.project.sessions[0].spcMetatag = '{Stokes=IQUV}'
 		else:
 			self.parent.project.sessions[0].dataReturnMethod = 'Reduced per comments'
 			self.parent.project.sessions[0].spcSetup = [0, 0]
+			self.parent.project.sessions[0].spcMetatag = None
 		
 		if self.tbwButton.GetValue():
 			self.parent.mode = 'TBW'
@@ -2262,7 +2311,78 @@ class AdvancedInfo(wx.Frame):
 			sizer.Add(line, pos=(row+3, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
 			
 			row += 4
-
+			
+		#
+		# DROS
+		#
+		
+		if self.parent.project.sessions[0].dataReturnMethod == 'DR Spectrometer' or (self.parent.project.sessions[0].spcSetup[0] != 0 and self.parent.project.sessions[0].spcSetup[1] != 0):
+			dros = wx.StaticText(panel, label='DR Spectrometer Information')
+			dros.SetFont(font)
+			
+			opt = wx.StaticText(panel, label='Data Products')
+			
+			mt = self.parent.project.sessions[0].spcMetatag
+			if mt is None:
+				isLinear = True
+			else:
+				junk, mt = mt.split('=', 1)
+				mt = mt.replace('}', '')
+				
+				if mt in ('XX', 'YY', 'XY', 'YX', 'XXYY', 'XXXYYXYY'):
+					isLinear = True
+				else:
+					isLinear = False
+					
+			if isLinear:
+				opt1 = wx.RadioButton(panel, -1, 'XX', style=wx.RB_GROUP)
+				opt2 = wx.RadioButton(panel, -1, 'XY')
+				opt3 = wx.RadioButton(panel, -1, 'YX')
+				opt4 = wx.RadioButton(panel, -1, 'YY')
+				opt5 = wx.RadioButton(panel, -1, 'XX and YY')
+				opt6 = wx.RadioButton(panel, -1, 'XX, XY, YX, and YY')
+			else:
+				opt1 = wx.RadioButton(panel, -1, 'I', style=wx.RB_GROUP)
+				opt2 = wx.RadioButton(panel, -1, 'Q')
+				opt3 = wx.RadioButton(panel, -1, 'U')
+				opt4 = wx.RadioButton(panel, -1, 'V')
+				opt5 = wx.RadioButton(panel, -1, 'I and V')
+				opt6 = wx.RadioButton(panel, -1, 'I, Q, U, and V')
+				
+			opt1.SetValue(False)
+			opt2.SetValue(False)
+			opt3.SetValue(False)
+			opt4.SetValue(False)
+			opt5.SetValue(False)
+			opt6.SetValue(False)
+			
+			if mt in ('XX', 'I'):
+				opt1.SetValue(True)
+			elif mt in ('XY', 'Q'):
+				opt2.SetValue(True)
+			elif mt in ('YX', 'U'):
+				opt3.SetValue(True)
+			elif mt in ('YY', 'V'):
+				opt4.SetValue(True)
+			elif mt in ('XXYY', 'IV'):
+				opt5.SetValue(True)
+			else:
+				opt6.SetValue(True)
+				
+			sizer.Add(dros, pos=(row+0,0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
+			
+			sizer.Add(opt,  pos=(row+1, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			sizer.Add(opt1, pos=(row+1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			sizer.Add(opt2, pos=(row+1, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			sizer.Add(opt3, pos=(row+1, 3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			sizer.Add(opt4, pos=(row+2, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			sizer.Add(opt5, pos=(row+2, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			sizer.Add(opt6, pos=(row+2, 3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			
+			line = wx.StaticLine(panel)
+			sizer.Add(line, pos=(row+3, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
+			
+			row += 4
 		#
 		# Buttons
 		#
@@ -2309,6 +2429,14 @@ class AdvancedInfo(wx.Frame):
 		self.aspAT2 = aspComboAT2
 		self.aspATS = aspComboATS
 		
+		if self.parent.project.sessions[0].dataReturnMethod == 'DR Spectrometer' or (self.parent.project.sessions[0].spcSetup[0] != 0 and self.parent.project.sessions[0].spcSetup[1] != 0):
+			self.opt1 = opt1
+			self.opt2 = opt2
+			self.opt3 = opt3
+			self.opt4 = opt4
+			self.opt5 = opt5
+			self.opt6 = opt6
+			
 	def initEvents(self):
 		self.Bind(wx.EVT_BUTTON, self.onOK, id=ID_OBS_INFO_OK)
 		self.Bind(wx.EVT_BUTTON, self.onCancel, id=ID_OBS_INFO_CANCEL)
@@ -2385,6 +2513,47 @@ class AdvancedInfo(wx.Frame):
 				obs.gain = self.parent.project.sessions[0].tbnGain
 			else:
 				obs.gain = self.parent.project.sessions[0].drxGain
+				
+		if self.parent.project.sessions[0].dataReturnMethod == 'DR Spectrometer' or (self.parent.project.sessions[0].spcSetup[0] != 0 and self.parent.project.sessions[0].spcSetup[1] != 0):
+			mt = self.parent.project.sessions[0].spcMetatag
+			if mt is None:
+				isLinear = True
+			else:
+				junk, mt = mt.split('=', 1)
+				mt = mt.replace('}', '')
+				
+				if mt in ('XX', 'YY', 'XY', 'YX', 'XXYY', 'XXXYYXYY'):
+					isLinear = True
+				else:
+					isLinear = False
+					
+			print isLinear, self.opt1.GetValue(), self.opt2.GetValue(), self.opt3.GetValue(), self.opt4.GetValue(), self.opt5.GetValue(), self.opt6.GetValue()
+			if isLinear:
+				if self.opt1.GetValue():
+					self.parent.project.sessions[0].spcMetatag = '{Stokes=XX}'
+				elif self.opt2.GetValue():
+					self.parent.project.sessions[0].spcMetatag = '{Stokes=XY}'
+				elif self.opt3.GetValue():
+					self.parent.project.sessions[0].spcMetatag = '{Stokes=YX}'
+				elif self.opt4.GetValue():
+					self.parent.project.sessions[0].spcMetatag = '{Stokes=YY}'
+				elif self.opt5.GetValue():
+					self.parent.project.sessions[0].spcMetatag = '{Stokes=XXYY}'
+				else:
+					self.parent.project.sessions[0].spcMetatag = '{Stokes=XXXYYXYY}'
+			else:
+				if self.opt1.GetValue():
+					self.parent.project.sessions[0].spcMetatag = '{Stokes=I}'
+				elif self.opt2.GetValue():
+					self.parent.project.sessions[0].spcMetatag = '{Stokes=Q}'
+				elif self.opt3.GetValue():
+					self.parent.project.sessions[0].spcMetatag = '{Stokes=U}'
+				elif self.opt4.GetValue():
+					self.parent.project.sessions[0].spcMetatag = '{Stokes=V}'
+				elif self.opt5.GetValue():
+					self.parent.project.sessions[0].spcMetatag = '{Stokes=IV}'
+				else:
+					self.parent.project.sessions[0].spcMetatag = '{Stokes=IQUV}'
 		
 		self.parent.edited = True
 		self.parent.setSaveButton()
@@ -2784,10 +2953,20 @@ class VolumeInfo(wx.Frame):
 		totalData = 0
 		for obs in self.parent.project.sessions[0].observations:
 			if self.parent.project.sessions[0].spcSetup[0] != 0 and self.parent.project.sessions[0].spcSetup[1] != 0:
-				mode = "%s+SPC" % obs.mode
+				mt = self.parent.project.sessions[0].spcMetatag
+				if mt is None:
+					mt = '{Stokes=XXYY}'
+				junk, mt = mt.split('=', 1)
+				mt = mt.replace('}', '')
+				
+				if mt in ('XX', 'YY', 'XY', 'YX', 'XXYY', 'XXXYYXYY'):
+					products = len(mt)/2
+				else:
+					products = len(mt)
+					
+				mode = "%s+%s" % (obs.mode, mt)
 				
 				tunes = 2
-				products = 4
 				tlen, icount = self.parent.project.sessions[0].spcSetup
 				sampleRate = obs.filterCodes[obs.filter]
 				duration = obs.getDuration() / 1000.0
