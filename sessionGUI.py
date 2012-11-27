@@ -24,6 +24,7 @@ from lsl.common import sdf
 
 import wx
 import wx.html as html
+from wx.lib.scrolledpanel import ScrolledPanel
 from wx.lib.mixins.listctrl import TextEditMixin, CheckListCtrlMixin
 
 import matplotlib
@@ -1635,7 +1636,7 @@ class ObserverInfo(wx.Frame):
 		
 	def initUI(self):
 		row = 0
-		panel = wx.Panel(self)
+		panel = ScrolledPanel(self)
 		sizer = wx.GridBagSizer(5, 6)
 		
 		font = wx.SystemSettings_GetFont(wx.SYS_SYSTEM_FONT)
@@ -1886,7 +1887,9 @@ class ObserverInfo(wx.Frame):
 		sizer.AddGrowableCol(1)
 		sizer.AddGrowableRow(8)
 		
-		panel.SetSizerAndFit(sizer)
+		panel.SetupScrolling(scroll_x=True, scroll_y=True) 
+		panel.SetSizer(sizer)
+		panel.Fit()
 		
 		#
 		# Save the various widgets for access later
@@ -2068,7 +2071,7 @@ class AdvancedInfo(wx.Frame):
 		aspAttn.insert(0, 'MCS Decides')
 		
 		row = 0
-		panel = wx.Panel(self)
+		panel = ScrolledPanel(self)
 		sizer = wx.GridBagSizer(5, 5)
 		
 		font = wx.SystemSettings_GetFont(wx.SYS_SYSTEM_FONT)
@@ -2392,7 +2395,9 @@ class AdvancedInfo(wx.Frame):
 		sizer.Add(ok, pos=(row+0, 4))
 		sizer.Add(cancel, pos=(row+0, 5), flag=wx.RIGHT|wx.BOTTOM, border=5)
 		
-		panel.SetSizerAndFit(sizer)
+		panel.SetupScrolling(scroll_x=True, scroll_y=True) 
+		panel.SetSizerFit(sizer)
+		panel.Fit()
 		
 		#
 		# Save the various widgets for access later
@@ -2924,12 +2929,14 @@ ID_VOL_INFO_OK = 511
 class VolumeInfo(wx.Frame):
 	def __init__ (self, parent):
 		nObs = len(parent.project.sessions[0].observations)		
-		wx.Frame.__init__(self, parent, title='Estimated Data Volume', size=(300, nObs*20+120))
+		wx.Frame.__init__(self, parent, title='Estimated Data Volume', size=(400, nObs*20+120))
 		
 		self.parent = parent
 		
 		self.initUI()
 		self.initEvents()
+		x,y = self.GetBestSize()
+		self.SetSize((x,y))
 		self.Show()
 		
 	def initUI(self):
@@ -3006,7 +3013,8 @@ class VolumeInfo(wx.Frame):
 		ok = wx.Button(panel, ID_VOL_INFO_OK, 'Ok', size=(90, 28))
 		sizer.Add(ok, pos=(row+0, 2))
 		
-		panel.SetSizerAndFit(sizer)
+		panel.SetSizer(sizer)
+		panel.Fit()
 		
 	def initEvents(self):
 		self.Bind(wx.EVT_BUTTON, self.onOk, id=ID_VOL_INFO_OK)
@@ -3031,6 +3039,8 @@ class ResolveTarget(wx.Frame):
 		else:
 			self.initUI()
 			self.initEvents()
+			x,y = self.GetBestSize()
+			self.SetSize((x,y))
 			self.Show()
 
 	def setSource(self):
