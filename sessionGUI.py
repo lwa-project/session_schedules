@@ -1376,7 +1376,7 @@ class SDFCreator(wx.Frame):
 	
 		size = self.GetSize()
 		width = min([width, wx.GetDisplaySize()[0]])
-		self.SetMinSize((width,-1))
+		self.SetMinSize((width, size[1]))
 		self.panel.SetupScrolling(scroll_x=True, scroll_y=False)
 		self.Fit()
 		
