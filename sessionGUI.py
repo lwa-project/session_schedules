@@ -2361,6 +2361,15 @@ class AdvancedInfo(wx.Frame):
 			opt5.SetValue(False)
 			opt6.SetValue(False)
 			
+			# What's this?  The current version of DROS v2 (November 9, 2012) 
+			# only supports XXYY, IV, and IQUV.
+			opt1.Enable(False)
+			opt2.Enable(False)
+			opt3.Enable(False)
+			opt4.Enable(False)
+			if isLinear:
+				opt6.Enable(False)
+				
 			if mt in ('XX', 'I'):
 				opt1.SetValue(True)
 			elif mt in ('XY', 'Q'):
@@ -2534,7 +2543,6 @@ class AdvancedInfo(wx.Frame):
 				else:
 					isLinear = False
 					
-			print isLinear, self.opt1.GetValue(), self.opt2.GetValue(), self.opt3.GetValue(), self.opt4.GetValue(), self.opt5.GetValue(), self.opt6.GetValue()
 			if isLinear:
 				if self.opt1.GetValue():
 					self.parent.project.sessions[0].spcMetatag = '{Stokes=XX}'
