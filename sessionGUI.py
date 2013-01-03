@@ -36,7 +36,7 @@ from matplotlib.figure import Figure
 from matplotlib.ticker import NullFormatter, NullLocator
 
 
-__version__ = "0.5"
+__version__ = "0.6"
 __revision__ = "$Rev$"
 __author__ = "Jayce Dowell"
 
@@ -879,8 +879,7 @@ class SDFCreator(wx.Frame):
 		
 		id = self.listControl.GetItemCount() + 1
 		gain = self.project.sessions[0].tbnGain
-		self.project.sessions[0].observations.append( sdf.TBN('tbn-%i' % id, 'All-Sky', 'UTC %i 01 01 00:00:00.000' % datetime.now().year, '00:00:00.000', 38e6, 7) )
-		self.project.sessions[0].observations[-1].gain = gain
+		self.project.sessions[0].observations.append( sdf.TBN('tbn-%i' % id, 'All-Sky', 'UTC %i 01 01 00:00:00.000' % datetime.now().year, '00:00:00.000', 38e6, 7, gain=gain) )
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
 		self.edited = True
@@ -893,8 +892,7 @@ class SDFCreator(wx.Frame):
 		
 		id = self.listControl.GetItemCount() + 1
 		gain = self.project.sessions[0].drxGain
-		self.project.sessions[0].observations.append( sdf.DRX('drx-%i' % id, 'target-%i' % id, 'UTC %i 01 01 00:00:00.000' % datetime.now().year, '00:00:00.000', 0.0, 0.0, 38e6, 74e6, 7) )
-		self.project.sessions[0].observations[-1].gain = gain
+		self.project.sessions[0].observations.append( sdf.DRX('drx-%i' % id, 'target-%i' % id, 'UTC %i 01 01 00:00:00.000' % datetime.now().year, '00:00:00.000', 0.0, 0.0, 38e6, 74e6, 7, gain=gain) )
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
 		self.edited = True
@@ -907,8 +905,7 @@ class SDFCreator(wx.Frame):
 		
 		id = self.listControl.GetItemCount() + 1
 		gain = self.project.sessions[0].drxGain
-		self.project.sessions[0].observations.append( sdf.Solar('solar-%i' % id, 'target-%i' % id, 'UTC %i 01 01 00:00:00.000' % datetime.now().year, '00:00:00.000', 38e6, 74e6, 7) )
-		self.project.sessions[0].observations[-1].gain = gain
+		self.project.sessions[0].observations.append( sdf.Solar('solar-%i' % id, 'target-%i' % id, 'UTC %i 01 01 00:00:00.000' % datetime.now().year, '00:00:00.000', 38e6, 74e6, 7, gain=gain) )
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
 		self.edited = True
@@ -921,8 +918,7 @@ class SDFCreator(wx.Frame):
 		
 		id = self.listControl.GetItemCount() + 1
 		gain = self.project.sessions[0].drxGain
-		self.project.sessions[0].observations.append( sdf.Jovian('jovian-%i' % id, 'target-%i' % id, 'UTC %i 01 01 00:00:00.000' % datetime.now().year, '00:00:00.000', 38e6, 74e6, 7) )
-		self.project.sessions[0].observations[-1].gain = gain
+		self.project.sessions[0].observations.append( sdf.Jovian('jovian-%i' % id, 'target-%i' % id, 'UTC %i 01 01 00:00:00.000' % datetime.now().year, '00:00:00.000', 38e6, 74e6, 7, gain=gain) )
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
 		self.edited = True
@@ -935,8 +931,7 @@ class SDFCreator(wx.Frame):
 		
 		id = self.listControl.GetItemCount() + 1
 		gain = self.project.sessions[0].drxGain
-		self.project.sessions[0].observations.append( sdf.Stepped('stps-%i' % id, 'radec-%i' % id, 'UTC %i 01 01 00:00:00.000' % datetime.now().year, 7, RADec=True) )
-		self.project.sessions[0].observations[-1].gain = gain
+		self.project.sessions[0].observations.append( sdf.Stepped('stps-%i' % id, 'radec-%i' % id, 'UTC %i 01 01 00:00:00.000' % datetime.now().year, 7, RADec=True, gain=gain) )
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
 		self.edited = True
@@ -949,8 +944,7 @@ class SDFCreator(wx.Frame):
 		
 		id = self.listControl.GetItemCount() + 1
 		gain = self.project.sessions[0].drxGain
-		self.project.sessions[0].observations.append( sdf.Stepped('stps-%i' % id, 'azalt-%i' % id, 'UTC %i 01 01 00:00:00.000' % datetime.now().year, 7, RADec=False) )
-		self.project.sessions[0].observations[-1].gain = gain
+		self.project.sessions[0].observations.append( sdf.Stepped('stps-%i' % id, 'azalt-%i' % id, 'UTC %i 01 01 00:00:00.000' % datetime.now().year, 7, RADec=False, gain=gain) )
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
 		self.edited = True
@@ -2171,31 +2165,31 @@ class AdvancedInfo(wx.Frame):
 		# 
 	
 		aspComboFlt = wx.ComboBox(panel, -1, value='MCS Decides', choices=aspFilters, style=wx.CB_READONLY)
-		if self.parent.project.sessions[0].aspFlt[0] == -1:
+		if self.parent.project.sessions[0].observations[0].aspFlt[0] == -1:
 			aspComboFlt.SetStringSelection('MCS Decides')
-		elif self.parent.project.sessions[0].aspFlt[0] == 0:
+		elif self.parent.project.sessions[0].observations[0].aspFlt[0] == 0:
 			aspComboFlt.SetStringSelection('Split')
-		elif self.parent.project.sessions[0].aspFlt[0] == 1:
+		elif self.parent.project.sessions[0].observations[0].aspFlt[0] == 1:
 			aspComboFlt.SetStringSelection('Full')
-		elif self.parent.project.sessions[0].aspFlt[0] == 2:
+		elif self.parent.project.sessions[0].observations[0].aspFlt[0] == 2:
 			aspComboFlt.SetStringSelection('Reduced')
 		else:
 			aspComboAT1.SetStringSelection('Off')
 		aspComboAT1 = wx.ComboBox(panel, -1, value='MCS Decides', choices=aspAttn, style=wx.CB_READONLY)
-		if self.parent.project.sessions[0].aspAT1[0] == -1:
+		if self.parent.project.sessions[0].observations[0].aspAT1[0] == -1:
 			aspComboAT1.SetStringSelection('MCS Decides')
 		else:
-			aspComboAT1.SetStringSelection('%i' % self.parent.project.sessions[0].aspAT1[0])
+			aspComboAT1.SetStringSelection('%i' % self.parent.project.sessions[0].observations[0].aspAT1[0])
 		aspComboAT2 = wx.ComboBox(panel, -1, value='MCS Decides', choices=aspAttn, style=wx.CB_READONLY)
-		if self.parent.project.sessions[0].aspAT2[0] == -1:
+		if self.parent.project.sessions[0].observations[0].aspAT2[0] == -1:
 			aspComboAT2.SetStringSelection('MCS Decides')
 		else:
-			aspComboAT2.SetStringSelection('%i' % self.parent.project.sessions[0].aspAT2[0])
+			aspComboAT2.SetStringSelection('%i' % self.parent.project.sessions[0].observations[0].aspAT2[0])
 		aspComboATS = wx.ComboBox(panel, -1, value='MCS Decides', choices=aspAttn, style=wx.CB_READONLY)
-		if self.parent.project.sessions[0].aspATS[0] == -1:
+		if self.parent.project.sessions[0].observations[0].aspATS[0] == -1:
 			aspComboATS.SetStringSelection('MCS Decides')
 		else:
-			aspComboATS.SetStringSelection('%i' % self.parent.project.sessions[0].aspATS[0])
+			aspComboATS.SetStringSelection('%i' % self.parent.project.sessions[0].observations[0].aspATS[0])
 
 		asp = wx.StaticText(panel, label='ASP-Specific Information')
 		asp.SetFont(font)
@@ -2242,9 +2236,13 @@ class AdvancedInfo(wx.Frame):
 			
 			tbitsText = wx.ComboBox(panel, -1, value='12-bit', choices=bits, style=wx.CB_READONLY)
 			tsampText = wx.TextCtrl(panel)
-			tbitsText.SetStringSelection('%i-bit' % self.parent.project.sessions[0].tbwBits)
-			tsampText.SetValue("%i" % self.parent.project.sessions[0].tbwSamples)
-			
+			try:
+				tbitsText.SetStringSelection('%i-bit' % self.parent.project.sessions[0].observations[0].bits)
+				tsampText.SetValue("%i" % self.parent.project.sessions[0].observations[0].samples)
+			except AttributeError:
+				tbitsText.SetStringSelection('%i-bit' % 12)
+				tsampText.SetValue("%i" % 12000000)
+				
 			sizer.Add(tbw, pos=(row+0,0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
 			
 			sizer.Add(tbits, pos=(row+1, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
@@ -2268,10 +2266,10 @@ class AdvancedInfo(wx.Frame):
 			
 			tgain = wx.StaticText(panel, label='Gain')
 			tgainText =  wx.ComboBox(panel, -1, value='MCS Decides', choices=tbnGain, style=wx.CB_READONLY)
-			if self.parent.project.sessions[0].tbnGain == -1:
+			if self.parent.project.sessions[0].observations[0].gain == -1:
 				tgainText.SetStringSelection('MCS Decides')
 			else:
-				tgainText.SetStringSelection('%i' % self.parent.project.sessions[0].tbnGain)
+				tgainText.SetStringSelection('%i' % self.parent.project.sessions[0].observations[0].gain)
 			
 			sizer.Add(tbn, pos=(row+0,0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
 			
@@ -2293,10 +2291,10 @@ class AdvancedInfo(wx.Frame):
 			
 			dgain = wx.StaticText(panel, label='Gain')
 			dgainText =  wx.ComboBox(panel, -1, value='MCS Decides', choices=drxGain, style=wx.CB_READONLY)
-			if self.parent.project.sessions[0].drxGain == -1:
+			if self.parent.project.sessions[0].observations[0].gain == -1:
 				dgainText.SetStringSelection('MCS Decides')
 			else:
-				dgainText.SetStringSelection('%i' % self.parent.project.sessions[0].drxGain)
+				dgainText.SetStringSelection('%i' % self.parent.project.sessions[0].observations[0].gain)
 				
 			dbeam = wx.StaticText(panel, label='Beam')
 			dbeamText = wx.ComboBox(panel, -1, value='MCS Decides', choices=drxBeam, style=wx.CB_READONLY)
@@ -2434,10 +2432,10 @@ class AdvancedInfo(wx.Frame):
 			self.tbwSamp = tsampText
 		
 		if self.parent.mode == 'TBN' or (self.parent.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF):
-			self.tbnGain = tgainText
+			self.gain = tgainText
 		
 		if self.parent.mode == 'DRX':
-			self.drxGain = dgainText
+			self.gain = dgainText
 			self.drxBeam = dbeamText
 
 		self.aspFlt = aspComboFlt
@@ -2504,31 +2502,41 @@ class AdvancedInfo(wx.Frame):
 		aspAT1 = -1 if self.aspAT1.GetValue() == 'MCS Decides' else int(self.aspAT1.GetValue())
 		aspAT2 = -1 if self.aspAT2.GetValue() == 'MCS Decides' else int(self.aspAT2.GetValue())
 		aspATS = -1 if self.aspATS.GetValue() == 'MCS Decides' else int(self.aspATS.GetValue())
-		for i in xrange(len(self.parent.project.sessions[0].aspFlt)):
-			self.parent.project.sessions[0].aspFlt[i] = aspFlt
-			self.parent.project.sessions[0].aspAT1[i] = aspAT1
-			self.parent.project.sessions[0].aspAT2[i] = aspAT2
-			self.parent.project.sessions[0].aspATS[i] = aspATS
+		for i in xrange(len(self.parent.project.sessions[0].observations)):
+			for j in xrange(len(self.parent.project.sessions[0].observations[0].aspFlt)):
+				self.parent.project.sessions[0].observations[i].aspFlt[j] = aspFlt
+				self.parent.project.sessions[0].observations[i].aspAT1[j] = aspAT1
+				self.parent.project.sessions[0].observations[i].aspAT2[j] = aspAT2
+				self.parent.project.sessions[0].observations[i].aspATS[j] = aspATS
 
 		if self.parent.mode == 'TBW' or (self.parent.mode == 'TBN' and ALLOW_TBW_TBN_SAME_SDF):
-			self.parent.project.sessions[0].tbwBits = int( self.tbwBits.GetValue().split('-')[0] )
+			self.parent.project.sessions[0].tbwGits = int( self.tbwBits.GetValue().split('-')[0] )
 			self.parent.project.sessions[0].tbwSamples = int( self.tbwSamp.GetValue() )
+			for i in xrange(len(self.parent.project.sessions[0].observations)):
+				self.parent.project.sessions[0].observations[i].bits = int( self.tbwBits.GetValue().split('-')[0] )
+				self.parent.project.sessions[0].observations[i].samples = int( self.tbwSamp.GetValue() )
+				self.parent.project.sessions[0].observations[i].update()
 			
 		if self.parent.mode == 'TBN' or (self.parent.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF):
-			self.parent.project.sessions[0].tbnGain = self.__parseGainCombo(self.tbnGain)
+			self.parent.project.sessions[0].tbnGain = self.__parseGainCombo(self.gain)
+			for i in xrange(len(self.parent.project.sessions[0].observations)):
+				self.parent.project.sessions[0].observations[i].gain = self.__parseGainCombo(self.gain)
 			
 		if self.parent.mode == 'DRX':
-			self.parent.project.sessions[0].drxGain = self.__parseGainCombo(self.drxGain)
 			self.parent.project.sessions[0].drxBeam = self.__parseGainCombo(self.drxBeam)
-		
+			self.parent.project.sessions[0].drxGain = self.__parseGainCombo(self.gain)
+			for i in xrange(len(self.parent.project.sessions[0].observations)):
+				self.parent.project.sessions[0].observations[i].gain = self.__parseGainCombo(self.gain)
+				
 		for obs in self.parent.project.sessions[0].observations:
-			if obs.mode == 'TBW' or (self.parent.mode == 'TBN' and ALLOW_TBW_TBN_SAME_SDF):
-				obs.bits = self.parent.project.sessions[0].tbwBits
-				obs.samples = self.parent.project.sessions[0].tbwSamples
-			elif obs.mode == 'TBN' or (self.parent.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF):
-				obs.gain = self.parent.project.sessions[0].tbnGain
-			else:
-				obs.gain = self.parent.project.sessions[0].drxGain
+			for i in xrange(len(self.parent.project.sessions[0].observations)):
+				if obs.mode == 'TBW' or (self.parent.mode == 'TBN' and ALLOW_TBW_TBN_SAME_SDF):
+					obs.bits = self.parent.project.sessions[0].observations[i].bits
+					obs.samples = self.parent.project.sessions[0].observations[i].samples
+				elif obs.mode == 'TBN' or (self.parent.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF):
+					obs.gain = self.parent.project.sessions[0].observations[i].gain
+				else:
+					obs.gain = self.parent.project.sessions[0].observations[i].gain
 				
 		if self.parent.project.sessions[0].dataReturnMethod == 'DR Spectrometer' or (self.parent.project.sessions[0].spcSetup[0] != 0 and self.parent.project.sessions[0].spcSetup[1] != 0):
 			mt = self.parent.project.sessions[0].spcMetatag
