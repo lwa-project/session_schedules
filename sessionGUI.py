@@ -3847,6 +3847,9 @@ class SteppedWindow(wx.Frame):
 
 
 if __name__ == "__main__":
+	if float(sdf.__version__) < 0.9:
+		raise ImportError("Version of the lsl.common.sdf module (%s) is too old." % sdf.__version__)
+		
 	config = parseOptions(sys.argv[1:])
 	
 	app = wx.App()
