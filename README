@@ -5,10 +5,14 @@ Overview and Requirements
 -------------------------
 Session Schedules is a collection of python modules and scripts for 
 building MCS0030 compliant session definition files (SDFs).  Session 
-Schedules builds off of the LSL 0.4.x framework for working with LWA
+Schedules builds off of the LSL 0.6.x framework for working with LWA
 data and also depends on the following python modules:
   * pytz
+  * jinja2
   * wxPython
+
+Note:  LSL version 0.6.2 or later is required to use the latest version 
+       of sessionGUI.py.
 
 No installation (e.g., python setup.py install) is required to use the
 software.  Simply run the scripts in the SessionSchedules directory.
