@@ -60,7 +60,7 @@ def main(args):
 		try:
 			junk, tlen, icount = mode.split(',', 2)
 		except ValueError:
-			print "Spectrometer settings transform lenght and integration count not specified"
+			print "Spectrometer settings transform length and integration count not specified"
 			sys.exit(1)
 		tlen = int(tlen)
 		icount = int(icount)
