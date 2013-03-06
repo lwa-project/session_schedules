@@ -1572,9 +1572,11 @@ class SDFCreator(wx.Frame):
 			self.mode = 'TBN'
 		elif self.project.sessions[0].observations[0].mode[0:3] == 'TRK':
 			self.mode = 'DRX'
+		elif self.project.sessions[0].observations[0].mode == 'STEPPED':
+			self.mode = 'DRX'
 		else:
 			pass
-		
+			
 		try:
 			self.project.sessions[0].tbwBits = self.project.sessions[0].observations[0].bits
 			self.project.sessions[0].tbwSamples = self.project.sessions[0].observations[0].samples
@@ -1657,6 +1659,8 @@ class ObserverInfo(wx.Frame):
 		if self.parent.project.observer.first != '':
 			fnameText.SetValue(self.parent.project.observer.first)
 			lnameText.SetValue(self.parent.project.observer.last)
+		else:
+			fnameText.SetValue(self.parent.project.observer.name)
 		
 		sizer.Add(obs, pos=(row+0,0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
 		
@@ -1971,6 +1975,7 @@ class ObserverInfo(wx.Frame):
 			mt = self.parent.project.sessions[0].spcMetatag
 			if mt is None:
 				isLinear = True
+				self.parent.project.sessions[0].spcMetatag = '{Stokes=XXYY}'
 			else:
 				junk, mt = mt.split('=', 1)
 				mt = mt.replace('}', '')
@@ -1987,7 +1992,7 @@ class ObserverInfo(wx.Frame):
 			self.parent.project.sessions[0].dataReturnMethod = 'Reduced per comments'
 			self.parent.project.sessions[0].spcSetup = [0, 0]
 			self.parent.project.sessions[0].spcMetatag = None
-		
+			
 		if self.tbwButton.GetValue():
 			self.parent.mode = 'TBW'
 			self.parent.project.sessions[0].includeStationStatic = True
@@ -2368,6 +2373,7 @@ class AdvancedInfo(wx.Frame):
 			if isLinear:
 				opt6.Enable(False)
 				
+			print mt
 			if mt in ('XX', 'I'):
 				opt1.SetValue(True)
 			elif mt in ('XY', 'Q'):
