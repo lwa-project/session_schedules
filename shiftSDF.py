@@ -66,6 +66,9 @@ Options:
 -p, --pointing       Update pointing to correct for the pointing error
 -n, --no-update      Do not update the time, only apply other options
 -q, --query          Query the SDF only, make no changes
+
+Note:
+     The -t and -l options are mutually exclusive.
 """
 
 	if exitCode is not None:
@@ -83,7 +86,7 @@ def parseOptions(args):
 	config['date'] = None
 	config['sessionID'] = None
 	config['updatePointing'] = False
-	config['pointingErrorRA'] = 0 / 3600.0	# hours
+	config['pointingErrorRA'] = 0 / 3600.0		# hours
 	config['pointingErrorDec'] = 0 / 3600.0		# degrees
 
 	# Read in and process the command line flags
@@ -124,7 +127,12 @@ def parseOptions(args):
 			config['queryOnly'] = True
 		else:
 			assert False
-	
+			
+		if config['time'] is not None and config['lstMode']:
+			raise RuntimeError("Specifying a time and LST shifting are mutually exclusive")
+		if config['date'] is None and config['lstMode']:
+			raise RuntimeError("A date must be specified when LST shifting")
+			
 	# Add in arguments
 	config['args'] = args
 
@@ -356,9 +364,12 @@ def main(args):
 	#
 	# Check to see if pointing corrections have already been applied
 	#
-	if project.projectOffice.sessions[0].find('Position Shift? Yes') != -1:
-		config['updatePointing'] = False
-	
+	try:
+		if project.projectOffice.sessions[0].find('Position Shift? Yes') != -1:
+			config['updatePointing'] = False
+	except AttributeError:
+		pass
+		
 	#
 	# Go! (apply the changes to the observations)
 	#
