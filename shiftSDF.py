@@ -216,25 +216,27 @@ def main(args):
 				drxBeam = "MCS decides"
 			else:
 				drxBeam = "%i" % drxBeam
-		print " DRX Beam: %s" % drxBeam
-		print " DR Spectrometer used? %s" % drspec
-		if drspec == 'Yes':
-			mt = project.sessions[0].spcMetatag
-			if mt is None:
-				mt = '{Stokes=XXYY}'
-			junk, mt = mt.split('=', 1)
-			mt = mt.replace('}', '')
+			print " DRX Beam: %s" % drxBeam
+			print " DR Spectrometer used? %s" % drspec
+			if drspec == 'Yes':
+				mt = project.sessions[0].spcMetatag
+				if mt is None:
+					mt = '{Stokes=XXYY}'
+				junk, mt = mt.split('=', 1)
+				mt = mt.replace('}', '')
 			
-			if mt in ('XX', 'YY', 'XY', 'YX', 'XXYY', 'XXXYYXYY'):
-				products = len(mt)/2
-				mt = [mt[2*i:2*i+2] for i in xrange(products)]
-			else:
-				products = len(mt)
-				mt = [mt[1*i:1*i+1] for i in xrange(products)]
+				if mt in ('XX', 'YY', 'XY', 'YX', 'XXYY', 'XXXYYXYY'):
+					products = len(mt)/2
+					mt = [mt[2*i:2*i+2] for i in xrange(products)]
+				else:
+					products = len(mt)
+					mt = [mt[1*i:1*i+1] for i in xrange(products)]
 				
-			print " -> %i channels, %i windows/integration" % tuple(project.sessions[0].spcSetup)
-			print " -> %i data products (%s)" % (products, ','.join(mt))
-		
+				print " -> %i channels, %i windows/integration" % tuple(project.sessions[0].spcSetup)
+				print " -> %i data products (%s)" % (products, ','.join(mt))
+		else:
+			print " Transient Buffer: %s\n" % ('Wide band' if project.sessions[0].observations[0].mode == 'TBW' else 'Narrow band',)
+			
 		print " "
 		print " Number of observations: %i" % nObs
 		print " Observation Detail:"
@@ -263,7 +265,17 @@ def main(args):
 				
 			## Comments/notes
 			print "   Observer Comments: %s" % project.sessions[0].observations[i].comments
-		
+			
+		# Valid?
+		print " "
+		try:
+			if project.validate():
+				print " Valid?  Yes"
+			else:
+				print " Valid?  No"
+		except:
+			print " Valid?  No"
+			
 		# And then exits
 		sys.exit()
 	

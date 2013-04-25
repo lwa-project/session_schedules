@@ -401,10 +401,12 @@ class Visualization_GUI(object):
 				drxBeam = "MCS decides"
 			else:
 				drxBeam = "%i" % drxBeam
-		out += " DRX Beam: %s\n" % drxBeam
-		out += " DR Spectrometer used? %s\n" % drspec
-		if drspec == 'Yes':
-			out += " -> %i channels, %i windows/integration\n" % tuple(project.sessions[0].spcSetup)
+			out += " DRX Beam: %s\n" % drxBeam
+			out += " DR Spectrometer used? %s\n" % drspec
+			if drspec == 'Yes':
+				out += " -> %i channels, %i windows/integration\n" % tuple(project.sessions[0].spcSetup)
+		else:
+			out += " Transient Buffer: %s\n" % ('Wide band' if project.sessions[0].observations[0].mode == 'TBW' else 'Narrow band',)
 		
 		out += "\n"
 		out += " Number of observations: %i\n" % nObs

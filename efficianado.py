@@ -326,7 +326,7 @@ def describeSDF(observer, project):
 			out += " -> %i channels, %i windows/integration\n" % tuple(project.sessions[0].spcSetup)
 			
 	else:
-		out += "Transient Buffer: %s\n" % ('Wide band' if project.sessions[0].observations[0].mode == 'TBW' else 'Narrow band',)
+		out += " Transient Buffer: %s\n" % ('Wide band' if project.sessions[0].observations[0].mode == 'TBW' else 'Narrow band',)
 		
 	out += "\n"
 	out += " Number of observations: %i\n" % nObs
