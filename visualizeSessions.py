@@ -196,13 +196,16 @@ class Visualization_GUI(object):
 			tNow += step
 		
 		# Use the free times to come up with free periods
-		freePeriods = [[frees[0], frees[0]],]
-		for free in frees:
-			if free-freePeriods[-1][1] <= step:
-				freePeriods[-1][1] = free
-			else:
-				freePeriods.append([free, free])
-		
+		if len(frees) > 0:
+			freePeriods = [[frees[0], frees[0]],]
+			for free in frees:
+				if free-freePeriods[-1][1] <= step:
+					freePeriods[-1][1] = free
+				else:
+					freePeriods.append([free, free])
+		else:
+			freePeriods = []
+			
 		# Save
 		self.freePeriods = freePeriods
 		
