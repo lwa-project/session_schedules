@@ -67,7 +67,7 @@ def getPointingCorrection():
 	"""
 	Return a two-element tuple (RA in hours, Dec in degrees) of the pointing 
 	correction used by shiftLST.py.  Falls back on a correction of 
-	(-0.1194, -1.0) if shiftSDF.py cannot be imported
+	(0.0, 0.0) if shiftSDF.py cannot be imported
 	"""
 	
 	try:
@@ -75,7 +75,7 @@ def getPointingCorrection():
 		config = shiftParseOptions([])
 		return config['pointingErrorRA'], config['pointingErrorDec']
 	except:
-		return (-430 / 3600.0, -3600 / 3600.0)
+		return (0.0 / 3600.0, 0.0 / 3600.0)
 
 
 def usage(exitCode=None):
@@ -88,7 +88,7 @@ Options:
 -m, --maintenance      Add a maintenance day (YYYY/MM/DD; 9 to 17 MT)
 -l, --limits           Schedule search limit in days (default 14 days)
 -p, --population-size  GA population size (default 1,000)
--g, --generations      Number of generations to use (default 250)
+-g, --generations      Number of generations to use (default 200)
 -v, --verbose          Be verbose about shifting operations
 """
 
@@ -150,7 +150,7 @@ def parseOptions(args):
 
 def round15Minutes(tNow):
 	"""
-	Round a datetime instance to the nearst 15 minutes
+	Round a datetime instance to the nearest 15 minutes
 	"""
 	
 	reducedTime = tNow.minute*60 + tNow.second + tNow.microsecond/1000000.0
@@ -320,11 +320,14 @@ def describeSDF(observer, project):
 			drxBeam = "MCS decides"
 		else:
 			drxBeam = "%i" % drxBeam
-	out += " DRX Beam: %s\n" % drxBeam
-	out += " DR Spectrometer used? %s\n" % drspec
-	if drspec == 'Yes':
-		out += " -> %i channels, %i windows/integration\n" % tuple(project.sessions[0].spcSetup)
-	
+		out += " DRX Beam: %s\n" % drxBeam
+		out += " DR Spectrometer used? %s\n" % drspec
+		if drspec == 'Yes':
+			out += " -> %i channels, %i windows/integration\n" % tuple(project.sessions[0].spcSetup)
+			
+	else:
+		out += "Transient Buffer: %s\n" % ('Wide band' if project.sessions[0].observations[0].mode == 'TBW' else 'Narrow band',)
+		
 	out += "\n"
 	out += " Number of observations: %i\n" % nObs
 	
@@ -417,22 +420,25 @@ def makeRADec(project, observer=lwa1.getObserver(), verbose=False):
 	for i in xrange(nObs):
 		try:
 			project.projectOffice.observations[0][i] += ';;%s' % newPOOC[i]
-		except Exception, e:
-			print e
+		except:
 			project.projectOffice.observations[0][i] = '%s' % newPOOC[i]
 			
 	return project
 
 
-def makePointingCorrection(project, corrRA=-0.194, corrDec=-1.0, verbose=False):
+def makePointingCorrection(project, corrRA=0.000, corrDec=0.000, verbose=False):
 	"""
 	Apply a pointing correction to all observations in a project.  The RA correction
 	is specified in hours and the Dec. correction in degrees.  Returns the modified
 	Project instance.
 	"""
 	
-	if project.projectOffice.sessions[0].find('Position Shift? Yes') != -1:
-		return project
+	try:
+		if project.projectOffice.sessions[0] is not None:
+			if project.projectOffice.sessions[0].find('Position Shift? Yes') != -1:
+				return project
+	except:
+		project.projectOffice.sessions = [None,]
 	
 	nObs = len(project.sessions[0].observations)
 	newPOOC = []
@@ -492,8 +498,8 @@ class gas(object):
 	
 	class SimultaneousBlock(object):
 		"""
-		Class to store observations that need to be run simulatenously.  This 
-		stores both observations that can be shifted by sideral days (default) 
+		Class to store observations that need to be run simultaneously.  This 
+		stores both observations that can be shifted by sidereal days (default) 
 		or solar days.
 		"""
 		
@@ -622,7 +628,7 @@ class gas(object):
 		
 	def setMaintenance(self, days, dayLength=8):
 		"""
-		Function to set one or more maintance days for the scheduling window.
+		Function to set one or more maintenance days for the scheduling window.
 		The default maintenance day is eight hours long.
 		"""
 		
@@ -640,7 +646,7 @@ class gas(object):
 			
 	def validateParameters(self):
 		"""
-		Validate the limits of the run wiht the observations begin scheduled 
+		Validate the limits of the run with the observations begin scheduled 
 		to make sure that fixed observations are in the window and don't run
 		during a maintenance day.
 		"""
@@ -667,7 +673,7 @@ class gas(object):
 		projects = [shiftWeek(p, self.start) for p in projects]
 		self.observer = observer
 		
-		# Idenfity the projects by name and LST
+		# Identify the projects by name and LST
 		sessionLSTs = []
 		sessionNames = []
 		sessionModes = []
@@ -824,7 +830,7 @@ class gas(object):
 	def run(self, extinctionInterval=50, nIterations=160):
 		"""
 		Run the GAS for the current set of observations with the specified
-		extenction and interation controls.
+		extinction and iteration controls.
 		"""
 		
 		iterScale = numpy.floor(numpy.log10(nIterations)) + 1
@@ -840,7 +846,7 @@ class gas(object):
 		for i in xrange(nIterations):
 			try:
 				## Perform the evolution (elite children, crossover children, 
-				## and mutation childern fill new next generation.
+				## and mutation children fill new next generation.
 				self.__evolve()
 			
 				## Compute the fitness for all individuals
@@ -883,7 +889,7 @@ class gas(object):
 	
 	def getBest(self):
 		"""
-		Find the fitest individual at the current iteration.
+		Find the fittest individual at the current iteration.
 		"""
 		
 		f = self.fitness()
@@ -912,13 +918,39 @@ class gas(object):
 					return 0
 			
 		output.sort(cmp=startSort)
+		
+		avaliable = {}
+		for beam in xrange(1, 5):
+			avaliable[beam] = _UTC.localize(datetime(1970, 1, 1))
+		avaliable['TB'] = _UTC.localize(datetime(1970, 1, 1))
+			
 		beam = 1
 		for i in xrange(len(output)):
-			output[i].sessions[0].drxBeam = beam
-			beam += 1
-			if beam == 5:
-				beam = 1
+			sessionStart = getObsStartStop(output[i].sessions[0].observations[ 0])[0] - sessionLag
+			sessionStop  = getObsStartStop(output[i].sessions[0].observations[-1])[1] + sessionLag
 			
+			if output[i].sessions[0].observations[0].mode not in ('TBW', 'TBN'):
+				# Beam observations
+				checked = []
+				while sessionStart < avaliable[beam] and len(checked) < 5:
+					checked.append(beam)
+					
+					beam += 1
+					if beam == 5:
+						beam = 1
+						
+				if len(checked) == 5:
+					raise RuntimeError("Cannot find a free beam to assign session to")
+					
+				output[i].sessions[0].drxBeam = beam
+				avaliable[beam] = sessionStop
+			else:
+				# TBW and TBN observations
+				if sessionStart < avaliable['TB']:
+					raise RuntimeError("Cannot find a free transient buffer to assign session to")
+					
+				avaliable['TB'] = sessionStop
+				
 		return output
 		
 	def __mutate(self, offsets, fraction=0.2):
@@ -948,9 +980,15 @@ class gas(object):
 		out2 = []
 		out3 = []
 
+		stop1 = len(offsets1)-4
+		stop2 = len(offsets1)-2
+		while stop1 < 1:
+			stop1 += 1
+			stop2 += 1
+			
 		# Set the ends of crossover regions 1 and 2
-		cp1 = random.randint(1,len(offsets1)-4)
-		cp2 = random.randint(cp1+1, len(offsets1)-2)
+		cp1 = random.randint(1, stop1)
+		cp2 = random.randint(cp1+1, stop2)
 		
 		out1 = offsets1[:cp1]
 		out1.extend(offsets2[cp1:cp2])
@@ -960,8 +998,8 @@ class gas(object):
 		out2.extend(offsets3[cp1:cp2])
 		out2.extend(offsets2[cp2:])
 		
-		cp1 = random.randint(1,len(offsets1)-4)
-		cp2 = random.randint(cp1+1, len(offsets1)-2)
+		cp1 = random.randint(1, stop1)
+		cp2 = random.randint(cp1+1, stop2)
 		
 		out3 = offsets3[:cp1]
 		out3.extend(offsets2[cp1:cp2])
@@ -1228,6 +1266,8 @@ def main(args):
 				free = False
 			if tNow+freeLength >= start and tNow+freeLength <= start+duration:
 				free = False
+			if tNow <= start and tNow+freeLength >= start:
+				free = False
 				
 		for m1 in maintenance:
 			m2 = m1 + timedelta(seconds=8*3600)
@@ -1239,12 +1279,15 @@ def main(args):
 		if free:
 			frees.append(tNow)
 		tNow += timedelta(seconds=900)
-	freePeriods = [[frees[0], frees[0]],]
-	for free in frees:
-		if free-freePeriods[-1][1] <= freeLength:
-			freePeriods[-1][1] = free
-		else:
-			freePeriods.append([free, free])
+	if len(frees) > 0:
+		freePeriods = [[frees[0], frees[0]],]
+		for free in frees:
+			if free-freePeriods[-1][1] <= freeLength:
+				freePeriods[-1][1] = free
+			else:
+				freePeriods.append([free, free])
+	else:
+		freePeriods = []
 			
 	for free1,free2 in freePeriods:
 		duration = free2 - free1
@@ -1276,8 +1319,8 @@ def main(args):
 	
 	# Fix the y axis labels
 	ax.set_ylim((6, -1.5))
-	ax.set_yticks([6, 5.75, 5, 4, 3, 2, 1, 0, -1, -2])
-	ax.set_yticklabels(['', 'Day/Night', 'TBN/TBW', 'Beam 4', 'Beam 3', 'Beam 2', 'Beam 1', 'Unassigned', 'MCS Decides', ''])
+	ax.set_yticks([6, 5, 4, 3, 2, 1, 0, -1, -2])
+	ax.set_yticklabels(['', 'TBN/TBW', 'Beam 4', 'Beam 3', 'Beam 2', 'Beam 1', 'Unassigned', 'MCS Decides', ''])
 	
 	# Setup the interaction with the boxes
 	def onclick(event, projects=sessionSDFs, names=sessionNames, beams=sessionBeams, starts=sessionStarts, durations=sessionDurations, free=freePeriods):
