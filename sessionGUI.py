@@ -670,6 +670,8 @@ class SDFCreator(wx.Frame):
 		self.setMenuButtons('None')
 		self.listControl.DeleteAllItems()
 		self.listControl.DeleteAllColumns()
+		self.listControl.nSelected = 0
+		self.listControl.setCheckDependant()
 		self.initSDF()
 		ObserverInfo(self)
 
@@ -691,7 +693,7 @@ class SDFCreator(wx.Frame):
 			else:
 				return False
 		
-		dialog = wx.FileDialog(self, "Select a SD File", self.dirname, '', 'Text Files (*.txt)|*.txt|All Files (*.*)|*.*', wx.OPEN)
+		dialog = wx.FileDialog(self, "Select a SD File", self.dirname, '', 'SDF Files (*.sdf,*.txt)|*.sdf;*.txt|All Files (*.*)|*.*', wx.OPEN)
 		
 		if dialog.ShowModal() == wx.ID_OK:
 			self.dirname = dialog.GetDirectory()
@@ -1561,6 +1563,8 @@ class SDFCreator(wx.Frame):
 		
 		self.listControl.DeleteAllItems()
 		self.listControl.DeleteAllColumns()
+		self.listControl.nSelected = 0
+		self.listControl.setCheckDependant()
 		self.initSDF()
 		
 		print "Parsing file '%s'" % filename
