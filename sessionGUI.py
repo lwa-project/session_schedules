@@ -740,7 +740,7 @@ class SDFCreator(wx.Frame):
 		if not self.onValidate(1, confirmValid=False):
 			self.displayError('The session definition file could not be saved due to errors in the file.', title='Save Failed')
 		else:
-			dialog = wx.FileDialog(self, "Select Output File", self.dirname, '', 'Text Files (*.txt)|*.txt|All Files (*.*)|*.*', wx.SAVE|wx.FD_OVERWRITE_PROMPT)
+			dialog = wx.FileDialog(self, "Select Output File", self.dirname, '', 'SDF Files (*.sdf,*.txt)|*.sdf;*.txt|All Files (*.*)|*.*', wx.SAVE|wx.FD_OVERWRITE_PROMPT)
 			
 			if dialog.ShowModal() == wx.ID_OK:
 				self.dirname = dialog.GetDirectory()
@@ -1645,6 +1645,28 @@ class ObserverInfo(wx.Frame):
 		font.SetPointSize(font.GetPointSize()+2)
 		
 		#
+		# Preferences File
+		#
+		
+		preferences = {}
+		try:
+			ph = open(os.path.join(os.path.expanduser('~'), '.sessionGUI'))
+			pl = ph.readlines()
+			ph.close()
+		
+			preferences = {}
+			for line in pl:
+				line = line.replace('\n', '')
+				if len(line) < 3:
+					continue
+				if line[0] == '#':
+					continue
+				key, value = line.split(None, 1)
+				preferences[key] = value
+		except:
+			pass
+
+		#
 		# Observer Info
 		#
 		
@@ -1660,12 +1682,23 @@ class ObserverInfo(wx.Frame):
 		lnameText = wx.TextCtrl(panel)
 		if self.parent.project.observer.id != 0:
 			oidText.SetValue(str(self.parent.project.observer.id))
+		else:
+			try:
+				oidText.SetValue(preferences['ObserverID'])
+			except KeyError:
+				pass
 		if self.parent.project.observer.first != '':
 			fnameText.SetValue(self.parent.project.observer.first)
 			lnameText.SetValue(self.parent.project.observer.last)
 		else:
 			fnameText.SetValue(self.parent.project.observer.name)
-		
+			if self.parent.project.observer.name == '':
+				try:
+					fnameText.SetValue(preferences['ObserverFirstName'])
+					lnameText.SetValue(preferences['ObserverLastName'])
+				except KeyError:
+					pass
+					
 		sizer.Add(obs, pos=(row+0,0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
 		
 		sizer.Add(oid, pos=(row+1, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
@@ -1697,8 +1730,18 @@ class ObserverInfo(wx.Frame):
 		pcomsText = wx.TextCtrl(panel, style=wx.TE_MULTILINE)
 		if self.parent.project.id != '':
 			pidText.SetValue(str(self.parent.project.id))
+		else:
+			try:
+				pidText.SetValue(preferences['ProjectID'])
+			except KeyError:
+				pass
 		if self.parent.project.name != '':
 			pnameText.SetValue(self.parent.project.name)
+		else:
+			try:
+				pnameText.SetValue(preferences['ProjectName'])
+			except KeyError:
+				pass
 		if self.parent.project.comments != '' and self.parent.project.comments is not None:
 			pcomsText.SetValue(self.parent.project.comments.replace(';;', '\n'))
 		
@@ -2377,7 +2420,6 @@ class AdvancedInfo(wx.Frame):
 			if isLinear:
 				opt6.Enable(False)
 				
-			print mt
 			if mt in ('XX', 'I'):
 				opt1.SetValue(True)
 			elif mt in ('XY', 'Q'):
@@ -2388,9 +2430,14 @@ class AdvancedInfo(wx.Frame):
 				opt4.SetValue(True)
 			elif mt in ('XXYY', 'IV'):
 				opt5.SetValue(True)
-			else:
+			elif mt in ('XXXYYXYY', 'IQUV'):
 				opt6.SetValue(True)
-				
+			else:
+				if isLinear:
+					opt5.SetValue(True)
+				else:
+					opt6.SetValue(True)
+					
 			sizer.Add(dros, pos=(row+0,0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
 			
 			sizer.Add(opt,  pos=(row+1, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
