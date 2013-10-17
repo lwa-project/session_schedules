@@ -130,8 +130,6 @@ def parseOptions(args):
 			
 	if config['time'] is not None and config['lstMode']:
 		raise RuntimeError("Specifying a time and LST shifting are mutually exclusive")
-	if config['date'] is None and config['lstMode']:
-		raise RuntimeError("A date must be specified when LST shifting")
 		
 	# Add in arguments
 	config['args'] = args
