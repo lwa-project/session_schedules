@@ -12,7 +12,6 @@ Returns an XML file with the coordinates of the target or an error.
 import os
 import sys
 import urllib
-from jinja2 import Environment, FileSystemLoader
 
 
 __version__ = "0.1"
@@ -55,21 +54,6 @@ def _resolveSource(name):
 	return ra, dec, coordsys, service
 
 
-def index(req):
-	target = req.form.getfirst('name', None)
-	ra, dec, coordsys, service = _resolveSource(target)
-	
-	ra = str(ra)
-	dec = str(dec)
-	
-	path = os.path.join(os.path.dirname(__file__), 'templates')
-	env = Environment(loader=FileSystemLoader(path))
-	
-	req.headers_out["Content-type"] = 'text/xml'
-	template = env.get_template('resolve.xml')
-	return template.render(target=target, ra=ra, dec=dec, coordsys=coordsys, service=service, raUnits="degrees", decUnits="degrees")
-
-
 def main(args):
 	target = ' '.join(args)
 	ra, dec, coordsys, service = _resolveSource(target)
@@ -84,5 +68,4 @@ def main(args):
 
 if __name__ == "__main__":
 	main(sys.argv[1:])
-	
 	

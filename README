@@ -8,7 +8,6 @@ building MCS0030 compliant session definition files (SDFs).  Session
 Schedules builds off of the LSL 0.6.x framework for working with LWA
 data and also depends on the following python modules:
   * pytz
-  * jinja2
   * wxPython
 
 Note:  LSL version 0.6.2 or later is required to use the latest version 
@@ -47,21 +46,12 @@ visualizeSessions.py
 efficianado.py
   Script to pack a collection of SDFs into the smallest possible time period.
 
-resolve.py
-  Apache/python script to provide a web-based name resolver.  The resolver can
-  also be run from the command line with a source name.
-
-validator.py
-  Apache/python script to validate SDFs via the validation interfaces available 
-  in sdf.py and with the tpss executable.  This validator runs tpss up to level 2.
+resolveCLI.py
+  Script to provide a name resolver that can be run from the command line.
 
 validatorCLI.py
-  Script that wraps the above module so that it can be used from the command line
-  to validate a single SDF file.
-
-session-definition.py
-  Apache/python script to provide a web interface to creating SDFs.  The 
-  interface is crude and occasionally suffers from state problems.
+  Script to validate SDFs via the validation interfaces available 
+  in sdf.py and with the tpss executable.  This validator runs tpss up to level 2.
 
 Other Contents
 --------------
@@ -69,12 +59,8 @@ docs
   Directory containing on-line documentation for sessionGUI.py
 
 examples
-  Directory containing example SDFs from MCS JR5.
+  Directory containing example SDFs from MCS.
 
 icons
   Directory containing icons used by sessionGUI.py
-
-templates
-  Directory containing jinja2 templates for resolver.py, validator.py, and 
-  session-definition.py
 
