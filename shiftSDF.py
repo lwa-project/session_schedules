@@ -31,7 +31,7 @@ from lsl.astro import utcjd_to_unix, MJD_OFFSET
 from lsl.common import sdf
 
 
-__version__ = "0.2"
+__version__ = "0.3"
 __revision__ = "$Rev$"
 
 # Date/time manipulation
@@ -55,7 +55,7 @@ this script to:
   * Only update one of the above and leave the time alone
   * Print out the contents of the SDF file in an easy-to-digest manner
 
-Usage: shiftSDF.py [OPTIONS] input_file output_file
+Usage: shiftSDF.py [OPTIONS] input_file [output_file]
 
 Options:
 -h, --help           Display this help information
@@ -68,7 +68,9 @@ Options:
 -q, --query          Query the SDF only, make no changes
 
 Note:
-     The -t and -l options are mutually exclusive.
+  * If an output file is not specified, one will be automatically
+    determined.
+  * The -t and -l options are mutually exclusive.
 """
 
 	if exitCode is not None:
@@ -168,10 +170,8 @@ def main(args):
 	Sun = ephem.Sun()
 	Jupiter = ephem.Jupiter()
 	
-	# Filenames in an easier format
+	# Filenames in an easier format - input
 	inputSDF  = config['args'][0]
-	if not config['queryOnly']:
-		outputSDF = config['args'][1]
 	
 	# Parse the input file and get the dates of the observations
 	project = sdf.parseSDF(inputSDF)
@@ -183,7 +183,7 @@ def main(args):
 		tStart[i] += project.sessions[0].observations[i].mpm / 1000.0
 		tStart[i]  = datetime.utcfromtimestamp(tStart[i])
 		tStart[i]  = _UTC.localize(tStart[i])
-	
+		
 	# Get the LST at the start
 	observer.date = (min(tStart)).strftime('%Y/%m/%d %H:%M:%S')
 	lst = observer.sidereal_time()
@@ -195,6 +195,38 @@ def main(args):
 	print " Observations appear to start at %s" % (min(tStart)).strftime(formatString)
 	print " -> LST at %s for this date/time is %s" % (lwa1.name, lst)
 	
+	# Filenames in an easier format - output
+	if not config['queryOnly']:
+		try:
+			outputSDF = config['args'][1]
+		except IndexError:
+			pID = project.id
+			sID = project.sessions[0].id
+			beam = project.sessions[0].drxBeam
+			foStart = min(tStart)
+			
+			if project.sessions[0].observations[0].mode not in ('TBW', 'TBN'):
+				if beam == -1:
+					print " "
+					print "Enter the DRX beam to use:"
+					newBeam = raw_input('[1 through 4]-> ')
+					try:
+						newBeam = int(newBeam)
+					except Exception, e:
+						print "Error: %s" % str(e)
+						sys.exit(1)
+					if newBeam not in (1, 2, 3, 4):
+						print "Error: beam '%i' is out of range" % newBeam
+						sys.exit(1)
+						
+					print "Shifting DRX beam from %i to %i" % (beam, newBeam)
+					beam = newBeam
+					project.sessions[0].drxBeam = beam
+					
+				outputSDF = '%s_%s_%s_%04i_B%i.sdf' % (pID, foStart.strftime('%y%m%d'), foStart.strftime('%H%M'), sID, beam)
+			else:
+				outputSDF = '%s_%s_%s_%04i_%s.sdf' % (pID, foStart.strftime('%y%m%d'), foStart.strftime('%H%M'), sID, project.sessions[0].observations[0].mode)
+				
 	# Query only mode starts here...
 	if config['queryOnly']:
 		lastDur = project.sessions[0].observations[nObs-1].dur
@@ -222,14 +254,14 @@ def main(args):
 					mt = '{Stokes=XXYY}'
 				junk, mt = mt.split('=', 1)
 				mt = mt.replace('}', '')
-			
+				
 				if mt in ('XX', 'YY', 'XY', 'YX', 'XXYY', 'XXXYYXYY'):
 					products = len(mt)/2
 					mt = [mt[2*i:2*i+2] for i in xrange(products)]
 				else:
 					products = len(mt)
 					mt = [mt[1*i:1*i+1] for i in xrange(products)]
-				
+					
 				print " -> %i channels, %i windows/integration" % tuple(project.sessions[0].spcSetup)
 				print " -> %i data products (%s)" % (products, ','.join(mt))
 		else:
@@ -276,7 +308,7 @@ def main(args):
 			
 		# And then exits
 		sys.exit()
-	
+		
 	#
 	# Query the time and compute the time shifts
 	#
@@ -300,7 +332,7 @@ def main(args):
 				tNewStart = datetime.combine(config['date'], min(tStart).time())
 				
 			tNewStart = _UTC.localize(tNewStart)
-				
+			
 			# Figure out a new start time on the correct day
 			diff = ((tNewStart - min(tStart)).days) * siderealRegression
 			## Try to make sure that the timedelta object is less than 1 day
@@ -347,10 +379,10 @@ def main(args):
 		print "Shifting observations to start at %s" % tNewStart.strftime(formatString)
 		print "-> Difference of %i days, %.3f seconds" % (tShift.days, (tShift.seconds + tShift.microseconds/1000000.0),)
 		print "-> LST at %s for this date/time is %s" % (lwa1.name, lst)
-	
+		
 	else:
 		tShift = timedelta(seconds=0)
-	
+		
 	# Shift the start times and recompute the MJD and MPM values
 	for i in xrange(nObs):
 		tStart[i] += tShift
@@ -442,8 +474,7 @@ def main(args):
 			
 			project.sessions[0].observations[i].ra  = ra
 			project.sessions[0].observations[i].dec = dec
-	
-	
+			
 	#
 	# Project office comments
 	#
@@ -461,17 +492,18 @@ def main(args):
 		except Exception, e:
 			print e
 			project.projectOffice.observations[0][i] = '%s' % newPOOC[i]
-	
-	
+			
 	#
 	# Save
 	#
+	print " "
+	print "Saving to: %s" % outputSDF
 	fh = open(outputSDF, 'w')
 	if not project.validate():
 		# Make sure we are about to be valid
 		project.validate(verbose=True)
 		raise RuntimeError("Cannot validate SDF file")
-			
+		
 	fh.write( project.render() )
 	fh.close()
 
