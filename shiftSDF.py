@@ -200,33 +200,8 @@ def main(args):
 		try:
 			outputSDF = config['args'][1]
 		except IndexError:
-			pID = project.id
-			sID = project.sessions[0].id
-			beam = project.sessions[0].drxBeam
-			foStart = min(tStart)
+			outputSDF  = None
 			
-			if project.sessions[0].observations[0].mode not in ('TBW', 'TBN'):
-				if beam == -1:
-					print " "
-					print "Enter the DRX beam to use:"
-					newBeam = raw_input('[1 through 4]-> ')
-					try:
-						newBeam = int(newBeam)
-					except Exception, e:
-						print "Error: %s" % str(e)
-						sys.exit(1)
-					if newBeam not in (1, 2, 3, 4):
-						print "Error: beam '%i' is out of range" % newBeam
-						sys.exit(1)
-						
-					print "Shifting DRX beam from %i to %i" % (beam, newBeam)
-					beam = newBeam
-					project.sessions[0].drxBeam = beam
-					
-				outputSDF = '%s_%s_%s_%04i_B%i.sdf' % (pID, foStart.strftime('%y%m%d'), foStart.strftime('%H%M'), sID, beam)
-			else:
-				outputSDF = '%s_%s_%s_%04i_%s.sdf' % (pID, foStart.strftime('%y%m%d'), foStart.strftime('%H%M'), sID, project.sessions[0].observations[0].mode)
-				
 	# Query only mode starts here...
 	if config['queryOnly']:
 		lastDur = project.sessions[0].observations[nObs-1].dur
@@ -496,6 +471,34 @@ def main(args):
 	#
 	# Save
 	#
+	if outputSDF is None:
+		pID = project.id
+		sID = project.sessions[0].id
+		beam = project.sessions[0].drxBeam
+		foStart = min(tStart)
+		
+		if project.sessions[0].observations[0].mode not in ('TBW', 'TBN'):
+			if beam == -1:
+				print " "
+				print "Enter the DRX beam to use:"
+				newBeam = raw_input('[1 through 4]-> ')
+				try:
+					newBeam = int(newBeam)
+				except Exception, e:
+					print "Error: %s" % str(e)
+					sys.exit(1)
+				if newBeam not in (1, 2, 3, 4):
+					print "Error: beam '%i' is out of range" % newBeam
+					sys.exit(1)
+					
+				print "Shifting DRX beam from %i to %i" % (beam, newBeam)
+				beam = newBeam
+				project.sessions[0].drxBeam = beam
+				
+			outputSDF = '%s_%s_%s_%04i_B%i.sdf' % (pID, foStart.strftime('%y%m%d'), foStart.strftime('%H%M'), sID, beam)
+		else:
+			outputSDF = '%s_%s_%s_%04i_%s.sdf' % (pID, foStart.strftime('%y%m%d'), foStart.strftime('%H%M'), sID, project.sessions[0].observations[0].mode)
+			
 	print " "
 	print "Saving to: %s" % outputSDF
 	fh = open(outputSDF, 'w')
