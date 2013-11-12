@@ -3381,7 +3381,7 @@ class HelpWindow(wx.Frame):
 		vbox = wx.BoxSizer(wx.VERTICAL)
 		
 		help = HtmlWindow(panel)
-		help.LoadPage('docs/help.html')
+		help.LoadPage(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'docs/help.html'))
 		vbox.Add(help, 1, wx.EXPAND)
 		
 		self.CreateStatusBar()
