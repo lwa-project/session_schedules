@@ -2079,8 +2079,9 @@ class ObserverInfo(wx.Frame):
 		dialog.ShowModal()
 
 
-ID_ADV_INFO_OK = 311
-ID_ADV_INFO_CANCEL = 312
+ID_OBS_BDM_CHECKED = 311
+ID_ADV_INFO_OK = 312
+ID_ADV_INFO_CANCEL = 313
 
 class AdvancedInfo(wx.Frame):
 	def __init__(self, parent):
@@ -2089,7 +2090,7 @@ class AdvancedInfo(wx.Frame):
 		elif parent.mode == 'TBW':
 			size = (925, 575)
 		else:
-			size = (925, 580)
+			size = (925, 700)
 
 		wx.Frame.__init__(self, parent, title='Advanced Settings', size=size)
 		
@@ -2368,6 +2369,88 @@ class AdvancedInfo(wx.Frame):
 			row += 4
 			
 		#
+		# Beam-Dipole Mode
+		#
+		
+		if self.parent.mode == 'DRX':
+			bdm = wx.StaticText(panel, label='Beam-Dipole Mode Information')
+			bdm.SetFont(font)
+			
+			bdmEnableCheck = wx.CheckBox(panel, ID_OBS_BDM_CHECKED, label='Enabled for all observations')
+			if getattr(self.parent.project.sessions[0].observations[0], 'beamDipole', None) is not None:
+				bdmEnableCheck.SetValue(True)
+			else:
+				bdmEnableCheck.SetValue(False)
+				
+			bdmDipole = wx.StaticText(panel, label='Stand Number')
+			bdmDipoleText = wx.TextCtrl(panel)
+			if getattr(self.parent.project.sessions[0].observations[0], 'beamDipole', None) is not None:
+				dpStand = self.parent.project.sessions[0].observations[0].beamDipole[0]*2 - 2
+				realStand = lwa1.getAntennas()[dpStand].stand.id
+				
+				bdmDipoleText.SetValue("%i" % realStand)
+			else:
+				bdmDipoleText.SetValue("258")
+				bdmDipoleText.Enable(False)
+				
+			bdmDGain = wx.StaticText(panel, label='Stand Gain')
+			bdmDGainText = wx.TextCtrl(panel)
+			if getattr(self.parent.project.sessions[0].observations[0], 'beamDipole', None) is not None:
+				bdmDGainText.SetValue("%.4f" % self.parent.project.sessions[0].observations[0].beamDipole[2])
+			else:
+				bdmDGainText.SetValue("1.0000")
+				bdmDGainText.Enable(False)
+				
+			bdmBGain = wx.StaticText(panel, label='Beam Gain')
+			bdmBGainText = wx.TextCtrl(panel)
+			if getattr(self.parent.project.sessions[0].observations[0], 'beamDipole', None) is not None:
+				bdmBGainText.SetValue("%.4f" % self.parent.project.sessions[0].observations[0].beamDipole[1])
+			else:
+				bdmBGainText.SetValue("0.0041")
+				bdmBGainText.Enable(False)
+				
+			bdmPol = wx.StaticText(panel, label='Pol.')
+			bdmPolX = wx.RadioButton(panel, -1, 'X', style=wx.RB_GROUP)
+			bdmPolY = wx.RadioButton(panel, -1, 'Y')
+			if getattr(self.parent.project.sessions[0].observations[0], 'beamDipole', None) is not None:
+				if self.parent.project.sessions[0].observations[0].beamDipole[3] == 'X':
+					bdmPolX.SetValue(True)
+					bdmPolY.SetValue(False)
+				else:
+					bdmPolX.SetValue(False)
+					bdmPolY.SetValue(True)
+			else:
+				bdmPolX.SetValue(True)
+				bdmPolY.SetValue(False)
+				bdmPolX.Enable(False)
+				bdmPolY.Enable(False)
+				
+			sizer.Add(bdm, pos=(row+0, 0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
+			
+			sizer.Add(bdmEnableCheck, pos=(row+1, 0), span=(1, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			sizer.Add(bdmPol, pos=(row+1, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			sizer.Add(bdmPolX, pos=(row+1, 3), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			sizer.Add(bdmPolY, pos=(row+1, 4), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			sizer.Add(bdmDipole, pos=(row+2, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			sizer.Add(bdmDipoleText, pos=(row+2, 1), span=(1,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			sizer.Add(bdmDGain, pos=(row+2, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			sizer.Add(bdmDGainText, pos=(row+2, 3), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			sizer.Add(bdmBGain, pos=(row+2, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			sizer.Add(bdmBGainText, pos=(row+2, 5), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			
+			line = wx.StaticLine(panel)
+			sizer.Add(line, pos=(row+3, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
+			
+			row += 4
+			
+			# Disabled for now
+			bdmEnableCheck.SetValue(False)
+			bdmEnableCheck.Enable(False)
+			bdmDipoleText.Enable(False)
+			bdmBGainText.Enable(False)
+			bdmPolX.Enable(False)
+			bdmPolY.Enable(False)
+		#
 		# DROS
 		#
 		
@@ -2494,7 +2577,14 @@ class AdvancedInfo(wx.Frame):
 		if self.parent.mode == 'DRX':
 			self.gain = dgainText
 			self.drxBeam = dbeamText
-
+			
+			self.bdmEnableCheck = bdmEnableCheck
+			self.bdmDipoleText = bdmDipoleText
+			self.bdmDGainText = bdmDGainText
+			self.bdmBGainText = bdmBGainText
+			self.bdmPolX = bdmPolX
+			self.bdmPolY = bdmPolY
+			
 		self.aspFlt = aspComboFlt
 		self.aspAT1 = aspComboAT1
 		self.aspAT2 = aspComboAT2
@@ -2511,7 +2601,29 @@ class AdvancedInfo(wx.Frame):
 	def initEvents(self):
 		self.Bind(wx.EVT_BUTTON, self.onOK, id=ID_OBS_INFO_OK)
 		self.Bind(wx.EVT_BUTTON, self.onCancel, id=ID_OBS_INFO_CANCEL)
-	
+		if getattr(self, 'bdmPolX', None) is not None:
+			self.Bind(wx.EVT_CHECKBOX, self.onChecked, id=ID_OBS_BDM_CHECKED)
+			
+	def onChecked(self, event):
+		"""
+		Toggle the beam-dipole mode setup on and off.
+		"""
+		
+		if self.bdmEnableCheck.GetValue():
+			# On
+			self.bdmDipoleText.Enable(True)
+			self.bdmDGainText.Enable(True)
+			self.bdmBGainText.Enable(True)
+			self.bdmPolX.Enable(True)
+			self.bdmPolY.Enable(True)
+		else:
+			# Off
+			self.bdmDipoleText.Enable(False)
+			self.bdmDGainText.Enable(False)
+			self.bdmBGainText.Enable(False)
+			self.bdmPolX.Enable(False)
+			self.bdmPolY.Enable(False)
+			
 	def onOK(self, event):
 		"""
 		Save everything into all of the correct places.
@@ -2594,6 +2706,69 @@ class AdvancedInfo(wx.Frame):
 					obs.gain = self.parent.project.sessions[0].observations[i].gain
 				else:
 					obs.gain = self.parent.project.sessions[0].observations[i].gain
+					
+		if self.parent.mode == 'DRX':
+			if self.bdmEnableCheck.GetValue():
+				try:
+					## Extract the stand number
+					realStand = int(self.bdmDipoleText.GetValue())
+					if realStand < 0 or realStand > 260:
+						self.displayError('Invalid stand number: %i' % realStand, details='0 < stand <= 260', 
+										title='Beam-Dipole Setup Error')
+						return False
+						
+					## Make sure the stand is working according to the SSMIF
+					realStandX = None
+					realStandY = None
+					for ant in lwa1.getAntennas():
+						if ant.stand.id == realStand:
+							if ant.pol == 0:
+								realStandX = ant
+							else:
+								realStandY = ant
+						if realStandX is not None and realStandY is not None:
+							break
+					if realStandX.getStatus() != 33 or realStandY.getStatus() != 33:
+						self.displayError('Stand #%i is not fully functional' % realStand, 
+										details='X pol. status: %i\nY pol. status: %i' % (realStandX.getStatus(), realStandY.getStatus()), 
+										title='Beam-Dipole Setup Error')
+						return False
+						
+				except ValueError:
+					self.displayError('Invalid stand number: %s' % self.bdmDipoleText, details='Not an integer', 
+									title='Beam-Dipole Setup Error')
+					return False
+					
+				try:
+					dipoleGain = float(self.bdmDGainText.GetValue())
+					if dipoleGain < 0.0 or dipoleGain > 1.0:
+						self.displayError('Invalid dipole gain value: %.4f' % dipoleGain, detail='0 <= gain <= 1', 
+										title='Beam-Dipole Setup Error')
+						return False
+				except ValueError:
+					self.displayError('Invalid dipole gain value: %s' % self.bdmDGainText.GetValue(), detail='Not a float', 
+									title='Beam-Dipole Setup Error')
+					return False
+					
+				try:
+					beamGain = float(self.bdmBGainText.GetValue())
+					if beamGain < 0.0 or beamGain > 1.0:
+						self.displayError('Invalid beam gain value: %.4f' % beamGain, detail='0 <= gain <= 1', 
+										title='Beam-Dipole Setup Error')
+						return False
+				except ValueError:
+					self.displayError('Invalid beam gain value: %s' % self.bdmBGainText.GetValue(), detail='Not a float', 
+									title='Beam-Dipole Setup Error')
+					return False
+					
+				outputPol = 'X' if self.bdmPolX.GetValue() else 'Y'
+				
+				beamDipole = (realStand, beamGain, dipoleGain, outputPol)
+			else:
+				beamDipole = (0, 1.000, 1.000, 'X')
+				
+			for i in xrange(len(self.parent.project.sessions[0].observations)):
+				self.parent.project.sessions[0].observations[i].setBeamDipoleMode(*beamDipole)
 				
 		if self.parent.project.sessions[0].dataReturnMethod == 'DR Spectrometer' or (self.parent.project.sessions[0].spcSetup[0] != 0 and self.parent.project.sessions[0].spcSetup[1] != 0):
 			mt = self.parent.project.sessions[0].spcMetatag
