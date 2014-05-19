@@ -2764,12 +2764,10 @@ class AdvancedInfo(wx.Frame):
 				outputPol = 'X' if self.bdmPolX.GetValue() else 'Y'
 				
 				beamDipole = (realStand, beamGain, dipoleGain, outputPol)
-			else:
-				beamDipole = (0, 1.000, 1.000, 'X')
 				
-			for i in xrange(len(self.parent.project.sessions[0].observations)):
-				self.parent.project.sessions[0].observations[i].setBeamDipoleMode(*beamDipole)
-				
+				for i in xrange(len(self.parent.project.sessions[0].observations)):
+					self.parent.project.sessions[0].observations[i].setBeamDipoleMode(*beamDipole)
+					
 		if self.parent.project.sessions[0].dataReturnMethod == 'DR Spectrometer' or (self.parent.project.sessions[0].spcSetup[0] != 0 and self.parent.project.sessions[0].spcSetup[1] != 0):
 			mt = self.parent.project.sessions[0].spcMetatag
 			if mt is None:
