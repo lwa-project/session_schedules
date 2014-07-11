@@ -2443,13 +2443,6 @@ class AdvancedInfo(wx.Frame):
 			
 			row += 4
 			
-			# Disabled for now
-			bdmEnableCheck.SetValue(False)
-			bdmEnableCheck.Enable(False)
-			bdmDipoleText.Enable(False)
-			bdmBGainText.Enable(False)
-			bdmPolX.Enable(False)
-			bdmPolY.Enable(False)
 		#
 		# DROS
 		#
