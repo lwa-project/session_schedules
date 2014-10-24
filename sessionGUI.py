@@ -15,6 +15,7 @@ from datetime import datetime
 
 import conflict
 
+import lsl
 from lsl.common.dp import fS
 from lsl.common.stations import lwa1
 from lsl.astro import deg_to_dms, deg_to_hms, MJD_OFFSET, DJD_OFFSET
@@ -55,7 +56,7 @@ Options:
 -d, --drsu-size     Perform storage calcuations assuming the specified DRSU 
                     size in TB
 """
-
+	
 	if exitCode is not None:
 		sys.exit(exitCode)
 	else:
@@ -65,7 +66,7 @@ Options:
 def parseOptions(args):
 	config = {}
 	config['drsuSize'] = sdf._DRSUCapacityTB
-
+	
 	# Read in and process the command line flags
 	try:
 		opts, args = getopt.getopt(args, "hd:", ["help", "drsu-size="])
@@ -73,7 +74,7 @@ def parseOptions(args):
 		# Print help information and exit:
 		print str(err) # will print something like "option -a not recognized"
 		usage(exitCode=2)
-	
+		
 	# Work through opts
 	for opt, value in opts:
 		if opt in ('-h', '--help'):
@@ -82,16 +83,16 @@ def parseOptions(args):
 			config['drsuSize'] = int(value)
 		else:
 			assert False
-	
+			
 	# Make sure we have a sane DRSU size
 	try:
 		assert(config['drsuSize'] > 0)
 	except AssertionError:
 		raise RuntimeError("Invalid DRSU size of %i TB (%i B)" % (config['drsuSize'], config['drsuSize']*1024**4))
-	
+		
 	# Add in arguments
 	config['args'] = args
-
+	
 	# Return configuration
 	return config
 
@@ -136,7 +137,7 @@ class ObservationListCtrl(wx.ListCtrl, TextEditMixin, CheckListCtrlMixin):
 				self.parent.editmenu['copy'].Enable(True)
 			except KeyError, AttributeError:
 				pass
-			
+				
 			# Stepped observation edits - enbled if there is an index and it is STEPPED, 
 			# disabled otherwise
 			if index is not None:
@@ -174,7 +175,7 @@ class ObservationListCtrl(wx.ListCtrl, TextEditMixin, CheckListCtrlMixin):
 				self.parent.toolbar.EnableTool(ID_EDIT_STEPPED, False)
 			except KeyError, AttributeError:
 				pass
-		
+				
 	def OnCheckItem(self, index, flag):
 		"""
 		Overwrite the default OnCheckItem function so that we can control the enabling
@@ -185,7 +186,7 @@ class ObservationListCtrl(wx.ListCtrl, TextEditMixin, CheckListCtrlMixin):
 			self.nSelected += 1
 		else:
 			self.nSelected -= 1
-		
+			
 		self.setCheckDependant(index=index)
 		CheckListCtrlMixin.OnCheckItem(self, index, flag)
 		
@@ -232,7 +233,7 @@ class SteppedListCtrl(wx.ListCtrl, TextEditMixin, CheckListCtrlMixin):
 				self.parent.editmenu['copy'].Enable(False)
 			except KeyError, AttributeError:
 				pass
-			
+				
 		elif self.nSelected == 1:
 			# Edit menu - enabled
 			try:
@@ -248,7 +249,7 @@ class SteppedListCtrl(wx.ListCtrl, TextEditMixin, CheckListCtrlMixin):
 				self.parent.editmenu['copy'].Enable(True)
 			except KeyError, AttributeError:
 				pass
-			
+				
 	def OnCheckItem(self, index, flag):
 		"""
 		Overwrite the default OnCheckItem function so that we can control the enabling
@@ -259,7 +260,7 @@ class SteppedListCtrl(wx.ListCtrl, TextEditMixin, CheckListCtrlMixin):
 			self.nSelected += 1
 		else:
 			self.nSelected -= 1
-		
+			
 		self.setCheckDependant(index=index)
 		CheckListCtrlMixin.OnCheckItem(self, index, flag)
 		
@@ -286,27 +287,27 @@ class PlotPanel(wx.Panel):
 	def __init__(self, parent, color=None, dpi=None, **kwargs):
 		from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg
 		from matplotlib.figure import Figure
-
+		
 		# initialize Panel
 		if 'id' not in kwargs.keys():
 			kwargs['id'] = wx.ID_ANY
 		if 'style' not in kwargs.keys():
 			kwargs['style'] = wx.NO_FULL_REPAINT_ON_RESIZE
 		wx.Panel.__init__(self, parent, **kwargs)
-
+		
 		# initialize matplotlib stuff
 		self.figure = Figure(None, dpi)
 		self.canvas = FigureCanvasWxAgg(self, -1, self.figure)
 		self.SetColor(color)
-
+		
 		self._SetSize()
 		self.draw()
-
+		
 		self._resizeflag = False
-
+		
 		self.Bind(wx.EVT_IDLE, self._onIdle)
 		self.Bind(wx.EVT_SIZE, self._onSize)
-
+		
 	def SetColor( self, rgbtuple=None ):
 		"""
 		Set figure and canvas colours to be the same.
@@ -318,21 +319,21 @@ class PlotPanel(wx.Panel):
 		self.figure.set_facecolor(clr)
 		self.figure.set_edgecolor(clr)
 		self.canvas.SetBackgroundColour(wx.Colour(*rgbtuple))
-
+		
 	def _onSize(self, event):
 		self._resizeflag = True
-
+		
 	def _onIdle(self, evt):
 		if self._resizeflag:
 			self._resizeflag = False
 			self._SetSize()
-
+			
 	def _SetSize(self):
 		pixels = tuple(self.parent.GetClientSize())
 		self.SetSize(pixels)
 		self.canvas.SetSize(pixels)
 		self.figure.set_size_inches(float( pixels[0] )/self.figure.get_dpi(), float( pixels[1] )/self.figure.get_dpi())
-
+		
 	def draw(self):
 		pass # abstract, to be overridden by child classes
 
@@ -480,7 +481,7 @@ class SDFCreator(wx.Frame):
 		self.editmenu['pasteEnd'] = pste
 		for k in self.editmenu.keys():
 			self.editmenu[k].Enable(False)
-		
+			
 		# Observer menu items
 		info = wx.MenuItem(obsMenu, ID_INFO, 'Observer/&Project Info.')
 		obsMenu.AppendItem(info)
@@ -598,7 +599,7 @@ class SDFCreator(wx.Frame):
 		
 		hbox.Add(self.listControl, 1, wx.EXPAND)
 		self.panel.SetSizer(hbox)
-	
+		
 	def initEvents(self):
 		"""
 		Set all of the various events in the main window.
@@ -645,10 +646,10 @@ class SDFCreator(wx.Frame):
 		
 		# Observation edits
 		self.Bind(wx.EVT_LIST_END_LABEL_EDIT, self.onEdit, id=ID_LISTCTRL)
-
+		
 		# Window manager close
 		self.Bind(wx.EVT_CLOSE, self.onQuit)
-	
+		
 	def onNew(self, event):
 		"""
 		Create a new SD session.
@@ -661,7 +662,7 @@ class SDFCreator(wx.Frame):
 				pass
 			else:
 				return False
-		
+				
 		self.filename = ''
 		self.edited = True
 		self.badEdit = False
@@ -674,12 +675,12 @@ class SDFCreator(wx.Frame):
 		self.listControl.setCheckDependant()
 		self.initSDF()
 		ObserverInfo(self)
-
+		
 		if self.mode == 'TBW' and not ALLOW_TBW_TBN_SAME_SDF:
 			self.finfo.Enable(False)
 		else:
 			self.finfo.Enable(True)
-	
+			
 	def onLoad(self, event):
 		"""
 		Load an existing SD file.
@@ -692,7 +693,7 @@ class SDFCreator(wx.Frame):
 				pass
 			else:
 				return False
-		
+				
 		dialog = wx.FileDialog(self, "Select a SD File", self.dirname, '', 'SDF Files (*.sdf,*.txt)|*.sdf;*.txt|All Files (*.*)|*.*', wx.OPEN)
 		
 		if dialog.ShowModal() == wx.ID_OK:
@@ -704,12 +705,12 @@ class SDFCreator(wx.Frame):
 			self.setSaveButton()
 			
 		dialog.Destroy()
-
+		
 		if self.mode == 'TBW':
 			self.finfo.Enable(False)
 		else:
 			self.finfo.Enable(True)
-
+			
 	def onSave(self, event):
 		"""
 		Save the current observation to a file.
@@ -731,7 +732,7 @@ class SDFCreator(wx.Frame):
 					self.setSaveButton()
 				except IOError as err:
 					self.displayError('Error saving to %s' % self.filename, details=err, title='Save Error')
-
+					
 	def onSaveAs(self, event):
 		"""
 		Save the current observation to a new SD file.
@@ -750,12 +751,12 @@ class SDFCreator(wx.Frame):
 					fh = open(self.filename, 'w')
 					fh.write(self.project.render())
 					fh.close()
-				
+					
 					self.edited = False
 					self.setSaveButton()
 				except IOError as err:
 					self.displayError('Error saving to %s' % self.filename, details=err, title='Save Error')
-				
+					
 			dialog.Destroy()
 			
 	def onCopy(self, event):
@@ -771,7 +772,7 @@ class SDFCreator(wx.Frame):
 		self.editmenu['pasteBefore'].Enable(True)
 		self.editmenu['pasteAfter'].Enable(True)
 		self.editmenu['pasteEnd'].Enable(True)
-	
+		
 	def onCut(self, event):
 		self.onCopy(event)
 		self.onRemove(event)
@@ -802,7 +803,7 @@ class SDFCreator(wx.Frame):
 			item.SetText('%i' % (i+1))
 			self.listControl.SetItem(item)
 			self.listControl.RefreshItem(item.GetId())
-	
+			
 	def onPasteAfter(self, event):
 		lastChecked = None
 		
@@ -828,7 +829,7 @@ class SDFCreator(wx.Frame):
 			item.SetText('%i' % (i+1))
 			self.listControl.SetItem(item)
 			self.listControl.RefreshItem(item.GetId())
-	
+			
 	def onPasteEnd(self, event):
 		"""
 		Paste the selected observation(s) at the end of the current session.
@@ -845,7 +846,7 @@ class SDFCreator(wx.Frame):
 				
 			self.edited = True
 			self.setSaveButton()
-	
+			
 	def onInfo(self, event):
 		"""
 		Open up the observer/project information window.
@@ -970,7 +971,7 @@ class SDFCreator(wx.Frame):
 			return False
 			
 		SteppedWindow(self, whichChecked)
-	
+		
 	def onEdit(self, event):
 		"""
 		Make the selected change to the underlying observation.
@@ -986,7 +987,7 @@ class SDFCreator(wx.Frame):
 				newData = self.coerceMap[obsAttr](event.GetText(), tbn=isTBN)
 			else:
 				newData = self.coerceMap[obsAttr](event.GetText())
-			
+				
 			oldData = getattr(self.project.sessions[0].observations[obsIndex], self.columnMap[obsAttr])
 			setattr(self.project.sessions[0].observations[obsIndex], self.columnMap[obsAttr], newData)
 			self.project.sessions[0].observations[obsIndex].update()
@@ -995,10 +996,10 @@ class SDFCreator(wx.Frame):
 			if self.listControl.GetItemTextColour(item.GetId()) != (0, 0, 0, 255):
 				self.listControl.SetItemTextColour(item.GetId(), wx.BLACK)
 				self.listControl.RefreshItem(item.GetId())
-			
+				
 			self.edited = True
 			self.setSaveButton()
-
+			
 			self.badEdit = False
 			self.badEditLocation = (-1, -1)
 		except ValueError as err:
@@ -1008,10 +1009,10 @@ class SDFCreator(wx.Frame):
 			item = self.listControl.GetItem(obsIndex, obsAttr)
 			self.listControl.SetItemTextColour(item.GetId(), wx.RED)
 			self.listControl.RefreshItem(item.GetId())
-
+			
 			self.badEdit = True
 			self.badEditLocation = (obsIndex, obsAttr)
-	
+			
 	def onRemove(self, event):
 		"""
 		Remove selected observations from the main window as well as the 
@@ -1033,7 +1034,7 @@ class SDFCreator(wx.Frame):
 				if lc.IsChecked(i):
 					return i+1
 			return 0
-
+			
 		# While there is still at least one bad row, continue looping and removing
 		# rows
 		bad = stillBad(self.listControl)
@@ -1056,7 +1057,7 @@ class SDFCreator(wx.Frame):
 			item.SetText('%i' % (i+1))
 			self.listControl.SetItem(item)
 			self.listControl.RefreshItem(item.GetId())
-	
+			
 	def onValidate(self, event, confirmValid=True):
 		"""
 		Validate the current observations.
@@ -1070,7 +1071,7 @@ class SDFCreator(wx.Frame):
 				validObs = True
 		except AttributeError:
 			validObs = True
-
+			
 		# Loop through the lists of observations and validate one-at-a-time so 
 		# that we can mark bad observations
 		i = 0
@@ -1079,7 +1080,7 @@ class SDFCreator(wx.Frame):
 			valid = obs.validate(verbose=True)
 			for col in xrange(len(self.columnMap)):
 				item = self.listControl.GetItem(i, col)
-			
+				
 				if not valid:
 					self.listControl.SetItemTextColour(item.GetId(), wx.RED)
 					self.listControl.RefreshItem(item.GetId())
@@ -1088,9 +1089,9 @@ class SDFCreator(wx.Frame):
 					if self.listControl.GetItemTextColour(item.GetId()) != (0, 0, 0, 255):
 						self.listControl.SetItemTextColour(item.GetId(), wx.BLACK)
 						self.listControl.RefreshItem(item.GetId())
-				
+						
 			i += 1
-		
+			
 		# Do a global validation
 		sys.stdout = StringIO.StringIO()
 		if self.project.validate(verbose=True):
@@ -1113,12 +1114,12 @@ class SDFCreator(wx.Frame):
 			if validObs:
 				wx.MessageBox('All observations are valid, but there are errors in the session setup.', 'Validator Results')
 			return False
-
+			
 	def onResolve(self, event):
 		"""
 		Display a window to resolve a target name to ra/dec coordinates.
 		"""
-
+		
 		ResolveTarget(self)
 	
 	def onTimeseries(self, event):
@@ -1127,7 +1128,7 @@ class SDFCreator(wx.Frame):
 		"""
 		
 		SessionDisplay(self)
-	
+		
 	def onAdvanced(self, event):
 		"""
 		Display the advanced settings dialog for controlling TBW samples and
@@ -1135,7 +1136,7 @@ class SDFCreator(wx.Frame):
 		"""
 		
 		AdvancedInfo(self)
-	
+		
 	def onVolume(self, event):
 		"""
 		Display a message window showing the data used for each observation 
@@ -1143,14 +1144,14 @@ class SDFCreator(wx.Frame):
 		"""
 		
 		VolumeInfo(self)
-	
+		
 	def onHelp(self, event):
 		"""
 		Display the help window.
 		"""
 		
 		HelpWindow(self)
-	
+		
 	def onFilterInfo(self, event):
 		"""
 		Display a dialog box listing the TBN and DRX filter codes along with the
@@ -1164,7 +1165,7 @@ class SDFCreator(wx.Frame):
 				return float(value)/1e3, 'kHz'
 			else:
 				return value, Hz
-		
+				
 		if self.mode == 'TBN':
 			filterInfo = "TBN"
 			for tk,tv in TBNFilters.iteritems():
@@ -1179,7 +1180,7 @@ class SDFCreator(wx.Frame):
 			filterInfo = 'No filters defined for the current mode.'
 			
 		wx.MessageBox(filterInfo, 'Filter Codes')
-	
+		
 	def onAbout(self, event):
 		"""
 		Display a ver very very brief 'about' window.
@@ -1190,7 +1191,7 @@ class SDFCreator(wx.Frame):
 		dialog.SetIcon(wx.Icon(os.path.join(self.scriptPath, 'icons', 'lwa.png'), wx.BITMAP_TYPE_PNG))
 		dialog.SetName('Session GUI')
 		dialog.SetVersion(__version__)
-		dialog.SetDescription("""GUI for creating session definition files to define observations with the Long Wavelength Array.""")
+		dialog.SetDescription("""GUI for creating session definition files to define observations with the Long Wavelength Array.\n\nLSL Version: %s""" % lsl.version.version)
 		dialog.SetWebSite('http://lwa.unm.edu')
 		dialog.AddDeveloper(__author__)
 		
@@ -1200,7 +1201,7 @@ class SDFCreator(wx.Frame):
 		dialog.AddDocWriter("Aaron Gibson")
 		
 		wx.AboutBox(dialog)
-	
+		
 	def onQuit(self, event):
 		"""
 		Quit the main window.
@@ -1215,14 +1216,13 @@ class SDFCreator(wx.Frame):
 				pass
 		else:
 			self.Destroy()
-		
-		
+			
 	def addColumns(self):
 		"""
 		Add the various columns to the main window based on the type of 
 		observations being defined.
 		"""
-
+		
 		def raConv(text):
 			"""
 			Special conversion function for deal with RA values.
@@ -1244,7 +1244,7 @@ class SDFCreator(wx.Frame):
 				raise ValueError("RA value must be 0 < RA < 24")
 			else:
 				return value
-
+				
 		def decConv(text):
 			"""
 			Special conversion function for dealing with dec. values.
@@ -1266,7 +1266,7 @@ class SDFCreator(wx.Frame):
 				raise ValueError("Dec values must be -90 <= dec <= 90")
 			else:
 				return value
-
+				
 		def freqConv(text, tbn=False):
 			"""
 			Special conversion function for dealing with frequencies.
@@ -1277,25 +1277,25 @@ class SDFCreator(wx.Frame):
 			if tbn:
 				lowerLimit = 109565492
 				upperLimit = 2037918156
-
+				
 			value = float(text)*1e6
 			freq = int(round(value * 2**32 / fS))
 			if freq < lowerLimit or freq > upperLimit:
 				raise ValueError("Frequency of %.6f MHz is out of the DP tuning range" % (value/1e6,))
 			else:
 				return value
-
+				
 		def filterConv(text):
 			"""
 			Special conversion function for dealing with filter codes.
 			"""
-
+			
 			value = int(text)
 			if value < 1 or value > 7:
 				raise ValueError("Filter code must be an integer between 1 and 7")
 			else:
 				return value
-		
+				
 		def snrConv(text):
 			"""
 			Special conversion function for dealing with the MaxSNR keyword input.
@@ -1308,7 +1308,7 @@ class SDFCreator(wx.Frame):
 				return False
 			else:
 				raise ValueError("Unknown boolean conversion of '%s'" % text)
-		
+				
 		width = 50 + 100 + 100 + 100 + 235
 		self.columnMap = []
 		self.coerceMap = []
@@ -1325,7 +1325,7 @@ class SDFCreator(wx.Frame):
 		self.columnMap.append('start')
 		for i in xrange(5):
 			self.coerceMap.append(str)
-		
+			
 		if self.mode == 'TBW' and not ALLOW_TBW_TBN_SAME_SDF:
 			pass
 		elif self.mode == 'TBN' or (self.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF):
@@ -1364,12 +1364,12 @@ class SDFCreator(wx.Frame):
 			self.coerceMap.append(snrConv)
 		else:
 			pass
-		
+			
 		size = self.listControl.GetSize()
 		size[0] = width
 		self.listControl.SetMinSize(size)
 		self.listControl.Fit()
-	
+		
 		size = self.GetSize()
 		width = min([width, wx.GetDisplaySize()[0]])
 		self.SetMinSize((width, size[1]))
@@ -1414,7 +1414,7 @@ class SDFCreator(wx.Frame):
 				self.listControl.SetStringItem(index, 5, obs.duration)
 				self.listControl.SetStringItem(index, 6, "%.6f" % (obs.freq1*fS/2**32 / 1e6))
 				self.listControl.SetStringItem(index, 7, "%i" % obs.filter)
-		
+				
 		if self.mode == 'DRX':
 			def dec2sexstr(value, signed=True):
 				sign = 1
@@ -1430,7 +1430,7 @@ class SDFCreator(wx.Frame):
 					return '%+03i:%02i:%04.1f' % (d, m, s)
 				else:
 					return '%02i:%02i:%05.2f' % (d, m, s)
-			
+					
 			if obs.mode == 'STEPPED':
 				obs.getDuration()
 				self.listControl.SetStringItem(index, 5, obs.duration)
@@ -1445,7 +1445,7 @@ class SDFCreator(wx.Frame):
 					self.listControl.SetStringItem(index, 11, "Yes")
 				else:
 					self.listControl.SetStringItem(index, 11, "No")
-				
+					
 			if obs.mode == 'TRK_SOL':
 				self.listControl.SetStringItem(index, 6, "Sun")
 				self.listControl.SetStringItem(index, 7, "--")
@@ -1459,7 +1459,7 @@ class SDFCreator(wx.Frame):
 				self.listControl.SetStringItem(index, 6, dec2sexstr(obs.ra, signed=False))
 				self.listControl.SetStringItem(index, 7, dec2sexstr(obs.dec, signed=True))
 			self.listControl.SetStringItem(index, 10, "%i" % obs.filter)
-	
+			
 	def setSaveButton(self):
 		"""
 		Control that data of the various 'save' options based on the value of
@@ -1472,7 +1472,7 @@ class SDFCreator(wx.Frame):
 		else:
 			self.savemenu.Enable(False)
 			self.toolbar.EnableTool(ID_SAVE, False)
-	
+			
 	def setMenuButtons(self, mode):
 		"""
 		Given a mode of observation (TBW, TBN, TRK_RADEC, etc.), update the 
@@ -1553,7 +1553,7 @@ class SDFCreator(wx.Frame):
 			self.toolbar.EnableTool(ID_ADD_STEPPED_RADEC, False)
 			self.toolbar.EnableTool(ID_ADD_STEPPED_AZALT, False)
 			self.toolbar.EnableTool(ID_EDIT_STEPPED, False)
-	
+			
 	def parseFile(self, filename):
 		"""
 		Given a filename, parse the file using the sdf.parseSDF() method and 
@@ -1596,7 +1596,7 @@ class SDFCreator(wx.Frame):
 		for obs in self.project.sessions[0].observations:
 			self.addObservation(obs, id)
 			id += 1
-
+			
 	def displayError(self, error, details=None, title=None):
 		"""
 		Display an error dialog and write an error message to the command 
@@ -1604,8 +1604,7 @@ class SDFCreator(wx.Frame):
 		"""
 		if title is None:
 			title = 'An Error has Occured'
-		
-
+			
 		if details is None:
 			print "[%i] Error: %s" % (os.getpid(), str(error))
 			self.statusbar.SetStatusText('Error: %s' % str(error), 1)
@@ -1614,7 +1613,7 @@ class SDFCreator(wx.Frame):
 			print "[%i] Error: %s" % (os.getpid(), str(details))
 			self.statusbar.SetStatusText('Error: %s' % str(details), 1)
 			dialog = wx.MessageDialog(self, '%s\n\nDetails:\n%s' % (str(error), str(details)), title, style=wx.OK|wx.ICON_ERROR)
-
+			
 		dialog.ShowModal()
 
 
@@ -1665,7 +1664,7 @@ class ObserverInfo(wx.Frame):
 				preferences[key] = value
 		except:
 			pass
-
+			
 		#
 		# Observer Info
 		#
@@ -1889,7 +1888,7 @@ class ObserverInfo(wx.Frame):
 				stokes.Disable()
 			else:
 				pass
-		
+				
 		sizer.Add(ses, pos=(row+0, 0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
 		
 		sizer.Add(sid, pos=(row+1, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
@@ -2059,7 +2058,7 @@ class ObserverInfo(wx.Frame):
 		
 	def onCancel(self, event):
 		self.Close()
-
+		
 	def displayError(self, error, details=None, title=None):
 		"""
 		Display an error dialog and write an error message to the command 
@@ -2067,15 +2066,14 @@ class ObserverInfo(wx.Frame):
 		"""
 		if title is None:
 			title = 'An Error has Occured'
-		
-
+			
 		if details is None:
 			print "[%i] Error: %s" % (os.getpid(), str(error))
 			dialog = wx.MessageDialog(self, '%s' % str(error), title, style=wx.OK|wx.ICON_ERROR)
 		else:
 			print "[%i] Error: %s" % (os.getpid(), str(details))
 			dialog = wx.MessageDialog(self, '%s\n\nDetails:\n%s' % (str(error), str(details)), title, style=wx.OK|wx.ICON_ERROR)
-
+			
 		dialog.ShowModal()
 
 
@@ -2091,7 +2089,7 @@ class AdvancedInfo(wx.Frame):
 			size = (925, 575)
 		else:
 			size = (925, 700)
-
+			
 		wx.Frame.__init__(self, parent, title='Advanced Settings', size=size)
 		
 		self.parent = parent
@@ -2212,11 +2210,11 @@ class AdvancedInfo(wx.Frame):
 		sizer.Add(line, pos=(row+9, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
 		
 		row += 10
-
+		
 		#
 		# ASP
 		# 
-	
+		
 		aspComboFlt = wx.ComboBox(panel, -1, value='MCS Decides', choices=aspFilters, style=wx.CB_READONLY)
 		if self.parent.project.sessions[0].observations[0].aspFlt[0] == -1:
 			aspComboFlt.SetStringSelection('MCS Decides')
@@ -2243,10 +2241,10 @@ class AdvancedInfo(wx.Frame):
 			aspComboATS.SetStringSelection('MCS Decides')
 		else:
 			aspComboATS.SetStringSelection('%i' % self.parent.project.sessions[0].observations[0].aspATS[0])
-
+			
 		asp = wx.StaticText(panel, label='ASP-Specific Information')
 		asp.SetFont(font)
-
+		
 		flt = wx.StaticText(panel, label='Filter Mode Setting')
 		at1 = wx.StaticText(panel, label='First Attenuator Setting')
 		at2 = wx.StaticText(panel, label='Second Attenuator Setting')
@@ -2255,7 +2253,7 @@ class AdvancedInfo(wx.Frame):
 		fas2 = wx.StaticText(panel, label='for all inputs')
 		fas3 = wx.StaticText(panel, label='for all inputs')
 		fas4 = wx.StaticText(panel, label='for all inputs')
-
+		
 		sizer.Add(asp, pos=(row+0, 0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
 		sizer.Add(flt, pos=(row+1, 0), span=(1, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		sizer.Add(aspComboFlt, pos=(row+1, 2), span=(1, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
@@ -2272,7 +2270,7 @@ class AdvancedInfo(wx.Frame):
 		
 		line = wx.StaticLine(panel)
 		sizer.Add(line, pos=(row+5, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
-			
+		
 		row += 6
 		
 		#
@@ -2308,7 +2306,7 @@ class AdvancedInfo(wx.Frame):
 			sizer.Add(line, pos=(row+3, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
 			
 			row += 4
-		
+			
 		#
 		# TBN
 		#
@@ -2333,7 +2331,7 @@ class AdvancedInfo(wx.Frame):
 			sizer.Add(line, pos=(row+2, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
 			
 			row += 3
-		
+			
 		#
 		# DRX
 		#
@@ -2563,10 +2561,10 @@ class AdvancedInfo(wx.Frame):
 		if self.parent.mode == 'TBW' or (self.parent.mode == 'TBN' and ALLOW_TBW_TBN_SAME_SDF):
 			self.tbwBits = tbitsText
 			self.tbwSamp = tsampText
-		
+			
 		if self.parent.mode == 'TBN' or (self.parent.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF):
 			self.gain = tgainText
-		
+			
 		if self.parent.mode == 'DRX':
 			self.gain = dgainText
 			self.drxBeam = dbeamText
@@ -2621,24 +2619,24 @@ class AdvancedInfo(wx.Frame):
 		"""
 		Save everything into all of the correct places.
 		"""
-
+		
 		if self.parent.mode == 'TBW' or (self.parent.mode == 'TBN' and ALLOW_TBW_TBN_SAME_SDF):
 			tbwBits = int( self.tbwBits.GetValue().split('-')[0] )
 			tbwSamp = int( self.tbwSamp.GetValue() )
 			if tbwSamp < 0:
 				self.displayError('Number of TBW samples must be positive', title='TBW Sample Error')
 				return False
-
+				
 			if tbwBits == 4  and tbwSamp > 36000000:
 				self.displayError('Number of TBW samples too large for a %i-bit capture' % tbwBits, 
 							details='%i > 36000000' % tbwSamp, title='TBW Sample Error')
 				return False
-
+				
 			if tbwBits == 12 and tbwSamp > 12000000:
 				self.displayError('Number of TBW samples too large for a %i-bit capture' % tbwBits, 
 							details='%i > 12000000' % tbwSamp, title='TBW Sample Error')
 				return False
-		
+				
 		self.parent.project.sessions[0].recordMIB['ASP'] = self.__parseTimeCombo(self.mrpASP)
 		self.parent.project.sessions[0].recordMIB['DP_'] = self.__parseTimeCombo(self.mrpDP)
 		for i in range(1,6):
@@ -2670,7 +2668,7 @@ class AdvancedInfo(wx.Frame):
 				self.parent.project.sessions[0].observations[i].aspAT1[j] = aspAT1
 				self.parent.project.sessions[0].observations[i].aspAT2[j] = aspAT2
 				self.parent.project.sessions[0].observations[i].aspATS[j] = aspATS
-
+				
 		if self.parent.mode == 'TBW' or (self.parent.mode == 'TBN' and ALLOW_TBW_TBN_SAME_SDF):
 			self.parent.project.sessions[0].tbwGits = int( self.tbwBits.GetValue().split('-')[0] )
 			self.parent.project.sessions[0].tbwSamples = int( self.tbwSamp.GetValue() )
@@ -2678,12 +2676,12 @@ class AdvancedInfo(wx.Frame):
 				self.parent.project.sessions[0].observations[i].bits = int( self.tbwBits.GetValue().split('-')[0] )
 				self.parent.project.sessions[0].observations[i].samples = int( self.tbwSamp.GetValue() )
 				self.parent.project.sessions[0].observations[i].update()
-			
+				
 		if self.parent.mode == 'TBN' or (self.parent.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF):
 			self.parent.project.sessions[0].tbnGain = self.__parseGainCombo(self.gain)
 			for i in xrange(len(self.parent.project.sessions[0].observations)):
 				self.parent.project.sessions[0].observations[i].gain = self.__parseGainCombo(self.gain)
-			
+				
 		if self.parent.mode == 'DRX':
 			self.parent.project.sessions[0].drxBeam = self.__parseGainCombo(self.drxBeam)
 			self.parent.project.sessions[0].drxGain = self.__parseGainCombo(self.gain)
@@ -2800,12 +2798,12 @@ class AdvancedInfo(wx.Frame):
 					self.parent.project.sessions[0].spcMetatag = '{Stokes=IV}'
 				else:
 					self.parent.project.sessions[0].spcMetatag = '{Stokes=IQUV}'
-		
+					
 		self.parent.edited = True
 		self.parent.setSaveButton()
-
+		
 		self.Close()
-	
+		
 	def onCancel(self, event):
 		self.Close()
 		
@@ -2861,7 +2859,7 @@ class AdvancedInfo(wx.Frame):
 				return "30 minutes"
 			else:
 				return "1 hour"
-
+				
 	def displayError(self, error, details=None, title=None):
 		"""
 		Display an error dialog and write an error message to the command 
@@ -2869,15 +2867,14 @@ class AdvancedInfo(wx.Frame):
 		"""
 		if title is None:
 			title = 'An Error has Occured'
-		
-
+			
 		if details is None:
 			print "[%i] Error: %s" % (os.getpid(), str(error))
 			dialog = wx.MessageDialog(self, '%s' % str(error), title, style=wx.OK|wx.ICON_ERROR)
 		else:
 			print "[%i] Error: %s" % (os.getpid(), str(details))
 			dialog = wx.MessageDialog(self, '%s\n\nDetails:\n%s' % (str(error), str(details)), title, style=wx.OK|wx.ICON_ERROR)
-
+			
 		dialog.ShowModal()
 
 
@@ -2899,7 +2896,7 @@ class SessionDisplay(wx.Frame):
 			self.initPlotDRX()
 		else:
 			self.initPlot()
-		
+			
 	def initUI(self):
 		"""
 		Start the user interface.
@@ -2933,7 +2930,7 @@ class SessionDisplay(wx.Frame):
 		
 		# Make the images resizable
 		self.Bind(wx.EVT_PAINT, self.resizePlots)
-	
+		
 	def initPlot(self):
 		"""
 		Populate the figure/canvas areas with a plot.  We only need to do this
@@ -2941,10 +2938,10 @@ class SessionDisplay(wx.Frame):
 		"""
 		
 		self.obs = self.parent.project.sessions[0].observations
-
+		
 		if len(self.obs) == 0:
 			return False
-		
+			
 		mode = self.obs[0].mode
 		colors = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'orange', 'lavender']
 		
@@ -2966,7 +2963,7 @@ class SessionDisplay(wx.Frame):
 						label='Observation %i' % (i+1))
 			self.ax1.annotate('%i' % (i+1), (start-self.earliest+dur/2, yl+0.5))
 			i += 1
-		
+			
 		## Second set of x axes
 		self.ax1.xaxis.tick_bottom()
 		self.ax2 = self.figure.add_axes(self.ax1.get_position(), sharey=self.ax1, frameon=False)
@@ -2995,7 +2992,7 @@ class SessionDisplay(wx.Frame):
 		"""
 		
 		self.obs = self.parent.project.sessions[0].observations
-
+		
 		if len(self.obs) == 0:
 			return False
 		
@@ -3021,15 +3018,15 @@ class SessionDisplay(wx.Frame):
 				stepSize = o.dur / 1000.0 / 300
 				if stepSize < 30.0:
 					stepSize = 30.0
-				
+					
 				## Find its elevation over the course of the observation
 				while dt < o.dur/1000.0:
 					observer.date = o.mjd + (o.mpm/1000.0 + dt)/3600/24.0 + MJD_OFFSET - DJD_OFFSET
 					src.compute(observer)
-				
+					
 					el.append( float(src.alt) * 180.0 / math.pi )
 					t.append( o.mjd + (o.mpm/1000.0 + dt) / (3600.0*24.0) - self.earliest )
-				
+					
 					dt += stepSize
 					
 				## Make sure we get the end of the observation
@@ -3081,18 +3078,18 @@ class SessionDisplay(wx.Frame):
 				
 			else:
 				pass
-			
+				
 		## Add a legend
 		handles, labels = self.ax1.get_legend_handles_labels()
 		self.ax1.legend(handles[:i], labels[:i], loc=0)
-			
+		
 		## Second set of x axes
 		self.ax1.xaxis.tick_bottom()
 		self.ax1.set_ylim([0, 90])
 		self.ax2 = self.figure.add_axes(self.ax1.get_position(), sharey=self.ax1, frameon=False)
 		self.ax2.xaxis.tick_top()
 		self.ax2.set_xlim([self.ax1.get_xlim()[0]*24.0, self.ax1.get_xlim()[1]*24.0])
-			
+		
 		## Labels
 		self.ax1.set_xlabel('MJD-%i [days]' % self.earliest)
 		self.ax1.set_ylabel('Elevation [deg.]')
@@ -3102,14 +3099,14 @@ class SessionDisplay(wx.Frame):
 		## Draw
 		self.canvas.draw()
 		self.connect()
-	
+		
 	def connect(self):
 		"""
 		Connect to all the events we need to interact with the plots.
 		"""
 		
 		self.cidmotion  = self.figure.canvas.mpl_connect('motion_notify_event', self.on_motion)
-	
+		
 	def on_motion(self, event):
 		"""
 		Deal with motion events in the stand field window.  This involves 
@@ -3139,7 +3136,7 @@ class SessionDisplay(wx.Frame):
 			self.statusbar.SetStatusText("MJD: %i  MPM: %i;  Session Elapsed Time: %s" % (mjd, mpm, elapsed))
 		else:
 			self.statusbar.SetStatusText("")
-	
+			
 	def disconnect(self):
 		"""
 		Disconnect all the stored connection ids.
@@ -3158,7 +3155,7 @@ class SessionDisplay(wx.Frame):
 		newH2 = 1.0*(h/2-75)/dpi
 		self.figure.set_size_inches((newW, newH1))
 		self.figure.canvas.draw()
-
+		
 	def GetToolBar(self):
 		# You will need to override GetToolBar if you are using an 
 		# unmanaged toolbar in your frame
@@ -3191,12 +3188,12 @@ class VolumeInfo(wx.Frame):
 		dataText = wx.StaticText(panel, label='Estimated Data Volume:')
 		dataText.SetFont(font)
 		sizer.Add(dataText, pos=(row+0, 0), span=(1, 3), flag=wx.ALIGN_CENTER, border=5)
-	
+		
 		line = wx.StaticLine(panel)
 		sizer.Add(line, pos=(row+1, 0), span=(1, 3), flag=wx.EXPAND|wx.BOTTOM, border=10)
 		
 		row += 2
-
+		
 		observationCount = 1
 		totalData = 0
 		for obs in self.parent.project.sessions[0].observations:
@@ -3223,7 +3220,7 @@ class VolumeInfo(wx.Frame):
 				mode = obs.mode
 				
 				dataVolume = obs.dataVolume
-			
+				
 			idText = wx.StaticText(panel, label='Observation #%i' % observationCount)
 			tpText = wx.StaticText(panel, label=mode)
 			dvText = wx.StaticText(panel, label='%.2f GB' % (dataVolume/1024.0**3,))
@@ -3238,9 +3235,9 @@ class VolumeInfo(wx.Frame):
 			
 		line = wx.StaticLine(panel)
 		sizer.Add(line, pos=(row+0, 0), span=(1, 3), flag=wx.EXPAND|wx.BOTTOM, border=10)
-
+		
 		row += 1
-
+		
 		ttText = wx.StaticText(panel, label='Total:')
 		ttText.SetFont(font)
 		dvText = wx.StaticText(panel, label='%.2f GB' % (totalData/1024.0**3,))
@@ -3248,9 +3245,9 @@ class VolumeInfo(wx.Frame):
 		
 		sizer.Add(ttText, pos=(row+0, 0), flag=wx.ALIGN_LEFT, border=5)
 		sizer.Add(dvText, pos=(row+0, 2), flag=wx.ALIGN_RIGHT, border=5)
-
+		
 		row += 1
-
+		
 		ok = wx.Button(panel, ID_VOL_INFO_OK, 'Ok', size=(90, 28))
 		sizer.Add(ok, pos=(row+0, 2))
 		
@@ -3283,7 +3280,7 @@ class ResolveTarget(wx.Frame):
 			x,y = self.GetBestSize()
 			self.SetSize((x,y))
 			self.Show()
-
+			
 	def setSource(self):
 		if self.parent.mode.upper() == 'DRX':
 			for i in range(self.parent.listControl.GetItemCount()):
@@ -3292,7 +3289,7 @@ class ResolveTarget(wx.Frame):
 					self.observationID = i
 					self.source = item.GetText()
 					return True
-
+					
 			self.observationID = -1
 			self.source = ''
 			return False
@@ -3301,7 +3298,7 @@ class ResolveTarget(wx.Frame):
 			self.observationID = -1
 			self.source = 'Invalid Mode'
 			return False
-		
+			
 	def initUI(self):
 		row = 0
 		panel = wx.Panel(self)
@@ -3312,10 +3309,10 @@ class ResolveTarget(wx.Frame):
 		srcText.SetValue(self.source)
 		sizer.Add(src, pos=(row+0, 0), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		sizer.Add(srcText, pos=(row+0, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-	
+		
 		line = wx.StaticLine(panel)
 		sizer.Add(line, pos=(row+1, 0), span=(1, 5), flag=wx.EXPAND|wx.BOTTOM, border=10)
-
+		
 		ra = wx.StaticText(panel, label='RA (hours, J2000):')
 		raText = wx.TextCtrl(panel, style=wx.TE_READONLY)
 		raText.SetValue('---')
@@ -3325,17 +3322,17 @@ class ResolveTarget(wx.Frame):
 		srv = wx.StaticText(panel, label='Service Used:')
 		srvText = wx.TextCtrl(panel, style=wx.TE_READONLY)
 		srvText.SetValue('---')
-
+		
 		sizer.Add(ra, pos=(row+2, 0), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		sizer.Add(raText, pos=(row+2, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		sizer.Add(dec, pos=(row+3, 0), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		sizer.Add(decText, pos=(row+3, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		sizer.Add(srv, pos=(row+4, 0), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		sizer.Add(srvText, pos=(row+4, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-	
+		
 		line = wx.StaticLine(panel)
 		sizer.Add(line, pos=(row+5, 0), span=(1, 5), flag=wx.EXPAND|wx.BOTTOM, border=10)
-
+		
 		resolve = wx.Button(panel, ID_RESOLVE_RESOLVE, 'Resolve', size=(90, 28))
 		appli = wx.Button(panel, ID_RESOLVE_APPLY, 'Apply', size=(90, 28))
 		cancel = wx.Button(panel, ID_RESOLVE_CANCEL, 'Cancel', size=(90, 28))
@@ -3345,26 +3342,26 @@ class ResolveTarget(wx.Frame):
 		sizer.Add(cancel, pos=(row+6, 4))
 		
 		panel.SetSizerAndFit(sizer)
-
+		
 		self.srcText = srcText
 		self.raText = raText
 		self.decText = decText
 		self.srvText = srvText
 		self.appli = appli
 		self.appli.Enable(False)
-
+		
 	def initEvents(self):
 		self.Bind(wx.EVT_BUTTON, self.onResolve, id=ID_RESOLVE_RESOLVE)
 		self.Bind(wx.EVT_BUTTON, self.onApply, id=ID_RESOLVE_APPLY)
 		self.Bind(wx.EVT_BUTTON, self.onCancel, id=ID_RESOLVE_CANCEL)
-
+		
 	def onResolve(self, event):
 		import urllib
-
+		
 		self.source = self.srcText.GetValue()
 		try:
 			result = urllib.urlopen('http://www1.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/NameResolver/find?target=%s' % urllib.quote_plus(self.source))
-		
+			
 			line = result.readlines()
 			target = (line[0].replace('\n', '').split('='))[1]
 			service = (line[1].replace('\n', '').split('='))[1]
@@ -3381,20 +3378,20 @@ class ResolveTarget(wx.Frame):
 			self.raText.SetValue(raS)
 			self.decText.SetValue(decS)
 			self.srvText.SetValue(service[0:-2])
-
+			
 			if self.observationID != -1:
 				self.appli.Enable(True)
-
+				
 		except IOError:
 			self.raText.SetValue("---")
 			self.decText.SetValue("---")
 			self.srvText.SetValue("Error resolving target")
-		
+			
 		except ValueError:
 			self.raText.SetValue("---")
 			self.decText.SetValue("---")
 			self.srvText.SetValue("Error resolving target")
-
+			
 	def onApply(self, event):
 		if self.observationID == -1:
 			return False
@@ -3405,23 +3402,23 @@ class ResolveTarget(wx.Frame):
 			for obsAttr,widget in [(6,self.raText), (7,self.decText)]:
 				try:
 					newData = self.parent.coerceMap[obsAttr](widget.GetValue())
-			
+					
 					oldData = getattr(self.parent.project.sessions[0].observations[obsIndex], self.parent.columnMap[obsAttr])
 					if newData != oldData:
 						setattr(self.parent.project.sessions[0].observations[obsIndex], self.parent.columnMap[obsAttr], newData)
 						self.parent.project.sessions[0].observations[obsIndex].update()
-				
+						
 						item = self.parent.listControl.GetItem(obsIndex, obsAttr)
 						item.SetText(widget.GetValue())
 						self.parent.listControl.SetItem(item)
 						self.parent.listControl.RefreshItem(item.GetId())
-
+						
 						self.parent.edited = True
 						self.parent.setSaveButton()
 						self.appli.Enable(False)
 				except ValueError as err:
 					print '[%i] Error: %s' % (os.getpid(), str(err))
-
+					
 	def onCancel(self, event):
 		self.Close()
 
@@ -3508,14 +3505,14 @@ class ScheduleWindow(wx.Frame):
 			oldComments += 'ScheduleFixed'
 		else:
 			pass
-		
+			
 		self.parent.project.sessions[0].comments = oldComments
 		
 		self.parent.edited = True
 		self.parent.setSaveButton()
 		
 		self.Close()
-
+		
 	def onCancel(self, event):
 		self.Close()
 
@@ -3526,7 +3523,7 @@ class HtmlWindow(wx.html.HtmlWindow):
 		
 		if "gtk2" in wx.PlatformInfo: 
 			self.SetStandardFonts()
-		
+			
 	def OnLinkClicked(self, link): 
 		a = link.GetHref()
 		if a.startswith('#'): 
@@ -3538,10 +3535,10 @@ class HtmlWindow(wx.html.HtmlWindow):
 class HelpWindow(wx.Frame):
 	def __init__(self, parent):
 		wx.Frame.__init__(self, parent, -1, 'Session GUI Handbook', size=(570, 400))
-
+		
 		self.initUI()
 		self.Show()
-
+		
 	def initUI(self):
 		panel = wx.Panel(self, -1, style=wx.BORDER_SUNKEN)
 		vbox = wx.BoxSizer(wx.VERTICAL)
@@ -3551,7 +3548,7 @@ class HelpWindow(wx.Frame):
 		vbox.Add(help, 1, wx.EXPAND)
 		
 		self.CreateStatusBar()
-
+		
 		panel.SetSizer(vbox)
 
 
@@ -3612,7 +3609,7 @@ class SteppedWindow(wx.Frame):
 		self.editmenu['pasteEnd'] = pste
 		for k in self.editmenu.keys():
 			self.editmenu[k].Enable(False)
-		
+			
 		# Steps Menu
 		addStep = wx.MenuItem(stpMenu, ID_STEPPED_ADD_SINGLE_STEP, 'Add a Step')
 		stpMenu.AppendItem(addStep)
@@ -3681,7 +3678,7 @@ class SteppedWindow(wx.Frame):
 		self.editmenu['pasteBefore'].Enable(True)
 		self.editmenu['pasteAfter'].Enable(True)
 		self.editmenu['pasteEnd'].Enable(True)
-	
+		
 	def onCut(self, event):
 		self.onCopy(event)
 		self.onRemove(event)
@@ -3738,7 +3735,7 @@ class SteppedWindow(wx.Frame):
 			item.SetText('%i' % (i+1))
 			self.listControl.SetItem(item)
 			self.listControl.RefreshItem(item.GetId())
-	
+			
 	def onPasteEnd(self, event):
 		"""
 		Paste the selected observation(s) at the end of the current session.
@@ -3755,7 +3752,7 @@ class SteppedWindow(wx.Frame):
 				
 			self.parent.edited = True
 			self.parent.setSaveButton()
-	
+			
 	def onAddStep(self, event):
 		"""
 		Add a new step.
@@ -3764,7 +3761,7 @@ class SteppedWindow(wx.Frame):
 		id = self.listControl.GetItemCount() + 1
 		self.obs.steps.append( sdf.BeamStep(0.0, 0.0, '00:00:00.000', 42e6, 74e6, RADec=self.RADec) )
 		self.addStep(self.obs.steps[-1], id)
-	
+		
 	def onEdit(self, event):
 		"""
 		Make the selected change to the underlying observation.
@@ -3786,7 +3783,7 @@ class SteppedWindow(wx.Frame):
 				item = self.parent.listControl.GetItem(self.obsID, 5)
 				item.SetText(self.obs.duration)
 				self.parent.listControl.SetItem(item)
-			
+				
 			item = self.listControl.GetItem(obsIndex, obsAttr)
 			if self.listControl.GetItemTextColour(item.GetId()) != (0, 0, 0, 255):
 				self.listControl.SetItemTextColour(item.GetId(), wx.BLACK)
@@ -3804,10 +3801,10 @@ class SteppedWindow(wx.Frame):
 			item = self.listControl.GetItem(obsIndex, obsAttr)
 			self.listControl.SetItemTextColour(item.GetId(), wx.RED)
 			self.listControl.RefreshItem(item.GetId())
-
+			
 			self.badEdit = True
 			self.badEditLocation = (obsIndex, obsAttr)
-	
+			
 	def onRemove(self, event):
 		"""
 		Remove selected observations from the main window as well as the 
@@ -3829,7 +3826,7 @@ class SteppedWindow(wx.Frame):
 				if lc.IsChecked(i):
 					return i+1
 			return 0
-
+			
 		# While there is still at least one bad row, continue looping and removing
 		# rows
 		bad = stillBad(self.listControl)
@@ -3859,7 +3856,7 @@ class SteppedWindow(wx.Frame):
 		Add the various columns to the main window based on the type of 
 		observations being defined.
 		"""
-
+		
 		def raConv(text):
 			"""
 			Special conversion function for deal with RA values.
@@ -3881,7 +3878,7 @@ class SteppedWindow(wx.Frame):
 				raise ValueError("RA value must be 0 < RA < 24")
 			else:
 				return value
-
+				
 		def decConv(text):
 			"""
 			Special conversion function for dealing with dec. values.
@@ -3903,7 +3900,7 @@ class SteppedWindow(wx.Frame):
 				raise ValueError("Dec values must be -90 <= dec <= 90")
 			else:
 				return value
-
+				
 		def azConv(text):
 			"""
 			Special conversion functio for azimuth values.
@@ -3947,19 +3944,19 @@ class SteppedWindow(wx.Frame):
 				raise ValueError("Elevation values must be 0 <= dec <= 90")
 			else:
 				return value
-
+				
 		def freqConv(text):
 			"""
 			Special conversion function for dealing with frequencies.
 			"""
-
+			
 			value = float(text)*1e6
 			freq = int(round(value * 2**32 / fS))
 			if freq < 219130984 or freq > 1928352663:
 				raise ValueError("Frequency of %.6f MHz is out of the DP tuning range" % (value/1e6,))
 			else:
 				return value
-		
+				
 		def snrConv(text):
 			"""
 			Special conversion function for dealing with the MaxSNR keyword input.
@@ -3972,7 +3969,7 @@ class SteppedWindow(wx.Frame):
 				return False
 			else:
 				raise ValueError("Unknown boolean conversion of '%s'" % text)
-		
+				
 		width = 50 + 125
 		self.columnMap = []
 		self.coerceMap = []
