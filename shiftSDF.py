@@ -322,6 +322,14 @@ def main(args):
 				siderealShift += siderealDay
 			if siderealShift.date() > tNewStart.date():
 				siderealShift -= siderealDay
+			## And yet another one to deal with the corner case that observation starts at ~UT 00:00
+			if min(tStart) == siderealShift:
+				newSiderealShift1 = siderealShift + siderealDay
+				newSiderealShift2 = siderealShift - siderealDay
+				if newSiderealShift1.date() == tNewStart.date():
+					siderealShift = newSiderealShift1
+				elif newSiderealShift2.date() == tNewStart.date():
+					siderealShift = newSiderealShift2
 			tNewStart = siderealShift
 			
 		else:
@@ -354,7 +362,13 @@ def main(args):
 		print "Shifting observations to start at %s" % tNewStart.strftime(formatString)
 		print "-> Difference of %i days, %.3f seconds" % (tShift.days, (tShift.seconds + tShift.microseconds/1000000.0),)
 		print "-> LST at %s for this date/time is %s" % (lwa1.name, lst)
-		
+		if tShift.days == 0 and tShift.seconds == 0 and tShift.microseconds == 0:
+			print " "
+			print "The current shift is zero.  Do you want to continue anyways?"
+			yesNo = raw_input("-> [y/N] ")
+			if yesNo not in ('y', 'Y'):
+				sys.exit()
+				
 	else:
 		tShift = timedelta(seconds=0)
 		
