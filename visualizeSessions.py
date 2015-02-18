@@ -124,6 +124,7 @@ class Visualization_GUI(object):
 		sessionNames = []
 		sessionBeams = []
 		sessionStarts = []
+		sessionStops = []
 		sessionDurations = []
 	
 		# Loop over filenames
@@ -144,6 +145,7 @@ class Visualization_GUI(object):
 			sessionNames.append('%s_%04i' % (pID, sID))
 			sessionBeams.append(beam)
 			sessionStarts.append(sessionStart)
+			sessionStops.append(sessionStop)
 			sessionDurations.append(duration)
 			
 		# Find unique project identifiers
@@ -158,6 +160,7 @@ class Visualization_GUI(object):
 		self.sessionNames = sessionNames
 		self.sessionBeams = sessionBeams
 		self.sessionStarts = sessionStarts
+		self.sessionStops = sessionStops
 		self.sessionDurations = sessionDurations
 		self.uniqueProjects = uniqueProjects
 		
@@ -217,8 +220,7 @@ class Visualization_GUI(object):
 		
 		# Find out how long we need to compute the position of the Sun
 		start = min(self.sessionStarts)
-		stop  = max(self.sessionStarts)
-		stop += self.sessionDurations[self.sessionStarts.index(stop)]
+		stop  = max(self.sessionStops)
 		
 		# Define the Sun
 		Sun = ephem.Sun()
@@ -252,8 +254,7 @@ class Visualization_GUI(object):
 		
 		# Find out how long we need to compute the position of the Sun
 		start = min(self.sessionStarts)
-		stop  = max(self.sessionStarts)
-		stop += self.sessionDurations[self.sessionStarts.index(stop)]
+		stop  = max(self.sessionStops)
 		
 		# Setup Jupiter
 		Jupiter = ephem.Jupiter()
@@ -278,7 +279,7 @@ class Visualization_GUI(object):
 			
 		return numpy.array(points), numpy.array(alts)
 		
-	def draw(self):
+	def draw(self, selected=None):
 		"""
 		Shows the sessions.
 		"""
@@ -289,24 +290,32 @@ class Visualization_GUI(object):
 		# Plot the sessions
 		startMin = min(self.sessionStarts)
 		startMax = max(self.sessionStarts)
-		for name,beam,start,duration in zip(self.sessionNames, self.sessionBeams, self.sessionStarts, self.sessionDurations):
+		for s,(name,beam,start,duration) in enumerate(zip(self.sessionNames, self.sessionBeams, self.sessionStarts, self.sessionDurations)):
 			d = duration.days*24*3600 + duration.seconds + duration.microseconds/1e6
 			d /= 3600.0
 			
 			i = self.uniqueProjects.index(name.split('_')[0])
-			self.ax1.barh(beam-0.5, d/24, left=start, height=1.0, alpha=0.2, color=self.colors[i % len(self.colors)])
+			if s == selected:
+				alpha = 0.5
+			else:
+				alpha = 0.2
+			self.ax1.barh(beam-0.5, d/24, left=start, height=1.0, alpha=alpha, color=self.colors[i % len(self.colors)])
 			
 			self.ax1.text(start+duration/2, beam, name, size=10, horizontalalignment='center', verticalalignment='center', rotation='vertical')
 			
 		# Plot the free time more than 30 minutes
-		for free1,free2 in self.freePeriods:
+		for s,(free1,free2) in enumerate(self.freePeriods):
 			duration = free2 - free1
 			d = duration.days*24*3600 + duration.seconds + duration.microseconds/1e6
 			d /= 3600.0
 			if d < 0.5:
 				continue
-			
-			self.ax1.barh(-0.5, d/24, left=free1, alpha=0.2, height=1.0, color='r', hatch='/')
+				
+			if -(s+1) == selected:
+				alpha = 0.5
+			else:
+				alpha = 0.2
+			self.ax1.barh(-0.5, d/24, left=free1, alpha=alpha, height=1.0, color='r', hatch='/')
 			self.ax1.text(free1+duration/2, 0, '%i:%02i' % (int(d), int((d-int(d))*60)), size=10, horizontalalignment='center', verticalalignment='center', rotation='vertical')
 			
 		# Plot Sun elevation in a way that indicates day and night (if needed)
@@ -477,12 +486,14 @@ class Visualization_GUI(object):
 				for i in xrange(len(self.freePeriods)):
 					if clickTime >= self.freePeriods[i][0] and clickTime <= self.freePeriods[i][1]:
 						self.frame.info.SetValue(self.describeFree(i))
+						self.draw(selected=-(i+1))
 			else:
 				project = None
 				for i in xrange(len(self.sessionSDFs)):
 					if clickTime >= self.sessionStarts[i] and clickTime <= self.sessionStarts[i] + self.sessionDurations[i] and clickBeam == self.sessionBeams[i]:
 						self.frame.info.SetValue(self.describeSDF(i))
-			
+						self.draw(selected=i)
+						
 	def disconnect(self):
 		"""
 		Disconnect all the stored connection IDs.
