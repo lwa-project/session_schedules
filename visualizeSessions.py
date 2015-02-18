@@ -9,7 +9,7 @@ import ephem
 import numpy
 from datetime import datetime, timedelta
 
-from lsl.common import sdf
+from lsl.common import sdf, metabundle
 from lsl.common.stations import lwa1
 from lsl.astro import utcjd_to_unix, MJD_OFFSET
 
@@ -126,10 +126,21 @@ class Visualization_GUI(object):
 		sessionStarts = []
 		sessionStops = []
 		sessionDurations = []
+		sessionDataFiles = []
 	
 		# Loop over filenames
 		for filename in self.frame.filenames:
-			project = sdf.parseSDF(filename)
+			try:
+				project = sdf.parseSDF(filename)
+				dataFile = None
+			except Exception as e:
+				try:
+					project = metabundle.getSessionDefinition(filename)
+					dataFile = metabundle.getSessionMetaData(filename)
+				except Exception as e:
+					print "Warning: Cannot parse '%s'" % os.path.basename(filename)
+					continue
+					
 			pID = project.id
 			sID = project.sessions[0].id
 			
@@ -147,6 +158,7 @@ class Visualization_GUI(object):
 			sessionStarts.append(sessionStart)
 			sessionStops.append(sessionStop)
 			sessionDurations.append(duration)
+			sessionDataFiles.append(dataFile)
 			
 		# Find unique project identifiers
 		uniqueProjects = []
@@ -162,6 +174,7 @@ class Visualization_GUI(object):
 		self.sessionStarts = sessionStarts
 		self.sessionStops = sessionStops
 		self.sessionDurations = sessionDurations
+		self.sessionDataFiles = sessionDataFiles
 		self.uniqueProjects = uniqueProjects
 		
 		# Compute the free time
@@ -372,8 +385,9 @@ class Visualization_GUI(object):
 		This function returns a string (like a __str__ call).
 		"""
 		
-		# Get the SDF in question
+		# Get the SDF/data file collection in question
 		project = self.sessionSDFs[sdfIndex]
+		dataFile = self.sessionDataFiles[sdfIndex]
 		
 		nObs = len(project.sessions[0].observations)
 		tStart = [None,]*nObs
@@ -445,7 +459,15 @@ class Visualization_GUI(object):
 				
 			## Comments/notes
 			out += "   Observer Comments: %s\n" % project.sessions[0].observations[i].comments
-		
+			
+			## Data file (optional)
+			if dataFile is not None:
+				try:
+					dataFilename = dataFile[i+1]
+					out += "   Data File Tag: %s\n" % dataFilename['tag']
+				except KeyError:
+					pass
+					
 		return out
 		
 	def describeFree(self, freeIndex):
@@ -520,6 +542,7 @@ class MainWindow(wx.Frame):
 		self.scriptPath = os.path.split(self.scriptPath)[0]
 		
 		self.data = None
+		self.filenames = []
 		
 		wx.Frame.__init__(self, parent, id, title="Visualize Sessions", size=(600,800))
 		
@@ -626,6 +649,10 @@ class MainWindow(wx.Frame):
 				filename = os.path.join(self.dirname, filename)
 				if filename not in self.filenames:
 					self.filenames.append(filename)
+					
+			if self.data is None:
+				self.data = Visualization_GUI(self)
+				
 			self.data.loadFiles()
 			self.data.draw()
 		dlg.Destroy()
@@ -642,23 +669,25 @@ class MainWindow(wx.Frame):
 		Toggle whether or not the day/night indicator is shown.
 		"""
 		
-		if event.Checked():
-			self.data.showDayNight = True
-		else:
-			self.data.showDayNight = False
-		self.data.draw()
-	
+		if self.data is not None:
+			if event.Checked():
+				self.data.showDayNight = True
+			else:
+				self.data.showDayNight = False
+			self.data.draw()
+			
 	def onJupiter(self, event):
 		"""
 		Toggle whether or not the Jupiter visibility indicator is shown.
 		"""
 		
-		if event.Checked():
-			self.data.showJupiter = True
-		else:
-			self.data.showJupiter = False
-		self.data.draw()
-		
+		if self.data is not None:
+			if event.Checked():
+				self.data.showJupiter = True
+			else:
+				self.data.showJupiter = False
+			self.data.draw()
+			
 	def onAbout(self, event):
 		"""
 		Display a ver very very brief 'about' window.
