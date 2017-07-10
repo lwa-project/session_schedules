@@ -22,6 +22,12 @@ from lsl.astro import deg_to_dms, deg_to_hms, MJD_OFFSET, DJD_OFFSET
 from lsl.reader.tbn import filterCodes as TBNFilters
 from lsl.reader.drx import filterCodes as DRXFilters
 from lsl.common import sdf
+try:
+	from lsl.common import sdfADP
+	adpReady = True
+except ImportError:
+	sdfADP = None
+	adpReady = False
 
 import wx
 import wx.html as html
@@ -54,8 +60,9 @@ Usage: sessionGUI.py [OPTIONS] [input_SDF_file]
 Options:
 -h, --help          Display this help information
 -d, --drsu-size     Perform storage calcuations assuming the specified DRSU 
-                    size in TB
-"""
+                    size in TB (default = %i TB)
+-s, --lwasv         Build a SDF for LWA-SV instead of LWA1 (default = LWA1)
+""" % sdf._DRSUCapacityTB
 	
 	if exitCode is not None:
 		sys.exit(exitCode)
@@ -66,10 +73,11 @@ Options:
 def parseOptions(args):
 	config = {}
 	config['drsuSize'] = sdf._DRSUCapacityTB
+	config['station'] = 'lwa1'
 	
 	# Read in and process the command line flags
 	try:
-		opts, args = getopt.getopt(args, "hd:", ["help", "drsu-size="])
+		opts, args = getopt.getopt(args, "hd:s", ["help", "drsu-size=", "lwasv"])
 	except getopt.GetoptError, err:
 		# Print help information and exit:
 		print str(err) # will print something like "option -a not recognized"
@@ -81,6 +89,8 @@ def parseOptions(args):
 			usage(exitCode=0)
 		elif opt in ('-d', '--drsu-size'):
 			config['drsuSize'] = int(value)
+		elif opt in ('-s', '--lwasv'):
+			config['station'] = 'lwasv'
 		else:
 			assert False
 			
@@ -89,6 +99,10 @@ def parseOptions(args):
 		assert(config['drsuSize'] > 0)
 	except AssertionError:
 		raise RuntimeError("Invalid DRSU size of %i TB (%i B)" % (config['drsuSize'], config['drsuSize']*1024**4))
+		
+	# Make sure we are ready for LWA-SV
+	if config['station'] == 'lwasv' and not adpReady:
+		raise RuntimeError("LWA-SV requested but the ADP-compatible SDF module could not be loaded")
 		
 	# Add in arguments
 	config['args'] = args
@@ -347,14 +361,15 @@ ID_QUIT = 15
 ID_INFO = 21
 ID_SCHEDULE = 22
 ID_ADD_TBW = 23
-ID_ADD_TBN = 24
-ID_ADD_DRX_RADEC = 25
-ID_ADD_DRX_SOLAR = 26
-ID_ADD_DRX_JOVIAN = 27
-ID_ADD_STEPPED_RADEC = 28
-ID_ADD_STEPPED_AZALT = 29
-ID_EDIT_STEPPED = 30
-ID_REMOVE = 31
+ID_ADD_TBF = 24
+ID_ADD_TBN = 25
+ID_ADD_DRX_RADEC = 26
+ID_ADD_DRX_SOLAR = 27
+ID_ADD_DRX_JOVIAN = 28
+ID_ADD_STEPPED_RADEC = 29
+ID_ADD_STEPPED_AZALT = 30
+ID_EDIT_STEPPED = 31
+ID_REMOVE = 32
 ID_VALIDATE = 40
 ID_TIMESERIES = 41
 ID_RESOLVE = 42
@@ -378,6 +393,12 @@ class SDFCreator(wx.Frame):
 	def __init__(self, parent, title, config={}):
 		wx.Frame.__init__(self, parent, title=title, size=(750,500))
 		
+		self.sdf = sdf
+		self.adp = False
+		if config['station'] == 'lwasv':
+			self.sdf = sdfADP
+			self.adp = True
+			
 		self.scriptPath = os.path.abspath(__file__)
 		self.scriptPath = os.path.split(self.scriptPath)[0]
 		
@@ -396,7 +417,7 @@ class SDFCreator(wx.Frame):
 		self.initEvents()
 		self.Show()
 		
-		sdf._DRSUCapacityTB = config['drsuSize']
+		self.sdf._DRSUCapacityTB = config['drsuSize']
 		
 		if len(config['args']) > 0:
 			self.filename = config['args'][0]
@@ -418,17 +439,21 @@ class SDFCreator(wx.Frame):
 		observations.
 		"""
 		
-		po = sdf.ProjectOffice()
-		observer = sdf.Observer('', 0, first='', last='')
-		project = sdf.Project(observer, '', '', projectOffice=po)
-		session = sdf.Session('session_name', 0, observations=[])
+		po = self.sdf.ProjectOffice()
+		observer = self.sdf.Observer('', 0, first='', last='')
+		project = self.sdf.Project(observer, '', '', projectOffice=po)
+		session = self.sdf.Session('session_name', 0, observations=[])
 		project.sessions = [session,]
 		
 		self.project = project
 		self.mode = ''
 		
-		self.project.sessions[0].tbwBits = 12
-		self.project.sessions[0].tbwSamples = 12000000
+		if self.adp:
+			self.project.sessions[0].tbfBits = 8
+			self.project.sessions[0].tbfSamples = 1960000
+		else:
+			self.project.sessions[0].tbwBits = 12
+			self.project.sessions[0].tbwSamples = 12000000
 		self.project.sessions[0].tbnGain = -1
 		self.project.sessions[0].drxGain = -1
 		
@@ -489,8 +514,12 @@ class SDFCreator(wx.Frame):
 		obsMenu.AppendItem(sch)
 		obsMenu.AppendSeparator()
 		add = wx.Menu()
-		addTBW = wx.MenuItem(add, ID_ADD_TBW, 'TB&W')
-		add.AppendItem(addTBW)
+		if self.adp:
+			addTBF = wx.MenuItem(add, ID_ADD_TBF, 'TB&F')
+			add.AppendItem(addTBF)
+		else:
+			addTBW = wx.MenuItem(add, ID_ADD_TBW, 'TB&W')
+			add.AppendItem(addTBW)
 		addTBN = wx.MenuItem(add, ID_ADD_TBN, 'TB&N')
 		add.AppendItem(addTBN)
 		add.AppendSeparator()
@@ -521,7 +550,10 @@ class SDFCreator(wx.Frame):
 		
 		# Save menu items
 		self.obsmenu['tbn'] = addTBN
-		self.obsmenu['tbw'] = addTBW
+		if self.adp:
+			self.obsmenu['tbf'] = addTBF
+		else:
+			self.obsmenu['tbw'] = addTBW
 		self.obsmenu['drx-radec'] = addDRXR
 		self.obsmenu['drx-solar'] = addDRXS
 		self.obsmenu['drx-jovian'] = addDRXJ
@@ -562,8 +594,12 @@ class SDFCreator(wx.Frame):
 		self.toolbar.AddLabelTool(ID_QUIT, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'exit.png')), shortHelp='Quit', 
 								longHelp='Quit (without saving)')
 		self.toolbar.AddSeparator()
-		self.toolbar.AddLabelTool(ID_ADD_TBW, 'tbw', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'tbw.png')), shortHelp='Add TBW', 
-								longHelp='Add a new all-sky TBW observation to the list')
+		if self.adp:
+			self.toolbar.AddLabelTool(ID_ADD_TBF, 'tbf', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'tbf.png')), shortHelp='Add TBF', 
+									longHelp='Add a new all-sky TBF observation to the list')
+		else:
+			self.toolbar.AddLabelTool(ID_ADD_TBW, 'tbw', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'tbw.png')), shortHelp='Add TBW', 
+									longHelp='Add a new all-sky TBW observation to the list')
 		self.toolbar.AddLabelTool(ID_ADD_TBN, 'tbn', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'tbn.png')), shortHelp='Add TBN', 
 								longHelp='Add a new all-sky TBN observation to the list')
 		self.toolbar.AddLabelTool(ID_ADD_DRX_RADEC,  'drx-radec',  wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'drx-radec.png')),  shortHelp='Add DRX - RA/Dec', 
@@ -622,7 +658,10 @@ class SDFCreator(wx.Frame):
 		# Observer menu events
 		self.Bind(wx.EVT_MENU, self.onInfo, id=ID_INFO)
 		self.Bind(wx.EVT_MENU, self.onSchedule, id=ID_SCHEDULE)
-		self.Bind(wx.EVT_MENU, self.onAddTBW, id=ID_ADD_TBW)
+		if self.adp:
+			self.Bind(wx.EVT_MENU, self.onAddTBF, id=ID_ADD_TBF)
+		else:
+			self.Bind(wx.EVT_MENU, self.onAddTBW, id=ID_ADD_TBW)
 		self.Bind(wx.EVT_MENU, self.onAddTBN, id=ID_ADD_TBN)
 		self.Bind(wx.EVT_MENU, self.onAddDRXR, id=ID_ADD_DRX_RADEC)
 		self.Bind(wx.EVT_MENU, self.onAddDRXS, id=ID_ADD_DRX_SOLAR)
@@ -869,7 +908,21 @@ class SDFCreator(wx.Frame):
 		id = self.listControl.GetItemCount() + 1
 		bits = self.project.sessions[0].tbwBits
 		samples = self.project.sessions[0].tbwSamples
-		self.project.sessions[0].observations.append( sdf.TBW('tbw-%i' % id, 'All-Sky', 'UTC %i 01 01 00:00:00.000' % datetime.now().year, samples, bits=bits) )
+		self.project.sessions[0].observations.append( self.sdf.TBW('tbw-%i' % id, 'All-Sky', 'UTC %i 01 01 00:00:00.000' % datetime.now().year, samples, bits=bits) )
+		self.addObservation(self.project.sessions[0].observations[-1], id)
+		
+		self.edited = True
+		self.setSaveButton()
+		
+	def onAddTBF(self, event):
+		"""
+		Add a TBF observation to the list and update the main window.
+		"""
+		
+		id = self.listControl.GetItemCount() + 1
+		bits = self.project.sessions[0].tbfBits
+		samples = self.project.sessions[0].tbfSamples
+		self.project.sessions[0].observations.append( self.sdf.TBF('tbf-%i' % id, 'All-Sky', 'UTC %i 01 01 00:00:00.000' % datetime.now().year, 42e6, 74e6, 7, samples) )
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
 		self.edited = True
@@ -882,7 +935,7 @@ class SDFCreator(wx.Frame):
 		
 		id = self.listControl.GetItemCount() + 1
 		gain = self.project.sessions[0].tbnGain
-		self.project.sessions[0].observations.append( sdf.TBN('tbn-%i' % id, 'All-Sky', 'UTC %i 01 01 00:00:00.000' % datetime.now().year, '00:00:00.000', 38e6, 7, gain=gain) )
+		self.project.sessions[0].observations.append( self.sdf.TBN('tbn-%i' % id, 'All-Sky', 'UTC %i 01 01 00:00:00.000' % datetime.now().year, '00:00:00.000', 38e6, 7, gain=gain) )
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
 		self.edited = True
@@ -895,7 +948,7 @@ class SDFCreator(wx.Frame):
 		
 		id = self.listControl.GetItemCount() + 1
 		gain = self.project.sessions[0].drxGain
-		self.project.sessions[0].observations.append( sdf.DRX('drx-%i' % id, 'target-%i' % id, 'UTC %i 01 01 00:00:00.000' % datetime.now().year, '00:00:00.000', 0.0, 0.0, 42e6, 74e6, 7, gain=gain) )
+		self.project.sessions[0].observations.append( self.sdf.DRX('drx-%i' % id, 'target-%i' % id, 'UTC %i 01 01 00:00:00.000' % datetime.now().year, '00:00:00.000', 0.0, 0.0, 42e6, 74e6, 7, gain=gain) )
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
 		self.edited = True
@@ -908,7 +961,7 @@ class SDFCreator(wx.Frame):
 		
 		id = self.listControl.GetItemCount() + 1
 		gain = self.project.sessions[0].drxGain
-		self.project.sessions[0].observations.append( sdf.Solar('solar-%i' % id, 'target-%i' % id, 'UTC %i 01 01 00:00:00.000' % datetime.now().year, '00:00:00.000', 42e6, 74e6, 7, gain=gain) )
+		self.project.sessions[0].observations.append( self.sdf.Solar('solar-%i' % id, 'target-%i' % id, 'UTC %i 01 01 00:00:00.000' % datetime.now().year, '00:00:00.000', 42e6, 74e6, 7, gain=gain) )
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
 		self.edited = True
@@ -921,7 +974,7 @@ class SDFCreator(wx.Frame):
 		
 		id = self.listControl.GetItemCount() + 1
 		gain = self.project.sessions[0].drxGain
-		self.project.sessions[0].observations.append( sdf.Jovian('jovian-%i' % id, 'target-%i' % id, 'UTC %i 01 01 00:00:00.000' % datetime.now().year, '00:00:00.000', 42e6, 74e6, 7, gain=gain) )
+		self.project.sessions[0].observations.append( self.sdf.Jovian('jovian-%i' % id, 'target-%i' % id, 'UTC %i 01 01 00:00:00.000' % datetime.now().year, '00:00:00.000', 42e6, 74e6, 7, gain=gain) )
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
 		self.edited = True
@@ -934,7 +987,7 @@ class SDFCreator(wx.Frame):
 		
 		id = self.listControl.GetItemCount() + 1
 		gain = self.project.sessions[0].drxGain
-		self.project.sessions[0].observations.append( sdf.Stepped('stps-%i' % id, 'radec-%i' % id, 'UTC %i 01 01 00:00:00.000' % datetime.now().year, 7, RADec=True, gain=gain) )
+		self.project.sessions[0].observations.append( self.sdf.Stepped('stps-%i' % id, 'radec-%i' % id, 'UTC %i 01 01 00:00:00.000' % datetime.now().year, 7, RADec=True, gain=gain) )
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
 		self.edited = True
@@ -947,7 +1000,7 @@ class SDFCreator(wx.Frame):
 		
 		id = self.listControl.GetItemCount() + 1
 		gain = self.project.sessions[0].drxGain
-		self.project.sessions[0].observations.append( sdf.Stepped('stps-%i' % id, 'azalt-%i' % id, 'UTC %i 01 01 00:00:00.000' % datetime.now().year, 7, RADec=False, gain=gain) )
+		self.project.sessions[0].observations.append( self.sdf.Stepped('stps-%i' % id, 'azalt-%i' % id, 'UTC %i 01 01 00:00:00.000' % datetime.now().year, 7, RADec=False, gain=gain) )
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
 		self.edited = True
@@ -1171,7 +1224,7 @@ class SDFCreator(wx.Frame):
 			for tk,tv in TBNFilters.iteritems():
 				tv, tu = units(tv)
 				filterInfo = "%s\n%i  %.3f %-3s" % (filterInfo, tk, tv, tu)
-		elif self.mode == 'DRX':
+		elif self.mode == 'DRX' or self.mode == 'TBF':
 			filterInfo = "DRX"
 			for dk,dv in DRXFilters.iteritems():
 				dv, du = units(dv)
@@ -1328,6 +1381,18 @@ class SDFCreator(wx.Frame):
 			
 		if self.mode == 'TBW' and not ALLOW_TBW_TBN_SAME_SDF:
 			pass
+		elif self.mode == 'TBF':
+			width += 125 + 125 + 125 + 85
+			self.listControl.InsertColumn(5, 'Duration', width=125)
+			self.listControl.InsertColumn(6, 'Tuning 1 (MHz)', width=125)
+			self.listControl.InsertColumn(7, 'Tuning 2 (MHz)', width=125)
+			self.listControl.InsertColumn(8, 'Filter Code', width=85)
+			self.columnMap.append('frequency1')
+			self.columnMap.append('frequency2')
+			self.columnMap.append('filter')
+			self.coerceMap.append(freqConv)
+			self.coerceMap.append(freqConv)
+			self.coerceMap.append(filterConv)
 		elif self.mode == 'TBN' or (self.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF):
 			width += 125 + 125 + 85
 			self.listControl.InsertColumn(5, 'Duration', width=125)
@@ -1414,7 +1479,12 @@ class SDFCreator(wx.Frame):
 				self.listControl.SetStringItem(index, 5, obs.duration)
 				self.listControl.SetStringItem(index, 6, "%.6f" % (obs.freq1*fS/2**32 / 1e6))
 				self.listControl.SetStringItem(index, 7, "%i" % obs.filter)
-				
+		elif self.mode == 'TBF':
+			self.listControl.SetStringItem(index, 5, obs.duration)
+			self.listControl.SetStringItem(index, 6, "%.6f" % (obs.freq1*fS/2**32 / 1e6))
+			self.listControl.SetStringItem(index, 7, "%.6f" % (obs.freq2*fS/2**32 / 1e6))
+			self.listControl.SetStringItem(index, 8, "%i" % obs.filter)
+			
 		if self.mode == 'DRX':
 			def dec2sexstr(value, signed=True):
 				sign = 1
@@ -1499,6 +1569,24 @@ class SDFCreator(wx.Frame):
 			self.toolbar.EnableTool(ID_ADD_STEPPED_RADEC, False)
 			self.toolbar.EnableTool(ID_ADD_STEPPED_AZALT, False)
 			self.toolbar.EnableTool(ID_EDIT_STEPPED, False)
+		elif mode == 'tbf':
+			self.obsmenu['tbf'].Enable(True)
+			self.obsmenu['tbn'].Enable(True)
+			self.obsmenu['drx-radec'].Enable(False)
+			self.obsmenu['drx-solar'].Enable(False)
+			self.obsmenu['drx-jovian'].Enable(False)
+			self.obsmenu['steppedRADec'].Enable(False)
+			self.obsmenu['steppedAzAlt'].Enable(False)
+			self.obsmenu['steppedEdit'].Enable(False)
+			
+			self.toolbar.EnableTool(ID_ADD_TBF, True)
+			self.toolbar.EnableTool(ID_ADD_TBN, True)
+			self.toolbar.EnableTool(ID_ADD_DRX_RADEC,  False)
+			self.toolbar.EnableTool(ID_ADD_DRX_SOLAR,  False)
+			self.toolbar.EnableTool(ID_ADD_DRX_JOVIAN, False)
+			self.toolbar.EnableTool(ID_ADD_STEPPED_RADEC, False)
+			self.toolbar.EnableTool(ID_ADD_STEPPED_AZALT, False)
+			self.toolbar.EnableTool(ID_EDIT_STEPPED, False)
 		elif mode == 'tbn':
 			self.obsmenu['tbw'].Enable(ALLOW_TBW_TBN_SAME_SDF & True)
 			self.obsmenu['tbn'].Enable(True)
@@ -1536,7 +1624,10 @@ class SDFCreator(wx.Frame):
 			self.toolbar.EnableTool(ID_ADD_STEPPED_AZALT, True)
 			self.toolbar.EnableTool(ID_EDIT_STEPPED, False)
 		else:
-			self.obsmenu['tbw'].Enable(False)
+			if self.adp:
+				self.obsmenu['tbf'].Enable(False)
+			else:
+				self.obsmenu['tbw'].Enable(False)
 			self.obsmenu['tbn'].Enable(False)
 			self.obsmenu['drx-radec'].Enable(False)
 			self.obsmenu['drx-solar'].Enable(False)
@@ -1545,7 +1636,10 @@ class SDFCreator(wx.Frame):
 			self.obsmenu['steppedAzAlt'].Enable(False)
 			self.obsmenu['steppedEdit'].Enable(False)
 			
-			self.toolbar.EnableTool(ID_ADD_TBW, False)
+			if self.adp:
+				self.toolbar.EnableTool(ID_ADD_TBF, False)
+			else:
+				self.toolbar.EnableTool(ID_ADD_TBW, False)
 			self.toolbar.EnableTool(ID_ADD_TBN, False)
 			self.toolbar.EnableTool(ID_ADD_DRX_RADEC,  False)
 			self.toolbar.EnableTool(ID_ADD_DRX_SOLAR,  False)
@@ -1568,10 +1662,12 @@ class SDFCreator(wx.Frame):
 		self.initSDF()
 		
 		print "Parsing file '%s'" % filename
-		self.project = sdf.parseSDF(filename)
+		self.project = self.sdf.parseSDF(filename)
 		self.setMenuButtons(self.project.sessions[0].observations[0].mode)
 		if self.project.sessions[0].observations[0].mode == 'TBW':
 			self.mode = 'TBW'
+		elif self.project.sessions[0].observations[0].mode == 'TBF':
+			self.mode = 'TBF'
 		elif self.project.sessions[0].observations[0].mode == 'TBN':
 			self.mode = 'TBN'
 		elif self.project.sessions[0].observations[0].mode[0:3] == 'TRK':
@@ -1582,8 +1678,11 @@ class SDFCreator(wx.Frame):
 			pass
 			
 		try:
-			self.project.sessions[0].tbwBits = self.project.sessions[0].observations[0].bits
-			self.project.sessions[0].tbwSamples = self.project.sessions[0].observations[0].samples
+			if self.adp:
+				self.project.sessions[0].tbfSamples = self.project.sessions[0].observations[0].samples
+			else:
+				self.project.sessions[0].tbwBits = self.project.sessions[0].observations[0].bits
+				self.project.sessions[0].tbwSamples = self.project.sessions[0].observations[0].samples
 		except:
 			if self.mode == 'TBN' and ALLOW_TBW_TBN_SAME_SDF:
 				self.project.sessions[0].tbwBits = 12
@@ -1781,12 +1880,19 @@ class ObserverInfo(wx.Frame):
 			scomsText.SetValue(self.parent.project.sessions[0].comments.replace(';;', '\n'))
 		
 		tid = wx.StaticText(panel, label='Session Type')
-		tbwRB = wx.RadioButton(panel, -1, 'Transient Buffer-Wide (TBW)', style=wx.RB_GROUP)
+		if self.parent.adp:
+			tbfRB = wx.RadioButton(panel, -1, 'Transient Buffer-FFT (TBF)', style=wx.RB_GROUP)
+		else:
+			tbwRB = wx.RadioButton(panel, -1, 'Transient Buffer-Wide (TBW)', style=wx.RB_GROUP)
 		tbnRB = wx.RadioButton(panel, -1, 'Transient Buffer-Narrow (TBN)')
 		drxRB = wx.RadioButton(panel, -1, 'Beam Forming')
 		if self.parent.mode != '':
 			if self.parent.mode == 'TBW':
 				tbwRB.SetValue(True)
+				tbnRB.SetValue(False)
+				drxRB.SetValue(False)
+			elif self.parent.mode == 'TBF':
+				tbfRB.SetValue(True)
 				tbnRB.SetValue(False)
 				drxRB.SetValue(False)
 			elif self.parent.mode == 'TBN':
@@ -1803,7 +1909,10 @@ class ObserverInfo(wx.Frame):
 			drxRB.Disable()
 			
 		else:
-			tbwRB.SetValue(False)
+			if self.parent.adp:
+				tbfRB.SetValue(False)
+			else:
+				tbwRB.SetValue(False)
 			tbnRB.SetValue(False)
 			drxRB.SetValue(True)
 			
@@ -2110,7 +2219,10 @@ class AdvancedInfo(wx.Frame):
 		tbnGain.insert(0, 'MCS Decides')
 		drxGain = ['%i' % i for i in xrange(13)]
 		drxGain.insert(0, 'MCS Decides')
-		drxBeam = ['%i' %i for i in xrange(1, 5)]
+		if self.parent.adp:
+			drxBeam = ['%i' %i for i in xrange(1, 2)]
+		else:
+			drxBeam = ['%i' %i for i in xrange(1, 5)]
 		drxBeam.insert(0, 'MCS Decides')
 		intervals = ['MCS Decides', 'Never', '1 minute', '5 minutes', '15 minutes', '30 minutes', '1 hour']
 		aspFilters = ['MCS Decides', 'Split', 'Full', 'Reduced', 'Off']
@@ -2306,6 +2418,41 @@ class AdvancedInfo(wx.Frame):
 			sizer.Add(line, pos=(row+3, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
 			
 			row += 4
+			
+		#
+		# TBF
+		#
+		if self.parent.mode == 'TBF':
+			tbf = wx.StaticText(panel, label='TBF-Specific Information')
+			tbf.SetFont(font)
+			
+			tsamp = wx.StaticText(panel, label='Samples')
+			tunit = wx.StaticText(panel, label='per capture')
+			
+			tsampText = wx.TextCtrl(panel)
+			try:
+				tsampText.SetValue("%i" % self.parent.project.sessions[0].observations[0].samples)
+			except AttributeError:
+				tsampText.SetValue("%i" % 12000000)
+				
+			tbeam = wx.StaticText(panel, label='Beam')
+			tbeamText = wx.ComboBox(panel, -1, value='MCS Decides', choices=drxBeam, style=wx.CB_READONLY)
+			if self.parent.project.sessions[0].drxBeam == -1:
+				tbeamText.SetStringSelection('MCS Decides')
+			else:
+				tbeamText.SetStringSelection('%i' % self.parent.project.sessions[0].drxBeam)
+				
+			sizer.Add(tbf, pos=(row+0,0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
+			
+			sizer.Add(tsampText, pos=(row+1, 1), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			sizer.Add(tunit, pos=(row+1, 2), span=(1, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			sizer.Add(dbeam, pos=(row+2, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			sizer.Add(dbeamText, pos=(row+2, 1), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			
+			line = wx.StaticLine(panel)
+			sizer.Add(line, pos=(row+3, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
+			
+			row += 3
 			
 		#
 		# TBN
@@ -2562,6 +2709,10 @@ class AdvancedInfo(wx.Frame):
 			self.tbwBits = tbitsText
 			self.tbwSamp = tsampText
 			
+		if self.parent.mode == 'TBF':
+			self.tbfSamp = tsampText
+			self.tbfBeam = tbeamText
+			
 		if self.parent.mode == 'TBN' or (self.parent.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF):
 			self.gain = tgainText
 			
@@ -2637,6 +2788,18 @@ class AdvancedInfo(wx.Frame):
 							details='%i > 12000000' % tbwSamp, title='TBW Sample Error')
 				return False
 				
+		if self.parent.mode == 'TBF':
+			tbfSamp = int( self.tbfSamp.GetValue() )
+			self.parent.project.sessions[0].drxBeam = self.__parseGainCombo(self.tbfBeam)
+			if tbfSamp < 0:
+				self.displayError('Number of TBF samples must be positive', title='TBF Sample Error')
+				return False
+				
+			if tbwSamp > 196000000*3:
+				self.displayError('Number of TBF samples too large', 
+							details='%i > 3 sec' % tbfSamp, title='TBF Sample Error')
+				return False
+				
 		self.parent.project.sessions[0].recordMIB['ASP'] = self.__parseTimeCombo(self.mrpASP)
 		self.parent.project.sessions[0].recordMIB['DP_'] = self.__parseTimeCombo(self.mrpDP)
 		for i in range(1,6):
@@ -2675,6 +2838,12 @@ class AdvancedInfo(wx.Frame):
 			for i in xrange(len(self.parent.project.sessions[0].observations)):
 				self.parent.project.sessions[0].observations[i].bits = int( self.tbwBits.GetValue().split('-')[0] )
 				self.parent.project.sessions[0].observations[i].samples = int( self.tbwSamp.GetValue() )
+				self.parent.project.sessions[0].observations[i].update()
+				
+		if self.parent.mode == 'TBF':
+			self.parent.project.sessions[0].tbfSamples = int( self.tbfSamp.GetValue() )
+			for i in xrange(len(self.parent.project.sessions[0].observations)):
+				self.parent.project.sessions[0].observations[i].samples = int( self.tbfSamp.GetValue() )
 				self.parent.project.sessions[0].observations[i].update()
 				
 		if self.parent.mode == 'TBN' or (self.parent.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF):
@@ -3010,7 +3179,7 @@ class SessionDisplay(wx.Frame):
 			t = []
 			el = []
 			
-			if o.mode not in ('TBW', 'TBN', 'STEPPED'):
+			if o.mode not in ('TBW', 'TBF', 'TBN', 'STEPPED'):
 				## Get the source
 				src = o.getFixedBody()
 				
@@ -3273,7 +3442,10 @@ class ResolveTarget(wx.Frame):
 		
 		self.setSource()
 		if self.source == 'Invalid Mode':
-			wx.MessageBox('All-sky modes (TBW and TBN) are not directed at a particular target.', 'All-Sky Mode')
+			if self.parent.adp:
+				wx.MessageBox('All-sky modes (TBF and TBN) are not directed at a particular target.', 'All-Sky Mode')
+			else:
+				wx.MessageBox('All-sky modes (TBW and TBN) are not directed at a particular target.', 'All-Sky Mode')
 		else:
 			self.initUI()
 			self.initEvents()
@@ -3360,7 +3532,7 @@ class ResolveTarget(wx.Frame):
 		
 		self.source = self.srcText.GetValue()
 		try:
-			result = urllib.urlopen('http://www1.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/NameResolver/find?target=%s' % urllib.quote_plus(self.source))
+			result = urllib.urlopen('http://www3.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/NameResolver/find?target=%s' % urllib.quote_plus(self.source))
 			
 			line = result.readlines()
 			target = (line[0].replace('\n', '').split('='))[1]
@@ -3759,7 +3931,7 @@ class SteppedWindow(wx.Frame):
 		"""
 		
 		id = self.listControl.GetItemCount() + 1
-		self.obs.steps.append( sdf.BeamStep(0.0, 0.0, '00:00:00.000', 42e6, 74e6, RADec=self.RADec) )
+		self.obs.steps.append( self.sdf.BeamStep(0.0, 0.0, '00:00:00.000', 42e6, 74e6, RADec=self.RADec) )
 		self.addStep(self.obs.steps[-1], id)
 		
 	def onEdit(self, event):

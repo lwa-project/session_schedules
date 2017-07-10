@@ -25,13 +25,21 @@ import getopt
 
 from datetime import datetime, date, time, timedelta
 
+import lsl
+from lsl import astro
 from lsl.common.stations import lwa1
 from lsl.transform import Time
 from lsl.astro import utcjd_to_unix, MJD_OFFSET
 from lsl.common import sdf
+try:
+	from lsl.common.stations import lwasv
+	from lsl.common import sdfADP
+	adpReady = True
+except ImportError:
+	adpReady = False
 
 
-__version__ = "0.3"
+__version__ = "0.4"
 __revision__ = "$Rev$"
 
 # Date/time manipulation
@@ -49,8 +57,6 @@ def usage(exitCode=None):
 this script to:
   * Move a SDF file to a new start date/time
   * Move a SDF file to a new UTC date but the same LST
-  * Apply a pointing correction (currently ~430 seconds in RA) to
-    the observations
   * Switch the session ID to a new value
   * Only update one of the above and leave the time alone
   * Print out the contents of the SDF file in an easy-to-digest manner
@@ -63,7 +69,6 @@ Options:
 -d, --date           Date to use in YYYY/MM/DD format
 -t, --time           Time to use in HH:MM:SS.SSS format
 -s, --sid            Update session ID/New session ID value
--p, --pointing       Update pointing to correct for the pointing error
 -n, --no-update      Do not update the time, only apply other options
 -q, --query          Query the SDF only, make no changes
 
@@ -87,13 +92,10 @@ def parseOptions(args):
 	config['time'] = None
 	config['date'] = None
 	config['sessionID'] = None
-	config['updatePointing'] = False
-	config['pointingErrorRA'] = 0 / 3600.0		# hours
-	config['pointingErrorDec'] = 0 / 3600.0		# degrees
 
 	# Read in and process the command line flags
 	try:
-		opts, args = getopt.getopt(args, "hld:t:s:pnq", ["help", "lst", "date=", "time=", "sid=", "pointing", "no-update", "query"])
+		opts, args = getopt.getopt(args, "hld:t:s:nq", ["help", "lst", "date=", "time=", "sid=", "no-update", "query"])
 	except getopt.GetoptError, err:
 		# Print help information and exit:
 		print str(err) # will print something like "option -a not recognized"
@@ -121,8 +123,6 @@ def parseOptions(args):
 				raise RuntimeError("Unknown time: %s" % value)
 		elif opt in ('-s', '--sid'):
 			config['sessionID'] = int(value)
-		elif opt in ('-p', '--pointing'):
-			config['updatePointing'] = True
 		elif opt in ('-n', '--no-update'):
 			config['updateTime'] = False
 		elif opt in ('-q', '--query'):
@@ -130,12 +130,15 @@ def parseOptions(args):
 		else:
 			assert False
 			
-	if config['time'] is not None and config['lstMode']:
-		raise RuntimeError("Specifying a time and LST shifting are mutually exclusive")
-		
 	# Add in arguments
 	config['args'] = args
-
+	
+	# Validate
+	if config['time'] is not None and config['lstMode']:
+		raise RuntimeError("Specifying a time and LST shifting are mutually exclusive")
+	if len(config['args']) not in (1, 2):
+		raise RuntimeError("Must specify a SDF file")
+		
 	# Return configuration
 	return config
 
@@ -165,16 +168,29 @@ def main(args):
 	# Parse options/get file name
 	config = parseOptions(args)
 	
-	# Load the station and objects to find the Sun and Jupiter
-	observer = lwa1.getObserver()
-	Sun = ephem.Sun()
-	Jupiter = ephem.Jupiter()
-	
 	# Filenames in an easier format - input
 	inputSDF  = config['args'][0]
 	
 	# Parse the input file and get the dates of the observations
-	project = sdf.parseSDF(inputSDF)
+	try:
+		## LWA-1
+		station = lwa1
+		project = sdf.parseSDF(inputSDF)
+		adp = False
+	except Exception as e:
+		if adpReady:
+			## LWA-SV
+			### Try again
+			station = lwasv
+			project = sdfADP.parseSDF(inputSDF)
+			adp = True
+		else:
+			raise e
+			
+	# Load the station and objects to find the Sun and Jupiter
+	observer = station.getObserver()
+	Sun = ephem.Sun()
+	Jupiter = ephem.Jupiter()
 	
 	nObs = len(project.sessions[0].observations)
 	tStart = [None,]*nObs
@@ -193,7 +209,7 @@ def main(args):
 	print " Project ID: %s" % project.id
 	print " Session ID: %i" % project.sessions[0].id
 	print " Observations appear to start at %s" % (min(tStart)).strftime(formatString)
-	print " -> LST at %s for this date/time is %s" % (lwa1.name, lst)
+	print " -> LST at %s for this date/time is %s" % (station.name, lst)
 	
 	# Filenames in an easier format - output
 	if not config['queryOnly']:
@@ -361,7 +377,7 @@ def main(args):
 		print " "
 		print "Shifting observations to start at %s" % tNewStart.strftime(formatString)
 		print "-> Difference of %i days, %.3f seconds" % (tShift.days, (tShift.seconds + tShift.microseconds/1000000.0),)
-		print "-> LST at %s for this date/time is %s" % (lwa1.name, lst)
+		print "-> LST at %s for this date/time is %s" % (station.name, lst)
 		if tShift.days == 0 and tShift.seconds == 0 and tShift.microseconds == 0:
 			print " "
 			print "The current shift is zero.  Do you want to continue anyways?"
@@ -392,15 +408,6 @@ def main(args):
 	print "Shifting session ID from %i to %i" % (project.sessions[0].id, sid)
 	project.sessions[0].id = sid
 	
-	#
-	# Check to see if pointing corrections have already been applied
-	#
-	try:
-		if project.projectOffice.sessions[0].find('Position Shift? Yes') != -1:
-			config['updatePointing'] = False
-	except AttributeError:
-		pass
-		
 	#
 	# Go! (apply the changes to the observations)
 	#
@@ -436,39 +443,11 @@ def main(args):
 			project.sessions[0].observations[i].mpm = mpm
 			project.sessions[0].observations[i].start = start
 			
-		#
-		# Apply the pointing correction to TRK_RADEC observations
-		#
-		if config['updatePointing'] and project.sessions[0].observations[i].mode == 'TRK_RADEC':
-			if len(newPOOC[-1]) != 0:
-				newPOOC[-1] += ';;'
-			newPOOC[-1] += 'Applied pointing offset RA:%+.1fmin,Dec:%+.1farcmin' % (-config['pointingErrorRA']*60, -config['pointingErrorDec']*60)
-			
-			ra  = project.sessions[0].observations[i].ra  - config['pointingErrorRA']
-			## Make sure RA is in bounds
-			if ra < 0:
-				ra += 24
-			if ra >= 24:
-				ra -= 24
-			dec = project.sessions[0].observations[i].dec - config['pointingErrorDec']
-			## Make sure dec is in bounds
-			if dec > 90:
-				dec = 180 - dec
-			if dec < -90:
-				dec = -180 - dec
-			
-			print " Position shifting"
-			print "  RA:   %9.6f ->  %9.6f hours" % (project.sessions[0].observations[i].ra, ra)
-			print "  Dec: %+10.6f -> %+10.6f degrees" % (project.sessions[0].observations[i].dec, dec)
-			
-			project.sessions[0].observations[i].ra  = ra
-			project.sessions[0].observations[i].dec = dec
-			
 	#
 	# Project office comments
 	#
 	# Update the project office comments with this change
-	newPOSC = "Shifted SDF with shiftSDF.py (v%s, %s);;Time Shift? %s;;Position Shift? %s" % (__version__, __revision__, 'Yes' if config['updateTime'] else 'No', 'Yes' if config['updatePointing'] else 'No')
+	newPOSC = "Shifted SDF with shiftSDF.py (v%s, %s);;Time Shift? %s" % (__version__, __revision__, 'Yes' if config['updateTime'] else 'No')
 	
 	if project.projectOffice.sessions[0] is None:
 		project.projectOffice.sessions[0] = newPOSC
@@ -501,10 +480,16 @@ def main(args):
 				except Exception, e:
 					print "Error: %s" % str(e)
 					sys.exit(1)
-				if newBeam not in (1, 2, 3, 4):
-					print "Error: beam '%i' is out of range" % newBeam
-					sys.exit(1)
-					
+				if adp:
+					if newBeam not in (1,):
+						print "Error: beam '%i' is out of range" % newBeam
+						sys.exit(1)
+						
+				else:
+					if newBeam not in (1, 2, 3, 4):
+						print "Error: beam '%i' is out of range" % newBeam
+						sys.exit(1)
+						
 				print "Shifting DRX beam from %i to %i" % (beam, newBeam)
 				beam = newBeam
 				project.sessions[0].drxBeam = beam
