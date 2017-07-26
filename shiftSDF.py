@@ -27,12 +27,11 @@ from datetime import datetime, date, time, timedelta
 
 import lsl
 from lsl import astro
-from lsl.common.stations import lwa1
+from lsl.common import stations
 from lsl.transform import Time
 from lsl.astro import utcjd_to_unix, MJD_OFFSET
 from lsl.common import sdf
 try:
-	from lsl.common.stations import lwasv
 	from lsl.common import sdfADP
 	adpReady = True
 except ImportError:
@@ -174,14 +173,14 @@ def main(args):
 	# Parse the input file and get the dates of the observations
 	try:
 		## LWA-1
-		station = lwa1
+		station = stations.lwa1
 		project = sdf.parseSDF(inputSDF)
 		adp = False
 	except Exception as e:
 		if adpReady:
 			## LWA-SV
 			### Try again
-			station = lwasv
+			station = stations.lwasv
 			project = sdfADP.parseSDF(inputSDF)
 			adp = True
 		else:

@@ -17,7 +17,7 @@ import conflict
 
 import lsl
 from lsl.common.dp import fS
-from lsl.common.stations import lwa1
+from lsl.common import stations
 from lsl.astro import deg_to_dms, deg_to_hms, MJD_OFFSET, DJD_OFFSET
 from lsl.reader.tbn import filterCodes as TBNFilters
 from lsl.reader.drx import filterCodes as DRXFilters
@@ -393,9 +393,11 @@ class SDFCreator(wx.Frame):
 	def __init__(self, parent, title, config={}):
 		wx.Frame.__init__(self, parent, title=title, size=(750,500))
 		
+		self.station = stations.lwa1
 		self.sdf = sdf
 		self.adp = False
 		if config['station'] == 'lwasv':
+			self.station = stations.lwasv
 			self.sdf = sdfADP
 			self.adp = True
 			
@@ -2531,7 +2533,7 @@ class AdvancedInfo(wx.Frame):
 			bdmDipoleText = wx.TextCtrl(panel)
 			if getattr(self.parent.project.sessions[0].observations[0], 'beamDipole', None) is not None:
 				dpStand = self.parent.project.sessions[0].observations[0].beamDipole[0]*2 - 2
-				realStand = lwa1.getAntennas()[dpStand].stand.id
+				realStand = self.parent.station.getAntennas()[dpStand].stand.id
 				
 				bdmDipoleText.SetValue("%i" % realStand)
 			else:
@@ -2880,7 +2882,7 @@ class AdvancedInfo(wx.Frame):
 					## Make sure the stand is working according to the SSMIF
 					realStandX = None
 					realStandY = None
-					for ant in lwa1.getAntennas():
+					for ant in self.parent.station.getAntennas():
 						if ant.stand.id == realStand:
 							if ant.pol == 0:
 								realStandX = ant
@@ -3172,7 +3174,7 @@ class SessionDisplay(wx.Frame):
 		self.ax1 = self.figure.gca()
 		
 		## The actual observations
-		observer = lwa1.getObserver()
+		observer = self.parent.station.getObserver()
 		
 		i = 0
 		for o in self.obs:

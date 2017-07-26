@@ -10,7 +10,7 @@ import numpy
 from datetime import datetime, timedelta
 
 from lsl.common import sdf, metabundle
-from lsl.common.stations import lwa1
+from lsl.common import stations
 from lsl.astro import utcjd_to_unix, MJD_OFFSET
 
 import wx
@@ -99,7 +99,7 @@ class Visualization_GUI(object):
 	of valid SDF filenames.
 	"""
 	
-	def __init__(self, frame, observer=lwa1.getObserver()):
+	def __init__(self, frame, observer=stations.lwa1.getObserver()):
 		self.frame = frame
 		self.observer = observer
 		self.showDayNight = True
@@ -824,7 +824,7 @@ def main(args):
 	if len(args) > 0:
 		frame.filenames = args
 		
-		frame.data = Visualization_GUI(frame)
+		frame.data = Visualization_GUI(frame, observer=observer)
 		frame.data.loadFiles()
 		frame.data.draw()
 		
