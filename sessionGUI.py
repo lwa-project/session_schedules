@@ -450,12 +450,12 @@ class SDFCreator(wx.Frame):
 		self.project = project
 		self.mode = ''
 		
-		if self.adp:
-			self.project.sessions[0].tbfBits = 8
-			self.project.sessions[0].tbfSamples = 1960000
-		else:
-			self.project.sessions[0].tbwBits = 12
-			self.project.sessions[0].tbwSamples = 12000000
+		self.project.sessions[0].tbwBits = 12
+		self.project.sessions[0].tbwSamples = 12000000
+		
+		self.project.sessions[0].tbfBits = 8
+		self.project.sessions[0].tbfSamples = 1960000
+		
 		self.project.sessions[0].tbnGain = -1
 		self.project.sessions[0].drxGain = -1
 		
@@ -516,12 +516,10 @@ class SDFCreator(wx.Frame):
 		obsMenu.AppendItem(sch)
 		obsMenu.AppendSeparator()
 		add = wx.Menu()
-		if self.adp:
-			addTBF = wx.MenuItem(add, ID_ADD_TBF, 'TB&F')
-			add.AppendItem(addTBF)
-		else:
-			addTBW = wx.MenuItem(add, ID_ADD_TBW, 'TB&W')
-			add.AppendItem(addTBW)
+		addTBW = wx.MenuItem(add, ID_ADD_TBW, 'TB&W')
+		add.AppendItem(addTBW)
+		addTBF = wx.MenuItem(add, ID_ADD_TBF, 'TB&F')
+		add.AppendItem(addTBF)
 		addTBN = wx.MenuItem(add, ID_ADD_TBN, 'TB&N')
 		add.AppendItem(addTBN)
 		add.AppendSeparator()
@@ -551,11 +549,9 @@ class SDFCreator(wx.Frame):
 		obsMenu.AppendItem(advanced)
 		
 		# Save menu items
+		self.obsmenu['tbw'] = addTBW
+		self.obsmenu['tbf'] = addTBF
 		self.obsmenu['tbn'] = addTBN
-		if self.adp:
-			self.obsmenu['tbf'] = addTBF
-		else:
-			self.obsmenu['tbw'] = addTBW
 		self.obsmenu['drx-radec'] = addDRXR
 		self.obsmenu['drx-solar'] = addDRXS
 		self.obsmenu['drx-jovian'] = addDRXJ
@@ -596,12 +592,10 @@ class SDFCreator(wx.Frame):
 		self.toolbar.AddLabelTool(ID_QUIT, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'exit.png')), shortHelp='Quit', 
 								longHelp='Quit (without saving)')
 		self.toolbar.AddSeparator()
-		if self.adp:
-			self.toolbar.AddLabelTool(ID_ADD_TBF, 'tbf', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'tbf.png')), shortHelp='Add TBF', 
-									longHelp='Add a new all-sky TBF observation to the list')
-		else:
-			self.toolbar.AddLabelTool(ID_ADD_TBW, 'tbw', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'tbw.png')), shortHelp='Add TBW', 
+		self.toolbar.AddLabelTool(ID_ADD_TBW, 'tbw', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'tbw.png')), shortHelp='Add TBW', 
 									longHelp='Add a new all-sky TBW observation to the list')
+		self.toolbar.AddLabelTool(ID_ADD_TBF, 'tbf', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'tbf.png')), shortHelp='Add TBF', 
+									longHelp='Add a new all-sky TBF observation to the list')
 		self.toolbar.AddLabelTool(ID_ADD_TBN, 'tbn', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'tbn.png')), shortHelp='Add TBN', 
 								longHelp='Add a new all-sky TBN observation to the list')
 		self.toolbar.AddLabelTool(ID_ADD_DRX_RADEC,  'drx-radec',  wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'drx-radec.png')),  shortHelp='Add DRX - RA/Dec', 
@@ -660,10 +654,8 @@ class SDFCreator(wx.Frame):
 		# Observer menu events
 		self.Bind(wx.EVT_MENU, self.onInfo, id=ID_INFO)
 		self.Bind(wx.EVT_MENU, self.onSchedule, id=ID_SCHEDULE)
-		if self.adp:
-			self.Bind(wx.EVT_MENU, self.onAddTBF, id=ID_ADD_TBF)
-		else:
-			self.Bind(wx.EVT_MENU, self.onAddTBW, id=ID_ADD_TBW)
+		self.Bind(wx.EVT_MENU, self.onAddTBW, id=ID_ADD_TBW)
+		self.Bind(wx.EVT_MENU, self.onAddTBF, id=ID_ADD_TBF)
 		self.Bind(wx.EVT_MENU, self.onAddTBN, id=ID_ADD_TBN)
 		self.Bind(wx.EVT_MENU, self.onAddDRXR, id=ID_ADD_DRX_RADEC)
 		self.Bind(wx.EVT_MENU, self.onAddDRXS, id=ID_ADD_DRX_SOLAR)
@@ -902,6 +894,41 @@ class SDFCreator(wx.Frame):
 		
 		ScheduleWindow(self)
 		
+	def _getTBWValid(self):
+		"""
+		Function that returns whether or not TBW is a valid mode for the 
+		current setup.
+		"""
+		
+		if self.adp:
+			return False
+			
+		if self.mode != '':
+			if self.mode == 'TBW':
+				return True
+			elif self.mode == 'TBN' and ALLOW_TBW_TBN_SAME_SDF:
+				return True
+			else:
+				False
+		else:
+			return False
+			
+	def _getCurrentDateString(self):
+		"""
+		Function to get a datetime string, in UTC, for a new observation.
+		"""
+		
+		return 'UTC %i %i %i 00:00:00.000' % (datetime.now().year, datetime.now().month, datetime.now().day)
+		
+	def _getDefaultFilter(self):
+		"""
+		Function to get the default value for the filter code for modes that 
+		need a filter code.  This is mainly to help keep Sevilleta SDFs 
+		default to filter 6 instead of 7.
+		"""
+		
+		return 6 if self.adp else 7
+		
 	def onAddTBW(self, event):
 		"""
 		Add a TBW observation to the list and update the main window.
@@ -910,7 +937,7 @@ class SDFCreator(wx.Frame):
 		id = self.listControl.GetItemCount() + 1
 		bits = self.project.sessions[0].tbwBits
 		samples = self.project.sessions[0].tbwSamples
-		self.project.sessions[0].observations.append( self.sdf.TBW('tbw-%i' % id, 'All-Sky', 'UTC %i 01 01 00:00:00.000' % datetime.now().year, samples, bits=bits) )
+		self.project.sessions[0].observations.append( self.sdf.TBW('tbw-%i' % id, 'All-Sky', self._getCurrentDateString(), samples, bits=bits) )
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
 		self.edited = True
@@ -924,7 +951,7 @@ class SDFCreator(wx.Frame):
 		id = self.listControl.GetItemCount() + 1
 		bits = self.project.sessions[0].tbfBits
 		samples = self.project.sessions[0].tbfSamples
-		self.project.sessions[0].observations.append( self.sdf.TBF('tbf-%i' % id, 'All-Sky', 'UTC %i 01 01 00:00:00.000' % datetime.now().year, 42e6, 74e6, 7, samples) )
+		self.project.sessions[0].observations.append( self.sdf.TBF('tbf-%i' % id, 'All-Sky', self._getCurrentDateString(), 42e6, 74e6, self._getDefaultFilter(), samples) )
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
 		self.edited = True
@@ -937,7 +964,7 @@ class SDFCreator(wx.Frame):
 		
 		id = self.listControl.GetItemCount() + 1
 		gain = self.project.sessions[0].tbnGain
-		self.project.sessions[0].observations.append( self.sdf.TBN('tbn-%i' % id, 'All-Sky', 'UTC %i 01 01 00:00:00.000' % datetime.now().year, '00:00:00.000', 38e6, 7, gain=gain) )
+		self.project.sessions[0].observations.append( self.sdf.TBN('tbn-%i' % id, 'All-Sky', self._getCurrentDateString(), '00:00:00.000', 38e6, self._getDefaultFilter(), gain=gain) )
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
 		self.edited = True
@@ -950,7 +977,7 @@ class SDFCreator(wx.Frame):
 		
 		id = self.listControl.GetItemCount() + 1
 		gain = self.project.sessions[0].drxGain
-		self.project.sessions[0].observations.append( self.sdf.DRX('drx-%i' % id, 'target-%i' % id, 'UTC %i 01 01 00:00:00.000' % datetime.now().year, '00:00:00.000', 0.0, 0.0, 42e6, 74e6, 7, gain=gain) )
+		self.project.sessions[0].observations.append( self.sdf.DRX('drx-%i' % id, 'target-%i' % id, self._getCurrentDateString(), '00:00:00.000', 0.0, 0.0, 42e6, 74e6, self._getDefaultFilter(), gain=gain) )
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
 		self.edited = True
@@ -963,7 +990,7 @@ class SDFCreator(wx.Frame):
 		
 		id = self.listControl.GetItemCount() + 1
 		gain = self.project.sessions[0].drxGain
-		self.project.sessions[0].observations.append( self.sdf.Solar('solar-%i' % id, 'target-%i' % id, 'UTC %i 01 01 00:00:00.000' % datetime.now().year, '00:00:00.000', 42e6, 74e6, 7, gain=gain) )
+		self.project.sessions[0].observations.append( self.sdf.Solar('solar-%i' % id, 'target-%i' % id, self._getCurrentDateString(), '00:00:00.000', 42e6, 74e6, self._getDefaultFilter(), gain=gain) )
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
 		self.edited = True
@@ -976,7 +1003,7 @@ class SDFCreator(wx.Frame):
 		
 		id = self.listControl.GetItemCount() + 1
 		gain = self.project.sessions[0].drxGain
-		self.project.sessions[0].observations.append( self.sdf.Jovian('jovian-%i' % id, 'target-%i' % id, 'UTC %i 01 01 00:00:00.000' % datetime.now().year, '00:00:00.000', 42e6, 74e6, 7, gain=gain) )
+		self.project.sessions[0].observations.append( self.sdf.Jovian('jovian-%i' % id, 'target-%i' % id, self._getCurrentDateString(), '00:00:00.000', 42e6, 74e6, self._getDefaultFilter(), gain=gain) )
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
 		self.edited = True
@@ -989,7 +1016,7 @@ class SDFCreator(wx.Frame):
 		
 		id = self.listControl.GetItemCount() + 1
 		gain = self.project.sessions[0].drxGain
-		self.project.sessions[0].observations.append( self.sdf.Stepped('stps-%i' % id, 'radec-%i' % id, 'UTC %i 01 01 00:00:00.000' % datetime.now().year, 7, RADec=True, gain=gain) )
+		self.project.sessions[0].observations.append( self.sdf.Stepped('stps-%i' % id, 'radec-%i' % id, self._getCurrentDateString(), self._getDefaultFilter(), RADec=True, gain=gain) )
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
 		self.edited = True
@@ -1002,7 +1029,7 @@ class SDFCreator(wx.Frame):
 		
 		id = self.listControl.GetItemCount() + 1
 		gain = self.project.sessions[0].drxGain
-		self.project.sessions[0].observations.append( self.sdf.Stepped('stps-%i' % id, 'azalt-%i' % id, 'UTC %i 01 01 00:00:00.000' % datetime.now().year, 7, RADec=False, gain=gain) )
+		self.project.sessions[0].observations.append( self.sdf.Stepped('stps-%i' % id, 'azalt-%i' % id, self._getCurrentDateString(), self._getDefaultFilter(), RADec=False, gain=gain) )
 		self.addObservation(self.project.sessions[0].observations[-1], id)
 		
 		self.edited = True
@@ -1381,7 +1408,7 @@ class SDFCreator(wx.Frame):
 		for i in xrange(5):
 			self.coerceMap.append(str)
 			
-		if self.mode == 'TBW' and not ALLOW_TBW_TBN_SAME_SDF:
+		if self.mode == 'TBW' and self._getTBWValid():
 			pass
 		elif self.mode == 'TBF':
 			width += 125 + 125 + 125 + 85
@@ -1395,7 +1422,7 @@ class SDFCreator(wx.Frame):
 			self.coerceMap.append(freqConv)
 			self.coerceMap.append(freqConv)
 			self.coerceMap.append(filterConv)
-		elif self.mode == 'TBN' or (self.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF):
+		elif self.mode == 'TBN' or self._getTBWValid():
 			width += 125 + 125 + 85
 			self.listControl.InsertColumn(5, 'Duration', width=125)
 			self.listControl.InsertColumn(6, 'Frequency (MHz)', width=125)
@@ -1464,7 +1491,7 @@ class SDFCreator(wx.Frame):
 		self.listControl.SetStringItem(index, 4, obs.start)
 		
 		if self.mode == 'TBN':
-			if ALLOW_TBW_TBN_SAME_SDF and obs.mode == 'TBW':
+			if self._getTBWValid():
 				self.listControl.SetStringItem(index, 5, obs.duration)
 				self.listControl.SetStringItem(index, 6, "--")
 				self.listControl.SetStringItem(index, 7, "--")
@@ -1555,6 +1582,7 @@ class SDFCreator(wx.Frame):
 		
 		if mode == 'tbw':
 			self.obsmenu['tbw'].Enable(True)
+			self.obsmenu['tbf'].Enable(False)
 			self.obsmenu['tbn'].Enable(ALLOW_TBW_TBN_SAME_SDF & True)
 			self.obsmenu['drx-radec'].Enable(False)
 			self.obsmenu['drx-solar'].Enable(False)
@@ -1564,6 +1592,7 @@ class SDFCreator(wx.Frame):
 			self.obsmenu['steppedEdit'].Enable(False)
 			
 			self.toolbar.EnableTool(ID_ADD_TBW, True)
+			self.toolbar.EnableTool(ID_ADD_TBF, False)
 			self.toolbar.EnableTool(ID_ADD_TBN, ALLOW_TBW_TBN_SAME_SDF & True)
 			self.toolbar.EnableTool(ID_ADD_DRX_RADEC,  False)
 			self.toolbar.EnableTool(ID_ADD_DRX_SOLAR,  False)
@@ -1572,8 +1601,9 @@ class SDFCreator(wx.Frame):
 			self.toolbar.EnableTool(ID_ADD_STEPPED_AZALT, False)
 			self.toolbar.EnableTool(ID_EDIT_STEPPED, False)
 		elif mode == 'tbf':
+			self.obsmenu['tbw'].Enable(False)
 			self.obsmenu['tbf'].Enable(True)
-			self.obsmenu['tbn'].Enable(True)
+			self.obsmenu['tbn'].Enable(False)
 			self.obsmenu['drx-radec'].Enable(False)
 			self.obsmenu['drx-solar'].Enable(False)
 			self.obsmenu['drx-jovian'].Enable(False)
@@ -1581,8 +1611,9 @@ class SDFCreator(wx.Frame):
 			self.obsmenu['steppedAzAlt'].Enable(False)
 			self.obsmenu['steppedEdit'].Enable(False)
 			
+			self.toolbar.EnableTool(ID_ADD_TBW, False)
 			self.toolbar.EnableTool(ID_ADD_TBF, True)
-			self.toolbar.EnableTool(ID_ADD_TBN, True)
+			self.toolbar.EnableTool(ID_ADD_TBN, False)
 			self.toolbar.EnableTool(ID_ADD_DRX_RADEC,  False)
 			self.toolbar.EnableTool(ID_ADD_DRX_SOLAR,  False)
 			self.toolbar.EnableTool(ID_ADD_DRX_JOVIAN, False)
@@ -1590,7 +1621,8 @@ class SDFCreator(wx.Frame):
 			self.toolbar.EnableTool(ID_ADD_STEPPED_AZALT, False)
 			self.toolbar.EnableTool(ID_EDIT_STEPPED, False)
 		elif mode == 'tbn':
-			self.obsmenu['tbw'].Enable(ALLOW_TBW_TBN_SAME_SDF & True)
+			self.obsmenu['tbw'].Enable(self._getTBWValid())
+			self.obsmenu['tbf'].Enable(False)
 			self.obsmenu['tbn'].Enable(True)
 			self.obsmenu['drx-radec'].Enable(False)
 			self.obsmenu['drx-solar'].Enable(False)
@@ -1599,7 +1631,8 @@ class SDFCreator(wx.Frame):
 			self.obsmenu['steppedAzAlt'].Enable(False)
 			self.obsmenu['steppedEdit'].Enable(False)
 			
-			self.toolbar.EnableTool(ID_ADD_TBW, ALLOW_TBW_TBN_SAME_SDF & True)
+			self.toolbar.EnableTool(ID_ADD_TBW, self._getTBWValid())
+			self.toolbar.EnableTool(ID_ADD_TBF, False)
 			self.toolbar.EnableTool(ID_ADD_TBN, True)
 			self.toolbar.EnableTool(ID_ADD_DRX_RADEC,  False)
 			self.toolbar.EnableTool(ID_ADD_DRX_SOLAR,  False)
@@ -1609,6 +1642,7 @@ class SDFCreator(wx.Frame):
 			self.toolbar.EnableTool(ID_EDIT_STEPPED, False)
 		elif mode[0:3] == 'trk' or mode[0:3] == 'drx':
 			self.obsmenu['tbw'].Enable(False)
+			self.obsmenu['tbf'].Enable(False)
 			self.obsmenu['tbn'].Enable(False)
 			self.obsmenu['drx-radec'].Enable(True)
 			self.obsmenu['drx-solar'].Enable(True)
@@ -1618,6 +1652,7 @@ class SDFCreator(wx.Frame):
 			self.obsmenu['steppedEdit'].Enable(False)
 			
 			self.toolbar.EnableTool(ID_ADD_TBW, False)
+			self.toolbar.EnableTool(ID_ADD_TBF, False)
 			self.toolbar.EnableTool(ID_ADD_TBN, False)
 			self.toolbar.EnableTool(ID_ADD_DRX_RADEC,  True)
 			self.toolbar.EnableTool(ID_ADD_DRX_SOLAR,  True)
@@ -1626,10 +1661,8 @@ class SDFCreator(wx.Frame):
 			self.toolbar.EnableTool(ID_ADD_STEPPED_AZALT, True)
 			self.toolbar.EnableTool(ID_EDIT_STEPPED, False)
 		else:
-			if self.adp:
-				self.obsmenu['tbf'].Enable(False)
-			else:
-				self.obsmenu['tbw'].Enable(False)
+			self.obsmenu['tbw'].Enable(False)
+			self.obsmenu['tbf'].Enable(False)
 			self.obsmenu['tbn'].Enable(False)
 			self.obsmenu['drx-radec'].Enable(False)
 			self.obsmenu['drx-solar'].Enable(False)
@@ -1638,10 +1671,8 @@ class SDFCreator(wx.Frame):
 			self.obsmenu['steppedAzAlt'].Enable(False)
 			self.obsmenu['steppedEdit'].Enable(False)
 			
-			if self.adp:
-				self.toolbar.EnableTool(ID_ADD_TBF, False)
-			else:
-				self.toolbar.EnableTool(ID_ADD_TBW, False)
+			self.toolbar.EnableTool(ID_ADD_TBW, False)
+			self.toolbar.EnableTool(ID_ADD_TBF, False)
 			self.toolbar.EnableTool(ID_ADD_TBN, False)
 			self.toolbar.EnableTool(ID_ADD_DRX_RADEC,  False)
 			self.toolbar.EnableTool(ID_ADD_DRX_SOLAR,  False)
@@ -1680,13 +1711,13 @@ class SDFCreator(wx.Frame):
 			pass
 			
 		try:
-			if self.adp:
-				self.project.sessions[0].tbfSamples = self.project.sessions[0].observations[0].samples
-			else:
+			try:
 				self.project.sessions[0].tbwBits = self.project.sessions[0].observations[0].bits
 				self.project.sessions[0].tbwSamples = self.project.sessions[0].observations[0].samples
+			except:
+				self.project.sessions[0].tbfSamples = self.project.sessions[0].observations[0].samples
 		except:
-			if self.mode == 'TBN' and ALLOW_TBW_TBN_SAME_SDF:
+			if self.mode == 'TBN' and self._getTBWValid():
 				self.project.sessions[0].tbwBits = 12
 				self.project.sessions[0].tbwSamples = 12000000
 		self.project.sessions[0].tbnGain = self.project.sessions[0].observations[0].gain
@@ -1728,7 +1759,7 @@ class ObserverInfo(wx.Frame):
 	"""
 	
 	def __init__(self, parent):
-		wx.Frame.__init__(self, parent, title='Observer Information', size=(825,735))
+		wx.Frame.__init__(self, parent, title='Observer Information', size=(825,835))
 		
 		self.parent = parent
 		
@@ -1882,41 +1913,47 @@ class ObserverInfo(wx.Frame):
 			scomsText.SetValue(self.parent.project.sessions[0].comments.replace(';;', '\n'))
 		
 		tid = wx.StaticText(panel, label='Session Type')
-		if self.parent.adp:
-			tbfRB = wx.RadioButton(panel, -1, 'Transient Buffer-FFT (TBF)', style=wx.RB_GROUP)
-		else:
-			tbwRB = wx.RadioButton(panel, -1, 'Transient Buffer-Wide (TBW)', style=wx.RB_GROUP)
+		tbwRB = wx.RadioButton(panel, -1, 'Transient Buffer-Wide (TBW)', style=wx.RB_GROUP)
+		tbfRB = wx.RadioButton(panel, -1, 'Transient Buffer-FFT (TBF)')
 		tbnRB = wx.RadioButton(panel, -1, 'Transient Buffer-Narrow (TBN)')
 		drxRB = wx.RadioButton(panel, -1, 'Beam Forming')
 		if self.parent.mode != '':
 			if self.parent.mode == 'TBW':
 				tbwRB.SetValue(True)
+				tbfRB.SetValue(False)
 				tbnRB.SetValue(False)
 				drxRB.SetValue(False)
 			elif self.parent.mode == 'TBF':
+				tbwRB.SetValue(False)
 				tbfRB.SetValue(True)
 				tbnRB.SetValue(False)
 				drxRB.SetValue(False)
 			elif self.parent.mode == 'TBN':
 				tbwRB.SetValue(False)
+				tbfRB.SetValue(False)
 				tbnRB.SetValue(True)
 				drxRB.SetValue(False)
 			else:
 				tbwRB.SetValue(False)
+				tbfRB.SetValue(False)
 				tbnRB.SetValue(False)
 				drxRB.SetValue(True)
 				
 			tbwRB.Disable()
+			tbfRB.Disable()
 			tbnRB.Disable()
 			drxRB.Disable()
 			
 		else:
-			if self.parent.adp:
-				tbfRB.SetValue(False)
-			else:
-				tbwRB.SetValue(False)
+			tbwRB.SetValue(False)
+			tbfRB.SetValue(False)
 			tbnRB.SetValue(False)
 			drxRB.SetValue(True)
+			
+			if self.parent.adp:
+				tbwRB.Disable()
+			else:
+				tbfRB.Disable()
 			
 		did = wx.StaticText(panel, label='Data Return Method')
 		drsuRB = wx.RadioButton(panel, -1, 'DRSU', style=wx.RB_GROUP)
@@ -1986,12 +2023,24 @@ class ObserverInfo(wx.Frame):
 			
 		if self.parent.mode != '':
 			if self.parent.mode == 'TBW':
+				tbfRB.Disable()
+				drsRB.Disable()
+				nchnText.Disable()
+				nintText.Disable()
+				linear.Disable()
+				stokes.Disable()
+			elif self.parent.mode == 'TBF':
+				tbwRB.Disable()
 				drsRB.Disable()
 				nchnText.Disable()
 				nintText.Disable()
 				linear.Disable()
 				stokes.Disable()
 			elif self.parent.mode == 'TBN':
+				if self.parent.adp:
+					tbwRB.Disable()
+				else:
+					tbfRB.Disable()
 				drsRB.Disable()
 				nchnText.Disable()
 				nintText.Disable()
@@ -1999,6 +2048,11 @@ class ObserverInfo(wx.Frame):
 				stokes.Disable()
 			else:
 				pass
+		else:
+			if self.parent.adp:
+				tbwRB.Disable()
+			else:
+				tbfRB.Disable()
 				
 		sizer.Add(ses, pos=(row+0, 0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
 		
@@ -2011,26 +2065,27 @@ class ObserverInfo(wx.Frame):
 		sizer.Add(scomsText, pos=(row+3, 1), span=(4, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		sizer.Add(tid, pos=(row+7,0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		sizer.Add(tbwRB, pos=(row+7,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(tbnRB, pos=(row+8,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(drxRB, pos=(row+9,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(did, pos=(row+10,0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(drsuRB, pos=(row+10,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(usbRB, pos=(row+11,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(drsRB, pos=(row+12,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(nchn, pos=(row+12,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(nchnText, pos=(row+12,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(nint, pos=(row+12,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(nintText, pos=(row+12,5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(spid, pos=(row+13,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(linear, pos=(row+13,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(stokes, pos=(row+13,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(tbfRB, pos=(row+8,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(tbnRB, pos=(row+9,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(drxRB, pos=(row+10,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(did, pos=(row+11,0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(drsuRB, pos=(row+11,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(usbRB, pos=(row+12,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(drsRB, pos=(row+13,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(nchn, pos=(row+13,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(nchnText, pos=(row+13,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(nint, pos=(row+13,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(nintText, pos=(row+13,5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(spid, pos=(row+14,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(linear, pos=(row+14,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(stokes, pos=(row+14,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		
-		sizer.Add(redRB, pos=(row+14,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(redRB, pos=(row+15,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		
 		line = wx.StaticLine(panel)
-		sizer.Add(line, pos=(row+15, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
+		sizer.Add(line, pos=(row+16, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
 		
-		row += 16
+		row += 17
 		
 		#
 		# Buttons
@@ -2064,6 +2119,7 @@ class ObserverInfo(wx.Frame):
 		self.sessionTitleEntry = snameText
 		self.sessionCommentsEntry = scomsText
 		self.tbwButton = tbwRB
+		self.tbfButton = tbfRB
 		self.tbnButton = tbnRB
 		self.drxButton = drxRB
 		self.drsuButton = drsuRB
@@ -2153,6 +2209,9 @@ class ObserverInfo(wx.Frame):
 		if self.tbwButton.GetValue():
 			self.parent.mode = 'TBW'
 			self.parent.project.sessions[0].includeStationStatic = True
+		elif self.tbfButton.GetValue():
+			self.parent.mode = 'TBF'
+			self.parent.project.sessions[0].includeStationStatic = True
 		elif self.tbnButton.GetValue():
 			self.parent.mode = 'TBN'
 			self.parent.project.sessions[0].includeStationStatic = True
@@ -2194,9 +2253,9 @@ ID_ADV_INFO_CANCEL = 313
 
 class AdvancedInfo(wx.Frame):
 	def __init__(self, parent):
-		if parent.mode == 'TBW'and ALLOW_TBW_TBN_SAME_SDF:
+		if parent.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF:
 			size = (925, 675)
-		elif parent.mode == 'TBW':
+		elif parent.mode in ('TBW', 'TBF'):
 			size = (925, 575)
 		else:
 			size = (925, 700)
@@ -2330,31 +2389,40 @@ class AdvancedInfo(wx.Frame):
 		# 
 		
 		aspComboFlt = wx.ComboBox(panel, -1, value='MCS Decides', choices=aspFilters, style=wx.CB_READONLY)
-		if self.parent.project.sessions[0].observations[0].aspFlt[0] == -1:
-			aspComboFlt.SetStringSelection('MCS Decides')
-		elif self.parent.project.sessions[0].observations[0].aspFlt[0] == 0:
-			aspComboFlt.SetStringSelection('Split')
-		elif self.parent.project.sessions[0].observations[0].aspFlt[0] == 1:
-			aspComboFlt.SetStringSelection('Full')
-		elif self.parent.project.sessions[0].observations[0].aspFlt[0] == 2:
-			aspComboFlt.SetStringSelection('Reduced')
-		else:
-			aspComboAT1.SetStringSelection('Off')
 		aspComboAT1 = wx.ComboBox(panel, -1, value='MCS Decides', choices=aspAttn, style=wx.CB_READONLY)
-		if self.parent.project.sessions[0].observations[0].aspAT1[0] == -1:
-			aspComboAT1.SetStringSelection('MCS Decides')
-		else:
-			aspComboAT1.SetStringSelection('%i' % self.parent.project.sessions[0].observations[0].aspAT1[0])
 		aspComboAT2 = wx.ComboBox(panel, -1, value='MCS Decides', choices=aspAttn, style=wx.CB_READONLY)
-		if self.parent.project.sessions[0].observations[0].aspAT2[0] == -1:
-			aspComboAT2.SetStringSelection('MCS Decides')
-		else:
-			aspComboAT2.SetStringSelection('%i' % self.parent.project.sessions[0].observations[0].aspAT2[0])
 		aspComboATS = wx.ComboBox(panel, -1, value='MCS Decides', choices=aspAttn, style=wx.CB_READONLY)
-		if self.parent.project.sessions[0].observations[0].aspATS[0] == -1:
+		try:
+			if self.parent.project.sessions[0].observations[0].aspFlt[0] == -1:
+				aspComboFlt.SetStringSelection('MCS Decides')
+			elif self.parent.project.sessions[0].observations[0].aspFlt[0] == 0:
+				aspComboFlt.SetStringSelection('Split')
+			elif self.parent.project.sessions[0].observations[0].aspFlt[0] == 1:
+				aspComboFlt.SetStringSelection('Full')
+			elif self.parent.project.sessions[0].observations[0].aspFlt[0] == 2:
+				aspComboFlt.SetStringSelection('Reduced')
+			else:
+				aspComboFlt.SetStringSelection('Off')
+				
+			if self.parent.project.sessions[0].observations[0].aspAT1[0] == -1:
+				aspComboAT1.SetStringSelection('MCS Decides')
+			else:
+				aspComboAT1.SetStringSelection('%i' % self.parent.project.sessions[0].observations[0].aspAT1[0])
+				
+			if self.parent.project.sessions[0].observations[0].aspAT2[0] == -1:
+				aspComboAT2.SetStringSelection('MCS Decides')
+			else:
+				aspComboAT2.SetStringSelection('%i' % self.parent.project.sessions[0].observations[0].aspAT2[0])
+				
+			if self.parent.project.sessions[0].observations[0].aspATS[0] == -1:
+				aspComboATS.SetStringSelection('MCS Decides')
+			else:
+				aspComboATS.SetStringSelection('%i' % self.parent.project.sessions[0].observations[0].aspATS[0])
+		except IndexError:
+			aspComboFlt.SetStringSelection('MCS Decides')
+			aspComboAT1.SetStringSelection('MCS Decides')
+			aspComboAT2.SetStringSelection('MCS Decides')
 			aspComboATS.SetStringSelection('MCS Decides')
-		else:
-			aspComboATS.SetStringSelection('%i' % self.parent.project.sessions[0].observations[0].aspATS[0])
 			
 		asp = wx.StaticText(panel, label='ASP-Specific Information')
 		asp.SetFont(font)
@@ -2391,7 +2459,7 @@ class AdvancedInfo(wx.Frame):
 		# TBW
 		#
 		
-		if self.parent.mode == 'TBW' or (self.parent.mode == 'TBN' and ALLOW_TBW_TBN_SAME_SDF):
+		if self.parent.mode == 'TBW' or self.parent._getTBWValid():
 			tbw = wx.StaticText(panel, label='TBW-Specific Information')
 			tbw.SetFont(font)
 			
@@ -2404,7 +2472,7 @@ class AdvancedInfo(wx.Frame):
 			try:
 				tbitsText.SetStringSelection('%i-bit' % self.parent.project.sessions[0].observations[0].bits)
 				tsampText.SetValue("%i" % self.parent.project.sessions[0].observations[0].samples)
-			except AttributeError:
+			except (IndexError, AttributeError):
 				tbitsText.SetStringSelection('%i-bit' % 12)
 				tsampText.SetValue("%i" % 12000000)
 				
@@ -2448,19 +2516,19 @@ class AdvancedInfo(wx.Frame):
 			
 			sizer.Add(tsampText, pos=(row+1, 1), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 			sizer.Add(tunit, pos=(row+1, 2), span=(1, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-			sizer.Add(dbeam, pos=(row+2, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-			sizer.Add(dbeamText, pos=(row+2, 1), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			sizer.Add(tbeam, pos=(row+2, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+			sizer.Add(tbeamText, pos=(row+2, 1), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 			
 			line = wx.StaticLine(panel)
 			sizer.Add(line, pos=(row+3, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
 			
-			row += 3
+			row += 4
 			
 		#
 		# TBN
 		#
 		
-		if self.parent.mode == 'TBN' or (self.parent.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF):
+		if self.parent.mode == 'TBN' or self.parent._getTBWValid():
 			tbn = wx.StaticText(panel, label='TBN-Specific Information')
 			tbn.SetFont(font)
 			
@@ -2707,7 +2775,7 @@ class AdvancedInfo(wx.Frame):
 		self.incSMIB = incSMIB
 		self.incDESG = incDESG
 		
-		if self.parent.mode == 'TBW' or (self.parent.mode == 'TBN' and ALLOW_TBW_TBN_SAME_SDF):
+		if self.parent.mode == 'TBW' or self.parent._getTBWValid():
 			self.tbwBits = tbitsText
 			self.tbwSamp = tsampText
 			
@@ -2773,7 +2841,7 @@ class AdvancedInfo(wx.Frame):
 		Save everything into all of the correct places.
 		"""
 		
-		if self.parent.mode == 'TBW' or (self.parent.mode == 'TBN' and ALLOW_TBW_TBN_SAME_SDF):
+		if self.parent.mode == 'TBW' or self.parent._getTBWValid():
 			tbwBits = int( self.tbwBits.GetValue().split('-')[0] )
 			tbwSamp = int( self.tbwSamp.GetValue() )
 			if tbwSamp < 0:
@@ -2797,7 +2865,7 @@ class AdvancedInfo(wx.Frame):
 				self.displayError('Number of TBF samples must be positive', title='TBF Sample Error')
 				return False
 				
-			if tbwSamp > 196000000*3:
+			if tbfSamp > 196000000*3:
 				self.displayError('Number of TBF samples too large', 
 							details='%i > 3 sec' % tbfSamp, title='TBF Sample Error')
 				return False
@@ -2834,7 +2902,7 @@ class AdvancedInfo(wx.Frame):
 				self.parent.project.sessions[0].observations[i].aspAT2[j] = aspAT2
 				self.parent.project.sessions[0].observations[i].aspATS[j] = aspATS
 				
-		if self.parent.mode == 'TBW' or (self.parent.mode == 'TBN' and ALLOW_TBW_TBN_SAME_SDF):
+		if self.parent.mode == 'TBW' or self.parent._getTBWValid():
 			self.parent.project.sessions[0].tbwGits = int( self.tbwBits.GetValue().split('-')[0] )
 			self.parent.project.sessions[0].tbwSamples = int( self.tbwSamp.GetValue() )
 			for i in xrange(len(self.parent.project.sessions[0].observations)):
@@ -2843,6 +2911,7 @@ class AdvancedInfo(wx.Frame):
 				self.parent.project.sessions[0].observations[i].update()
 				
 		if self.parent.mode == 'TBF':
+			self.parent.project.sessions[0].drxBeam = self.__parseGainCombo(self.tbfBeam)
 			self.parent.project.sessions[0].tbfSamples = int( self.tbfSamp.GetValue() )
 			for i in xrange(len(self.parent.project.sessions[0].observations)):
 				self.parent.project.sessions[0].observations[i].samples = int( self.tbfSamp.GetValue() )
@@ -2861,7 +2930,7 @@ class AdvancedInfo(wx.Frame):
 				
 		for obs in self.parent.project.sessions[0].observations:
 			for i in xrange(len(self.parent.project.sessions[0].observations)):
-				if obs.mode == 'TBW' or (self.parent.mode == 'TBN' and ALLOW_TBW_TBN_SAME_SDF):
+				if obs.mode == 'TBW' or self.parent._getTBWValid():
 					obs.bits = self.parent.project.sessions[0].observations[i].bits
 					obs.samples = self.parent.project.sessions[0].observations[i].samples
 				elif obs.mode == 'TBN' or (self.parent.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF):
@@ -3444,10 +3513,7 @@ class ResolveTarget(wx.Frame):
 		
 		self.setSource()
 		if self.source == 'Invalid Mode':
-			if self.parent.adp:
-				wx.MessageBox('All-sky modes (TBF and TBN) are not directed at a particular target.', 'All-Sky Mode')
-			else:
-				wx.MessageBox('All-sky modes (TBW and TBN) are not directed at a particular target.', 'All-Sky Mode')
+			wx.MessageBox('All-sky modes (TBW, TBF, and TBN) are not directed at a particular target.', 'All-Sky Mode')
 		else:
 			self.initUI()
 			self.initEvents()
