@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import re
 import sys
 import copy
 import math
@@ -1957,9 +1958,9 @@ class ObserverInfo(wx.Frame):
 			
 		did = wx.StaticText(panel, label='Data Return Method')
 		drsuRB = wx.RadioButton(panel, -1, 'DRSU', style=wx.RB_GROUP)
-		usbRB = wx.RadioButton(panel, -1, 'USB Harddrive (4 max)')
-		drsRB = wx.RadioButton(panel, -1, 'DR spectrometer')
-		redRB = wx.RadioButton(panel, -1, 'Archive (describe in comments)')
+		usbRB  = wx.RadioButton(panel, -1, 'USB Harddrive (4 max)')
+		ucfRB  = wx.RadioButton(panel, -1, 'Copy to UCF')
+		drsCB  = wx.CheckBox(panel, -1, 'DR spectrometer')
 		
 		nchn = wx.StaticText(panel, label='Channels')
 		nchnText = wx.TextCtrl(panel)
@@ -1969,11 +1970,34 @@ class ObserverInfo(wx.Frame):
 		linear = wx.RadioButton(panel, -1, 'Linear', style=wx.RB_GROUP)
 		stokes = wx.RadioButton(panel, -1, 'Stokes')
 		
-		if self.parent.project.sessions[0].dataReturnMethod == 'DR Spectrometer' or (self.parent.project.sessions[0].spcSetup[0] != 0 and self.parent.project.sessions[0].spcSetup[1] != 0):
+		if self.parent.project.sessions[0].dataReturnMethod == 'DRSU':
+			drsuRB.SetValue(True)
+			usbRB.SetValue(False)
+			ucfRB.SetValue(False)
+			
+			nchnText.SetValue("1024")
+			nintText.SetValue("6144")
+		elif self.parent.project.sessions[0].dataReturnMethod == 'USB Harddrives':
+			drsuRB.SetValue(False)
+			usbRB.SetValue(True)
+			ucfRB.SetValue(False)
+			
+			nchnText.SetValue("1024")
+			nintText.SetValue("6144")
+			linear.SetValue(True)
+			stokes.SetValue(False)
+		else:
 			drsuRB.SetValue(False)
 			usbRB.SetValue(False)
-			drsRB.SetValue(True)
-			redRB.SetValue(False)
+			ucfRB.SetValue(True)
+			
+			nchnText.SetValue("32")
+			nintText.SetValue("6144")
+			linear.SetValue(True)
+			stokes.SetValue(False)
+			
+		if self.parent.project.sessions[0].spcSetup[0] != 0 and self.parent.project.sessions[0].spcSetup[1] != 0:
+			drsCB.SetValue(True)
 			
 			nchnText.SetValue("%i" % self.parent.project.sessions[0].spcSetup[0])
 			nintText.SetValue("%i" % self.parent.project.sessions[0].spcSetup[1])
@@ -1992,46 +2016,17 @@ class ObserverInfo(wx.Frame):
 					linear.SetValue(False)
 					stokes.SetValue(True)
 					
-		elif self.parent.project.sessions[0].dataReturnMethod == 'DRSU':
-			drsuRB.SetValue(True)
-			usbRB.SetValue(False)
-			drsRB.SetValue(False)
-			redRB.SetValue(False)
-			
-			nchnText.SetValue("1024")
-			nintText.SetValue("6144")
-		elif self.parent.project.sessions[0].dataReturnMethod == 'USB Harddrives':
-			drsuRB.SetValue(False)
-			usbRB.SetValue(True)
-			drsRB.SetValue(False)
-			redRB.SetValue(False)
-			
-			nchnText.SetValue("1024")
-			nintText.SetValue("6144")
-			linear.SetValue(True)
-			stokes.SetValue(False)
-		else:
-			drsuRB.SetValue(False)
-			usbRB.SetValue(False)
-			drsRB.SetValue(False)
-			redRB.SetValue(True)
-			
-			nchnText.SetValue("32")
-			nintText.SetValue("6144")
-			linear.SetValue(True)
-			stokes.SetValue(False)
-			
 		if self.parent.mode != '':
 			if self.parent.mode == 'TBW':
 				tbfRB.Disable()
-				drsRB.Disable()
+				drsCB.Disable()
 				nchnText.Disable()
 				nintText.Disable()
 				linear.Disable()
 				stokes.Disable()
 			elif self.parent.mode == 'TBF':
 				tbwRB.Disable()
-				drsRB.Disable()
+				drsCB.Disable()
 				nchnText.Disable()
 				nintText.Disable()
 				linear.Disable()
@@ -2041,16 +2036,21 @@ class ObserverInfo(wx.Frame):
 					tbwRB.Disable()
 				else:
 					tbfRB.Disable()
-				drsRB.Disable()
+				drsCB.Disable()
 				nchnText.Disable()
 				nintText.Disable()
 				linear.Disable()
 				stokes.Disable()
 			else:
 				pass
+				
+			if self.parent.adp:
+				ucfRB.Disable()
+				
 		else:
 			if self.parent.adp:
 				tbwRB.Disable()
+				ucfRB.Disable()
 			else:
 				tbfRB.Disable()
 				
@@ -2071,16 +2071,15 @@ class ObserverInfo(wx.Frame):
 		sizer.Add(did, pos=(row+11,0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		sizer.Add(drsuRB, pos=(row+11,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		sizer.Add(usbRB, pos=(row+12,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(drsRB, pos=(row+13,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(nchn, pos=(row+13,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(nchnText, pos=(row+13,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(nint, pos=(row+13,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(nintText, pos=(row+13,5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(spid, pos=(row+14,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(linear, pos=(row+14,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		sizer.Add(stokes, pos=(row+14,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-		
-		sizer.Add(redRB, pos=(row+15,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(ucfRB, pos=(row+13,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(drsCB, pos=(row+14,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(nchn, pos=(row+14,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(nchnText, pos=(row+14,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(nint, pos=(row+14,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(nintText, pos=(row+14,5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(spid, pos=(row+15,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(linear, pos=(row+15,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(stokes, pos=(row+15,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		
 		line = wx.StaticLine(panel)
 		sizer.Add(line, pos=(row+16, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
@@ -2124,12 +2123,12 @@ class ObserverInfo(wx.Frame):
 		self.drxButton = drxRB
 		self.drsuButton = drsuRB
 		self.usbButton = usbRB
-		self.drsButton = drsRB
+		self.drsButton = drsCB
 		self.nchnText = nchnText
 		self.nintText = nintText
 		self.linear = linear
 		self.stokes = stokes
-		self.redButton = redRB 
+		self.redButton = ucfRB 
 		
 	def initEvents(self):
 		self.Bind(wx.EVT_BUTTON, self.onOK, id=ID_OBS_INFO_OK)
@@ -2179,8 +2178,18 @@ class ObserverInfo(wx.Frame):
 			self.parent.project.sessions[0].dataReturnMethod = 'USB Harddrives'
 			self.parent.project.sessions[0].spcSetup = [0, 0]
 			self.parent.project.sessions[0].spcMetatag = None
-		elif self.drsButton.GetValue():
-			self.parent.project.sessions[0].dataReturnMethod = 'DR Spectrometer'
+		else:
+			self.parent.project.sessions[0].dataReturnMethod = 'UCF'
+			self.parent.project.sessions[0].spcSetup = [0, 0]
+			self.parent.project.sessions[0].spcMetatag = None
+			
+			_usernameRE = re.compile(r'ucfuser:[ \t]*(?P<username>[a-zA-Z]+)')
+			mtch = _usernameRE.search(self.parent.project.sessions[0].comments)
+			if mtch is None:
+				self.displayError('Cannot find "ucfuser:<UCF_user_name>" information in comments needed for copying data to the UCF.', title='Missing UCF User Name')
+				return False
+				
+		if self.drsButton.GetValue():
 			nchn = int(self.nchnText.GetValue())
 			nint = int(self.nintText.GetValue())
 			self.parent.project.sessions[0].spcSetup = [nchn, nint]
@@ -2201,11 +2210,7 @@ class ObserverInfo(wx.Frame):
 				self.parent.project.sessions[0].spcMetatag = '{Stokes=XXYY}'
 			if self.stokes.GetValue() and isLinear:
 				self.parent.project.sessions[0].spcMetatag = '{Stokes=IQUV}'
-		else:
-			self.parent.project.sessions[0].dataReturnMethod = 'Reduced per comments'
-			self.parent.project.sessions[0].spcSetup = [0, 0]
-			self.parent.project.sessions[0].spcMetatag = None
-			
+				
 		if self.tbwButton.GetValue():
 			self.parent.mode = 'TBW'
 			self.parent.project.sessions[0].includeStationStatic = True
