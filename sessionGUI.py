@@ -1750,8 +1750,14 @@ class SDFCreator(wx.Frame):
 		dialog.ShowModal()
 
 
-ID_OBS_INFO_OK = 211
-ID_OBS_INFO_CANCEL = 212
+ID_OBS_INFO_UCF = 211
+ID_OBS_INFO_DRSPEC = 212
+ID_OBS_INFO_OK = 213
+ID_OBS_INFO_CANCEL = 214
+
+_usernameRE = re.compile(r'ucfuser:[ \t]*(?P<username>[a-zA-Z]+)')
+_cleanup0RE = re.compile(r';;(;;)+')
+_cleanup1RE = re.compile(r'^;;')
 
 class ObserverInfo(wx.Frame):
 	"""
@@ -1911,7 +1917,7 @@ class ObserverInfo(wx.Frame):
 		if self.parent.project.sessions[0].name != '':
 			snameText.SetValue(self.parent.project.sessions[0].name)
 		if self.parent.project.sessions[0].comments != '' and self.parent.project.sessions[0].comments is not None:
-			scomsText.SetValue(self.parent.project.sessions[0].comments.replace(';;', '\n'))
+			scomsText.SetValue(_usernameRE.sub('', self.parent.project.sessions[0].comments).replace(';;', '\n'))
 		
 		tid = wx.StaticText(panel, label='Session Type')
 		tbwRB = wx.RadioButton(panel, -1, 'Transient Buffer-Wide (TBW)', style=wx.RB_GROUP)
@@ -1959,16 +1965,25 @@ class ObserverInfo(wx.Frame):
 		did = wx.StaticText(panel, label='Data Return Method')
 		drsuRB = wx.RadioButton(panel, -1, 'DRSU', style=wx.RB_GROUP)
 		usbRB  = wx.RadioButton(panel, -1, 'USB Harddrive (4 max)')
-		ucfRB  = wx.RadioButton(panel, -1, 'Copy to UCF')
-		drsCB  = wx.CheckBox(panel, -1, 'DR spectrometer')
+		ucfRB  = wx.RadioButton(panel, ID_OBS_INFO_UCF, 'Copy to UCF')
+		
+		unam = wx.StaticText(panel, label='UCF Username:')
+		unamText = wx.TextCtrl(panel)
+		unamText.Disable()
+		
+		drsCB  = wx.CheckBox(panel, ID_OBS_INFO_DRSPEC, 'DR spectrometer')
 		
 		nchn = wx.StaticText(panel, label='Channels')
 		nchnText = wx.TextCtrl(panel)
+		nchnText.Disable()
 		nint = wx.StaticText(panel, label='FFTs/int.')
 		nintText = wx.TextCtrl(panel)
+		nintText.Disable()
 		spid = wx.StaticText(panel, label='Data Products')
 		linear = wx.RadioButton(panel, -1, 'Linear', style=wx.RB_GROUP)
 		stokes = wx.RadioButton(panel, -1, 'Stokes')
+		linear.Disable()
+		stokes.Disable()
 		
 		if self.parent.project.sessions[0].dataReturnMethod == 'DRSU':
 			drsuRB.SetValue(True)
@@ -1990,6 +2005,11 @@ class ObserverInfo(wx.Frame):
 			drsuRB.SetValue(False)
 			usbRB.SetValue(False)
 			ucfRB.SetValue(True)
+			
+			mtch = _usernameRE.search(self.parent.project.sessions[0].comments)
+			if mtch is not None:
+				unamText.SetValue(mtch.group('username'))
+			unamText.Enable()
 			
 			nchnText.SetValue("32")
 			nintText.SetValue("6144")
@@ -2016,6 +2036,11 @@ class ObserverInfo(wx.Frame):
 					linear.SetValue(False)
 					stokes.SetValue(True)
 					
+			nchnText.Enable()
+			nintText.Enable()
+			linear.Enable()
+			stokes.Enable()
+			
 		if self.parent.mode != '':
 			if self.parent.mode == 'TBW':
 				tbfRB.Disable()
@@ -2072,6 +2097,8 @@ class ObserverInfo(wx.Frame):
 		sizer.Add(drsuRB, pos=(row+11,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		sizer.Add(usbRB, pos=(row+12,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		sizer.Add(ucfRB, pos=(row+13,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(unam, pos=(row+13,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+		sizer.Add(unamText, pos=(row+13,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		sizer.Add(drsCB, pos=(row+14,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		sizer.Add(nchn, pos=(row+14,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
 		sizer.Add(nchnText, pos=(row+14,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
@@ -2123,17 +2150,47 @@ class ObserverInfo(wx.Frame):
 		self.drxButton = drxRB
 		self.drsuButton = drsuRB
 		self.usbButton = usbRB
+		self.ucfButton = ucfRB
+		self.unamText = unamText
 		self.drsButton = drsCB
 		self.nchnText = nchnText
 		self.nintText = nintText
 		self.linear = linear
 		self.stokes = stokes
-		self.redButton = ucfRB 
 		
 	def initEvents(self):
+		self.Bind(wx.EVT_RADIOBUTTON, self.onUCF, id=ID_OBS_INFO_UCF)
+		self.Bind(wx.EVT_CHECKBOX, self.onDRSpec, id=ID_OBS_INFO_DRSPEC)
+		
 		self.Bind(wx.EVT_BUTTON, self.onOK, id=ID_OBS_INFO_OK)
 		self.Bind(wx.EVT_BUTTON, self.onCancel, id=ID_OBS_INFO_CANCEL)
 		
+	def onUCF(self, event):
+		"""
+		Toggle the UCF username option.
+		"""
+		
+		if self.ucfButton.GetValue():
+			self.unamText.Enable()
+		else:
+			self.unamText.Disable()
+			
+	def onDRSpec(self, event):
+		"""
+		Toggle the DR spectrometer options.
+		"""
+		
+		if self.drsButton.GetValue():
+			self.nchnText.Enable()
+			self.nintText.Enable()
+			self.linear.Enable()
+			self.stokes.Enable()
+		else:
+			self.nchnText.Disable()
+			self.nintText.Disable()
+			self.linear.Disable()
+			self.stokes.Disable()
+			
 	def onOK(self, event):
 		"""
 		Save everything into all of the correct places.
@@ -2180,13 +2237,15 @@ class ObserverInfo(wx.Frame):
 			self.parent.project.sessions[0].spcMetatag = None
 		else:
 			self.parent.project.sessions[0].dataReturnMethod = 'UCF'
+			tempc = _usernameRE.sub('', self.parent.project.sessions[0].comments)
+			self.parent.project.sessions[0].comments = tempc + ';;ucfuser:%s' % self.unamText.GetValue()
+			
 			self.parent.project.sessions[0].spcSetup = [0, 0]
 			self.parent.project.sessions[0].spcMetatag = None
 			
-			_usernameRE = re.compile(r'ucfuser:[ \t]*(?P<username>[a-zA-Z]+)')
 			mtch = _usernameRE.search(self.parent.project.sessions[0].comments)
 			if mtch is None:
-				self.displayError('Cannot find "ucfuser:<UCF_user_name>" information in comments needed for copying data to the UCF.', title='Missing UCF User Name')
+				self.displayError('Cannot find UCF username needed for copying data to the UCF.', title='Missing UCF User Name')
 				return False
 				
 		if self.drsButton.GetValue():
@@ -2225,6 +2284,12 @@ class ObserverInfo(wx.Frame):
 		self.parent.setMenuButtons(self.parent.mode)
 		if self.parent.listControl.GetColumnCount() == 0:
 			self.parent.addColumns()
+			
+		# Cleanup the comments
+		self.parent.project.comments = _cleanup0RE.sub(';;', self.parent.project.comments)
+		self.parent.project.comments = _cleanup1RE.sub('', self.parent.project.comments)
+		self.parent.project.sessions[0].comments = _cleanup0RE.sub(';;', self.parent.project.sessions[0].comments)
+		self.parent.project.sessions[0].comments = _cleanup1RE.sub('', self.parent.project.sessions[0].comments)
 		
 		self.parent.edited = True
 		self.parent.setSaveButton()
@@ -2262,6 +2327,8 @@ class AdvancedInfo(wx.Frame):
 			size = (925, 675)
 		elif parent.mode in ('TBW', 'TBF'):
 			size = (925, 575)
+		elif parent.project.sessions[0].spcSetup[0] != 0 and parent.project.sessions[0].spcSetup[1] != 0:
+			size = (925, 775)
 		else:
 			size = (925, 700)
 			
