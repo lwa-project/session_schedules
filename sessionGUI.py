@@ -1755,7 +1755,7 @@ ID_OBS_INFO_DRSPEC = 212
 ID_OBS_INFO_OK = 213
 ID_OBS_INFO_CANCEL = 214
 
-_usernameRE = re.compile(r'ucfuser:[ \t]*(?P<username>[a-zA-Z]+)')
+_usernameRE = re.compile(r'ucfuser:[ \t]*(?P<username>[a-zA-Z]+)(\/(?P<subdir>[a-zA-Z0-9\/\+-_]+))?')
 _cleanup0RE = re.compile(r';;(;;)+')
 _cleanup1RE = re.compile(r'^;;')
 
