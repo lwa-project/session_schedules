@@ -7,11 +7,19 @@ import math
 import pytz
 import ephem
 import numpy
+import getopt
 from datetime import datetime, timedelta
 
 from lsl.common import sdf, metabundle
 from lsl.common import stations
 from lsl.astro import utcjd_to_unix, MJD_OFFSET
+try:
+	from lsl.common import sdfADP, metabundleADP
+	adpReady = True
+except ImportError:
+	sdfADP = None
+	metabundleADP = None
+	adpReady = False
 
 import wx
 from wx.lib.mixins.listctrl import CheckListCtrlMixin
@@ -27,7 +35,7 @@ import matplotlib.dates
 from matplotlib import pyplot as plt
 from matplotlib.collections import LineCollection
 
-__version__ = "0.1"
+__version__ = "0.2"
 __revision__ = "$Rev$"
 __author__ = "Jayce Dowell"
 
@@ -38,6 +46,56 @@ formatString = '%Y/%m/%d %H:%M:%S.%f %Z'
 
 # MCS session padding extent
 sessionLag = timedelta(seconds=5)
+
+
+def usage(exitCode=None):
+	print """visualizeSessions.py - GUI for looking at the schedule on a station.
+
+Usage: visualizeSessions.py [OPTIONS] SDF [SDF [...]]
+
+Options:
+-h, --help          Display this help information
+-s, --lwasv         Build a SDF for LWA-SV instead of LWA1 (default = LWA1)
+"""
+	
+	if exitCode is not None:
+		sys.exit(exitCode)
+	else:
+		return True
+
+
+def parseOptions(args):
+	config = {}
+	config['station'] = 'lwa1'
+	
+	# Read in and process the command line flags
+	try:
+		opts, args = getopt.getopt(args, "hs", ["help", "lwasv"])
+	except getopt.GetoptError, err:
+		# Print help information and exit:
+		print str(err) # will print something like "option -a not recognized"
+		usage(exitCode=2)
+		
+	# Work through opts
+	for opt, value in opts:
+		if opt in ('-h', '--help'):
+			usage(exitCode=0)
+		elif opt in ('-d', '--drsu-size'):
+			config['drsuSize'] = int(value)
+		elif opt in ('-s', '--lwasv'):
+			config['station'] = 'lwasv'
+		else:
+			assert False
+			
+	# Make sure we are ready for LWA-SV
+	if config['station'] == 'lwasv' and not adpReady:
+		raise RuntimeError("LWA-SV requested but the ADP-compatible SDF module could not be loaded")
+		
+	# Add in arguments
+	config['args'] = args
+	
+	# Return configuration
+	return config
 
 
 def round15Minutes(tNow):
@@ -99,12 +157,22 @@ class Visualization_GUI(object):
 	of valid SDF filenames.
 	"""
 	
-	def __init__(self, frame, observer=stations.lwa1.getObserver()):
+	def __init__(self, frame, station='lwa1'):
 		self.frame = frame
-		self.observer = observer
 		self.showDayNight = True
 		self.showJupiter = False
 		
+		if station == 'lwa1':
+			self.observer = stations.lwa1.getObserver()
+			self.sdf = sdf
+			self.adp = False
+		elif station == 'lwasv':
+			self.observer = stations.lwasv.getObserver()
+			self.sdf = sdfADP
+			self.adp = True
+		else:
+			raise ValueError("Unkown station: %s" % station)
+			
 		self.colors = ['Blue','Green','Cyan','Magenta','Yellow', 
 					'Peru', 'Moccasin', 'Orange', 'DarkOrchid']
 		
@@ -131,7 +199,7 @@ class Visualization_GUI(object):
 		# Loop over filenames
 		for filename in self.frame.filenames:
 			try:
-				project = sdf.parseSDF(filename)
+				project = self.sdf.parseSDF(filename)
 				dataFile = None
 			except Exception as e:
 				try:
@@ -145,7 +213,10 @@ class Visualization_GUI(object):
 			sID = project.sessions[0].id
 			
 			if project.sessions[0].observations[0].mode in ('TBW', 'TBN'):
-				beam = 5
+				if self.adp:
+					beam = 2
+				else:
+					beam = 5
 			else:
 				beam = project.sessions[0].drxBeam
 			sessionStart = getObsStartStop(project.sessions[0].observations[ 0])[0] - sessionLag
@@ -335,7 +406,10 @@ class Visualization_GUI(object):
 		if self.showDayNight:
 			points, alts = self.getSolarElevation()
 			points = points.reshape(-1, 1, 2)
-			points[:,:,1] = 5.75
+			if self.adp:
+				points[:,:,1] = 2.75
+			else:
+				points[:,:,1] = 5.75
 			segments = numpy.concatenate([points[:-1], points[1:]], axis=1)
 			lc = LineCollection(segments, cmap=plt.get_cmap('Blues_r'), norm=plt.Normalize(-18, 0.25))
 			lc.set_array(alts)
@@ -366,16 +440,26 @@ class Visualization_GUI(object):
 		
 		# Fix the y axis labels to use beams, free time, etc.
 		if self.showDayNight:
-			lower = 6
+			if self.adp:
+				lower = 3
+			else:
+				lower = 6
 		else:
-			lower = 5.5
+			if self.adp:
+				lower = 2.5
+			else:
+				lower = 5.5
 		if self.showJupiter:
 			upper = -2
 		else:
 			upper = -1.5
 		self.ax1.set_ylim((lower, upper))
-		self.ax1.set_yticks([6, 5.75, 5, 4, 3, 2, 1, 0, -1, -1.75, -2])
-		self.ax1.set_yticklabels(['', 'Day/Night', 'TBN/TBW', 'Beam 4', 'Beam 3', 'Beam 2', 'Beam 1', 'Unassigned', 'MCS Decides', 'Jupiter', ''])
+		if self.adp:
+			self.ax1.set_yticks([3, 2.75, 2, 1, 0, -1, -1.75, -2])
+			self.ax1.set_yticklabels(['', 'Day/Night', 'TBN', 'Beam 1', 'Unassigned', 'MCS Decides', 'Jupiter', ''])
+		else:
+			self.ax1.set_yticks([6, 5.75, 5, 4, 3, 2, 1, 0, -1, -1.75, -2])
+			self.ax1.set_yticklabels(['', 'Day/Night', 'TBN/TBW', 'Beam 4', 'Beam 3', 'Beam 2', 'Beam 1', 'Unassigned', 'MCS Decides', 'Jupiter', ''])
 			
 		self.frame.canvas.draw()
 		
@@ -819,12 +903,16 @@ class RemoveFilesDialog(wx.Frame):
 
 
 def main(args):
+	# Parse the command line
+	config = parseOptions(args)
+	filenames = config['args']
+	
 	app = wx.App(0)
 	frame = MainWindow(None, -1)
 	if len(args) > 0:
-		frame.filenames = args
+		frame.filenames = filenames
 		
-		frame.data = Visualization_GUI(frame, observer=observer)
+		frame.data = Visualization_GUI(frame, station=config['station'])
 		frame.data.loadFiles()
 		frame.data.draw()
 		

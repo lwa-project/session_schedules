@@ -16,6 +16,7 @@ import sys
 import math
 import pytz
 import ephem
+import getopt
 import tempfile
 import subprocess
 try:
@@ -26,14 +27,76 @@ except ImportError:
 from lsl.common import sdf
 from lsl.common.stations import lwa1
 from lsl.astro import utcjd_to_unix, MJD_OFFSET
+try:
+	from lsl.common import sdfADP
+	adpReady = True
+except ImportError:
+	sdfADP = None
+	adpReady = False
 
 
-_tpss = os.path.join(os.path.dirname(__file__), 'tpss')
+_tpss_base = os.path.join(os.path.dirname(__file__), 'tpss')
+
+
+def usage(exitCode=None):
+	print """validatorCLI.py - Off-line version of the LWA session definition file validator.
+
+Usage: validatorCLI.py [OPTIONS] input_SDF_file
+
+Options:
+-h, --help          Display this help information
+-s, --lwasv         Validate a SDF for LWA-SV instead of LWA1 (default = LWA1)
+"""
+	
+	if exitCode is not None:
+		sys.exit(exitCode)
+	else:
+		return True
+
+
+def parseOptions(args):
+	config = {}
+	config['station'] = 'lwa1'
+	
+	# Read in and process the command line flags
+	try:
+		opts, args = getopt.getopt(args, "hs", ["help", "lwasv"])
+	except getopt.GetoptError, err:
+		# Print help information and exit:
+		print str(err) # will print something like "option -a not recognized"
+		usage(exitCode=2)
+		
+	# Work through opts
+	for opt, value in opts:
+		if opt in ('-h', '--help'):
+			usage(exitCode=0)
+		elif opt in ('-s', '--lwasv'):
+			config['station'] = 'lwasv'
+		else:
+			assert False
+			
+	# Make sure we are ready for LWA-SV
+	if config['station'] == 'lwasv' and not adpReady:
+		raise RuntimeError("LWA-SV requested but the ADP-compatible SDF module could not be loaded")
+		
+	# Add in arguments
+	config['args'] = args
+	
+	# Return configuration
+	return config
 
 
 def main(args):
-	filename = args[0]
+	# Parse the command line
+	config = parseOptions(args)
+	filename = config['args'][0]
 	
+	# Set the TPSS and SDF versions to use
+	_tpss = '%s-%s' % (_tpss_base, config['station'])
+	_sdf = sdf
+	if config['station'] == 'lwasv':
+		_sdf = sdfADP
+		
 	# Read the contents of the temporary SD file into a list so that we can examine
 	# the file independently of the parser
 	fh = open(filename, 'r')
@@ -107,7 +170,7 @@ def main(args):
 			errors.append( {'line': lineNumbers[-2], 'message': message} )
 	
 	# Parse the file into a sdf.Project instance
-	project = sdf.parseSDF(filename)
+	project = _sdf.parseSDF(filename)
 	
 	# Build a couple of dictionaries to lump everything together
 	tpss = {'version': tpssVersion, 'output': output, 'valid': valid, 'errors': errors, 
