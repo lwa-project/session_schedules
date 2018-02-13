@@ -214,7 +214,7 @@ class Visualization_GUI(object):
 			
 			if project.sessions[0].observations[0].mode in ('TBW', 'TBN'):
 				if self.adp:
-					beam = 2
+					beam = 3
 				else:
 					beam = 5
 			else:
@@ -407,7 +407,7 @@ class Visualization_GUI(object):
 			points, alts = self.getSolarElevation()
 			points = points.reshape(-1, 1, 2)
 			if self.adp:
-				points[:,:,1] = 2.75
+				points[:,:,1] = 3.75
 			else:
 				points[:,:,1] = 5.75
 			segments = numpy.concatenate([points[:-1], points[1:]], axis=1)
@@ -441,12 +441,12 @@ class Visualization_GUI(object):
 		# Fix the y axis labels to use beams, free time, etc.
 		if self.showDayNight:
 			if self.adp:
-				lower = 3
+				lower = 4
 			else:
 				lower = 6
 		else:
 			if self.adp:
-				lower = 2.5
+				lower = 3.5
 			else:
 				lower = 5.5
 		if self.showJupiter:
@@ -455,8 +455,8 @@ class Visualization_GUI(object):
 			upper = -1.5
 		self.ax1.set_ylim((lower, upper))
 		if self.adp:
-			self.ax1.set_yticks([3, 2.75, 2, 1, 0, -1, -1.75, -2])
-			self.ax1.set_yticklabels(['', 'Day/Night', 'TBN', 'Beam 1', 'Unassigned', 'MCS Decides', 'Jupiter', ''])
+			self.ax1.set_yticks([4, 3.75, 3, 2, 1, 0, -1, -1.75, -2])
+			self.ax1.set_yticklabels(['', 'Day/Night', 'TBN', 'Beam 2', 'Beam 1', 'Unassigned', 'MCS Decides', 'Jupiter', ''])
 		else:
 			self.ax1.set_yticks([6, 5.75, 5, 4, 3, 2, 1, 0, -1, -1.75, -2])
 			self.ax1.set_yticklabels(['', 'Day/Night', 'TBN/TBW', 'Beam 4', 'Beam 3', 'Beam 2', 'Beam 1', 'Unassigned', 'MCS Decides', 'Jupiter', ''])

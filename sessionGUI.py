@@ -925,10 +925,10 @@ class SDFCreator(wx.Frame):
 		"""
 		Function to get the default value for the filter code for modes that 
 		need a filter code.  This is mainly to help keep Sevilleta SDFs 
-		default to filter 6 instead of 7.
+		default to appropriate filter instead of 7.
 		"""
 		
-		return 6 if self.adp else 7
+		return 7 if self.adp else 7
 		
 	def onAddTBW(self, event):
 		"""
@@ -2353,7 +2353,7 @@ class AdvancedInfo(wx.Frame):
 		drxGain = ['%i' % i for i in xrange(13)]
 		drxGain.insert(0, 'MCS Decides')
 		if self.parent.adp:
-			drxBeam = ['%i' %i for i in xrange(1, 2)]
+			drxBeam = ['%i' %i for i in xrange(1, 3)]
 		else:
 			drxBeam = ['%i' %i for i in xrange(1, 5)]
 		drxBeam.insert(0, 'MCS Decides')
