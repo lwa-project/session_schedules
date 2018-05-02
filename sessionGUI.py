@@ -12,7 +12,7 @@ try:
 	import cStringIO as StringIO
 except ImportError:
 	import StringIO
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import conflict
 
@@ -831,13 +831,25 @@ class SDFCreator(wx.Frame):
 			self.edited = True
 			self.setSaveButton()
 			
-		# Re-number the remaining rows to keep the display clean
-		for i in xrange(self.listControl.GetItemCount()):
-			item = self.listControl.GetItem(i, 0)
-			item.SetText('%i' % (i+1))
-			self.listControl.SetItem(item)
-			self.listControl.RefreshItem(item.GetId())
-			
+			# Re-number the remaining rows to keep the display clean
+			for id in xrange(self.listControl.GetItemCount()):
+				item = self.listControl.GetItem(id, 0)
+				item.SetText('%i' % (id+1))
+				self.listControl.SetItem(item)
+				self.listControl.RefreshItem(item.GetId())
+				
+			# Fix the times on DRX observations to make thing continuous
+			if self.mode == 'DRX':
+				for id in xrange(firstChecked+len(self.buffer)-1, -1, -1):
+					print firstChecked+len(self.buffer), id
+					dur = self.project.sessions[0].observations[id].dur
+					
+					tStart, _ = self.sdf.getObservationStartStop(self.project.sessions[0].observations[id+1])
+					tStart -= timedelta(seconds=dur/1000, microseconds=(dur%1000)*1000)
+					cStart = 'UTC %i %02i %02i %02i:%02i:%06.3f' % (tStart.year, tStart.month, tStart.day, tStart.hour, tStart.minute, tStart.second+tStart.microsecond/1e6)
+					self.project.sessions[0].observations[id].setStart(cStart)
+					self.addObservation(self.project.sessions[0].observations[id], id, update=True)
+					
 	def onPasteAfter(self, event):
 		lastChecked = None
 		
@@ -857,30 +869,55 @@ class SDFCreator(wx.Frame):
 			self.edited = True
 			self.setSaveButton()
 			
-		# Re-number the remaining rows to keep the display clean
-		for i in xrange(self.listControl.GetItemCount()):
-			item = self.listControl.GetItem(i, 0)
-			item.SetText('%i' % (i+1))
-			self.listControl.SetItem(item)
-			self.listControl.RefreshItem(item.GetId())
-			
+			# Re-number the remaining rows to keep the display clean
+			for id in xrange(self.listControl.GetItemCount()):
+				item = self.listControl.GetItem(id, 0)
+				item.SetText('%i' % (id+1))
+				self.listControl.SetItem(item)
+				self.listControl.RefreshItem(item.GetId())
+				
+			# Fix the times on DRX observations to make thing continuous
+			if self.mode == 'DRX':
+				for id in xrange(lastChecked+1, self.listControl.GetItemCount()):
+					_, tStop = self.sdf.getObservationStartStop(self.project.sessions[0].observations[id-1])
+					cStart = 'UTC %i %02i %02i %02i:%02i:%06.3f' % (tStop.year, tStop.month, tStop.day, tStop.hour, tStop.minute, tStop.second+tStop.microsecond/1e6)
+					self.project.sessions[0].observations[id].setStart(cStart)
+					self.addObservation(self.project.sessions[0].observations[id], id, update=True)
+					
 	def onPasteEnd(self, event):
 		"""
 		Paste the selected observation(s) at the end of the current session.
 		"""
 		
+		lastChecked = self.listControl.GetItemCount() - 1
+		
 		if self.buffer is not None:
-			for obs in self.buffer:
-				id = self.listControl.GetItemCount() + 1
-				
+			id = lastChecked + 1
+			
+			for obs in self.buffer[::-1]:
 				cObs = copy.deepcopy(obs)
 				
-				self.project.sessions[0].observations.append(cObs)
-				self.addObservation(self.project.sessions[0].observations[-1], id)
+				self.project.sessions[0].observations.insert(id, cObs)
+				self.addObservation(self.project.sessions[0].observations[id], id)
 				
 			self.edited = True
 			self.setSaveButton()
 			
+		# Re-number the remaining rows to keep the display clean
+		for id in xrange(self.listControl.GetItemCount()):
+			item = self.listControl.GetItem(id, 0)
+			item.SetText('%i' % (id+1))
+			self.listControl.SetItem(item)
+			self.listControl.RefreshItem(item.GetId())
+			
+		# Fix the times on DRX observations to make thing continuous
+		if self.mode == 'DRX':
+			for id in xrange(lastChecked+1, self.listControl.GetItemCount()):
+				_, tStop = self.sdf.getObservationStartStop(self.project.sessions[0].observations[id-1])
+				cStart = 'UTC %i %02i %02i %02i:%02i:%06.3f' % (tStop.year, tStop.month, tStop.day, tStop.hour, tStop.minute, tStop.second+tStop.microsecond/1e6)
+				self.project.sessions[0].observations[id].setStart(cStart)
+				self.addObservation(self.project.sessions[0].observations[id], id, update=True)
+				
 	def onInfo(self, event):
 		"""
 		Open up the observer/project information window.
@@ -918,8 +955,16 @@ class SDFCreator(wx.Frame):
 		"""
 		Function to get a datetime string, in UTC, for a new observation.
 		"""
-		
-		return 'UTC %i %i %i 00:00:00.000' % (datetime.now().year, datetime.now().month, datetime.now().day)
+		print self.mode
+		tStop = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+		if self.listControl.GetItemCount() > 0:
+			if self.mode == 'DRX':
+				_, tStop = self.sdf.getObservationStartStop(self.project.sessions[0].observations[-1])
+			elif self.mode == 'TBN':
+				_, tStop = self.sdf.getObservationStartStop(self.project.sessions[0].observations[-1])
+				tStop += timedelta(seconds=20)
+				
+		return 'UTC %i %02i %02i %02i:%02i:%06.3f' % (tStop.year, tStop.month, tStop.day, tStop.hour, tStop.minute, tStop.second+tStop.microsecond/1e6)
 		
 	def _getDefaultFilter(self):
 		"""
@@ -1471,7 +1516,7 @@ class SDFCreator(wx.Frame):
 		self.panel.SetupScrolling(scroll_x=True, scroll_y=False)
 		self.Fit()
 		
-	def addObservation(self, obs, id):
+	def addObservation(self, obs, id, update=False):
 		"""
 		Add an observation to a particular location in the observation list
 		
@@ -1482,7 +1527,10 @@ class SDFCreator(wx.Frame):
 		
 		listIndex = id
 		
-		index = self.listControl.InsertStringItem(listIndex, str(id))
+		if not update:
+			index = self.listControl.InsertStringItem(listIndex, str(id))
+		else:
+			index = listIndex
 		self.listControl.SetStringItem(index, 1, obs.name)
 		self.listControl.SetStringItem(index, 2, obs.target)
 		if obs.comments is not None:
