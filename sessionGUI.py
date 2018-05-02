@@ -955,7 +955,7 @@ class SDFCreator(wx.Frame):
 		"""
 		Function to get a datetime string, in UTC, for a new observation.
 		"""
-		print self.mode
+		
 		tStop = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
 		if self.listControl.GetItemCount() > 0:
 			if self.mode == 'DRX':
