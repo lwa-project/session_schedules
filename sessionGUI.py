@@ -973,7 +973,7 @@ class SDFCreator(wx.Frame):
         default to appropriate filter instead of 7.
         """
         
-        return 6 if self.adp else 7
+        return 6 if self.adp and self.mode != 'TBN' else 7
         
     def onAddTBW(self, event):
         """
@@ -1297,11 +1297,17 @@ class SDFCreator(wx.Frame):
         if self.mode == 'TBN':
             filterInfo = "TBN"
             for tk,tv in TBNFilters.iteritems():
+                #if not self.adp and tk > 7:
+                #    continue
+                if tk > 7:
+                    continue
                 tv, tu = units(tv)
                 filterInfo = "%s\n%i  %.3f %-3s" % (filterInfo, tk, tv, tu)
         elif self.mode == 'DRX' or self.mode == 'TBF':
             filterInfo = "DRX"
             for dk,dv in DRXFilters.iteritems():
+                if self.adp and dk > 6:
+                    continue
                 dv, du = units(dv)
                 filterInfo = "%s\n%i  %.3f %-3s" % (filterInfo, dk, dv, du)
         else:
@@ -1419,8 +1425,8 @@ class SDFCreator(wx.Frame):
             """
             
             value = int(text)
-            if value < 1 or value > (6 if self.adp else 7):
-                raise ValueError("Filter code must be an integer between 1 and %i" % (6 if self.adp else 7))
+            if value < 1 or value > (6 if self.adp and self.mode != 'TBN' else 7):
+                raise ValueError("Filter code must be an integer between 1 and %i" % (6 if self.adp and self.mode != 'TBN' else 7))
             else:
                 return value
                 
