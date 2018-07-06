@@ -973,7 +973,7 @@ class SDFCreator(wx.Frame):
         default to appropriate filter instead of 7.
         """
         
-        return 7 if self.adp else 7
+        return 6 if self.adp else 7
         
     def onAddTBW(self, event):
         """
@@ -1419,8 +1419,8 @@ class SDFCreator(wx.Frame):
             """
             
             value = int(text)
-            if value < 1 or value > 7:
-                raise ValueError("Filter code must be an integer between 1 and 7")
+            if value < 1 or value > (6 if self.adp else 7):
+                raise ValueError("Filter code must be an integer between 1 and %i" % (6 if self.adp else 7))
             else:
                 return value
                 
