@@ -1240,7 +1240,7 @@ class SDFCreator(wx.Frame):
                     print msg
                     
             if validObs:
-                wx.MessageBox('All observations are valid, but there are errors in the session setup.', 'Validator Results')
+                wx.MessageBox('All observations are valid, but there are errors in the session setup.  See the command standard output for details.', 'Validator Results')
             return False
             
     def onResolve(self, event):
