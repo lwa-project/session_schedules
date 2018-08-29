@@ -1,9 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+# Python3 compatiability
+from __future__ import print_function, division
+import sys
+if sys.version_info > (3,):
+    xrange = range
+
 import os
 import re
-import sys
 import copy
 import math
 import ephem
@@ -53,8 +58,8 @@ ALLOW_TBW_TBN_SAME_SDF = True
 
 
 def usage(exitCode=None):
-    print """sessionGUI.py - GUI for making all sorts of session definition files (SDFs) for
-LWA1.
+    print("""sessionGUI.py - GUI for making all sorts of session definition files (SDFs) for
+LWA1 and LWA-SV.
 
 Usage: sessionGUI.py [OPTIONS] [input_SDF_file]
 
@@ -63,7 +68,7 @@ Options:
 -d, --drsu-size     Perform storage calcuations assuming the specified DRSU 
                     size in TB (default = %i TB)
 -s, --lwasv         Build a SDF for LWA-SV instead of LWA1 (default = LWA1)
-""" % sdf._DRSUCapacityTB
+""" % sdf._DRSUCapacityTB)
     
     if exitCode is not None:
         sys.exit(exitCode)
@@ -81,7 +86,7 @@ def parseOptions(args):
         opts, args = getopt.getopt(args, "hd:s", ["help", "drsu-size=", "lwasv"])
     except getopt.GetoptError, err:
         # Print help information and exit:
-        print str(err) # will print something like "option -a not recognized"
+        print(str(err)) # will print something like "option -a not recognized"
         usage(exitCode=2)
         
     # Work through opts
@@ -841,11 +846,10 @@ class SDFCreator(wx.Frame):
             # Fix the times on DRX observations to make thing continuous
             if self.mode == 'DRX':
                 for id in xrange(firstChecked+len(self.buffer)-1, -1, -1):
-                    print firstChecked+len(self.buffer), id
                     dur = self.project.sessions[0].observations[id].dur
                     
                     tStart, _ = self.sdf.getObservationStartStop(self.project.sessions[0].observations[id+1])
-                    tStart -= timedelta(seconds=dur/1000, microseconds=(dur%1000)*1000)
+                    tStart -= timedelta(seconds=dur//1000, microseconds=(dur%1000)*1000)
                     cStart = 'UTC %i %02i %02i %02i:%02i:%06.3f' % (tStart.year, tStart.month, tStart.day, tStart.hour, tStart.minute, tStart.second+tStart.microsecond/1e6)
                     self.project.sessions[0].observations[id].setStart(cStart)
                     self.addObservation(self.project.sessions[0].observations[id], id, update=True)
@@ -1131,7 +1135,7 @@ class SDFCreator(wx.Frame):
             self.badEdit = False
             self.badEditLocation = (-1, -1)
         except ValueError as err:
-            print '[%i] Error: %s' % (os.getpid(), str(err))
+            print('[%i] Error: %s' % (os.getpid(), str(err)))
             self.SetStatusText('Error: %s' % str(err))
             
             item = self.listControl.GetItem(obsIndex, obsAttr)
@@ -1204,7 +1208,7 @@ class SDFCreator(wx.Frame):
         # that we can mark bad observations
         i = 0
         for obs in self.project.sessions[0].observations:
-            print "[%i] Validating observation %i" % (os.getpid(), i+1)
+            print("[%i] Validating observation %i" % (os.getpid(), i+1))
             valid = obs.validate(verbose=True)
             for col in xrange(len(self.columnMap)):
                 item = self.listControl.GetItem(i, col)
@@ -1237,7 +1241,7 @@ class SDFCreator(wx.Frame):
             msgLines = msg.split('\n')
             for msg in msgLines:
                 if msg.find('Error') != -1:
-                    print msg
+                    print(msg)
                     
             if validObs:
                 wx.MessageBox('All observations are valid, but there are errors in the session setup.  See the command standard output for details.', 'Validator Results')
@@ -1751,7 +1755,7 @@ class SDFCreator(wx.Frame):
         self.listControl.setCheckDependant()
         self.initSDF()
         
-        print "Parsing file '%s'" % filename
+        print("Parsing file '%s'" % filename)
         self.project = self.sdf.parseSDF(filename)
         self.setMenuButtons(self.project.sessions[0].observations[0].mode)
         if self.project.sessions[0].observations[0].mode == 'TBW':
@@ -1795,11 +1799,11 @@ class SDFCreator(wx.Frame):
             title = 'An Error has Occured'
             
         if details is None:
-            print "[%i] Error: %s" % (os.getpid(), str(error))
+            print("[%i] Error: %s" % (os.getpid(), str(error)))
             self.statusbar.SetStatusText('Error: %s' % str(error), 1)
             dialog = wx.MessageDialog(self, '%s' % str(error), title, style=wx.OK|wx.ICON_ERROR)
         else:
-            print "[%i] Error: %s" % (os.getpid(), str(details))
+            print("[%i] Error: %s" % (os.getpid(), str(details)))
             self.statusbar.SetStatusText('Error: %s' % str(details), 1)
             dialog = wx.MessageDialog(self, '%s\n\nDetails:\n%s' % (str(error), str(details)), title, style=wx.OK|wx.ICON_ERROR)
             
@@ -2364,10 +2368,10 @@ class ObserverInfo(wx.Frame):
             title = 'An Error has Occured'
             
         if details is None:
-            print "[%i] Error: %s" % (os.getpid(), str(error))
+            print("[%i] Error: %s" % (os.getpid(), str(error)))
             dialog = wx.MessageDialog(self, '%s' % str(error), title, style=wx.OK|wx.ICON_ERROR)
         else:
-            print "[%i] Error: %s" % (os.getpid(), str(details))
+            print("[%i] Error: %s" % (os.getpid(), str(details)))
             dialog = wx.MessageDialog(self, '%s\n\nDetails:\n%s' % (str(error), str(details)), title, style=wx.OK|wx.ICON_ERROR)
             
         dialog.ShowModal()
@@ -3237,10 +3241,10 @@ class AdvancedInfo(wx.Frame):
             title = 'An Error has Occured'
             
         if details is None:
-            print "[%i] Error: %s" % (os.getpid(), str(error))
+            print("[%i] Error: %s" % (os.getpid(), str(error)))
             dialog = wx.MessageDialog(self, '%s' % str(error), title, style=wx.OK|wx.ICON_ERROR)
         else:
-            print "[%i] Error: %s" % (os.getpid(), str(details))
+            print("[%i] Error: %s" % (os.getpid(), str(details)))
             dialog = wx.MessageDialog(self, '%s\n\nDetails:\n%s' % (str(error), str(details)), title, style=wx.OK|wx.ICON_ERROR)
             
         dialog.ShowModal()
@@ -3785,7 +3789,7 @@ class ResolveTarget(wx.Frame):
                         self.parent.setSaveButton()
                         self.appli.Enable(False)
                 except ValueError as err:
-                    print '[%i] Error: %s' % (os.getpid(), str(err))
+                    print('[%i] Error: %s' % (os.getpid(), str(err)))
                     
     def onCancel(self, event):
         self.Close()
@@ -4127,7 +4131,7 @@ class SteppedWindow(wx.Frame):
         """
         
         id = self.listControl.GetItemCount() + 1
-        self.obs.steps.append( self.sdf.BeamStep(0.0, 0.0, '00:00:00.000', 42e6, 74e6, RADec=self.RADec) )
+        self.obs.steps.append( self.parent.sdf.BeamStep(0.0, 0.0, '00:00:00.000', 42e6, 74e6, RADec=self.RADec) )
         self.addStep(self.obs.steps[-1], id)
         
     def onEdit(self, event):
@@ -4163,7 +4167,7 @@ class SteppedWindow(wx.Frame):
             self.badEdit = False
             self.badEditLocation = (-1, -1)
         except ValueError as err:
-            print '[%i] Error: %s' % (os.getpid(), str(err))
+            print('[%i] Error: %s' % (os.getpid(), str(err)))
             self.SetStatusText('Error: %s' % str(err))
             
             item = self.listControl.GetItem(obsIndex, obsAttr)
