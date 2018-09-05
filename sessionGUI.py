@@ -1839,7 +1839,7 @@ class ObserverInfo(wx.Frame):
         panel = ScrolledPanel(self)
         sizer = wx.GridBagSizer(5, 5)
         
-        font = wx.SystemSettings_GetFont(wx.SYS_SYSTEM_FONT)
+        font = wx.SystemSettings.GetFont(wx.SYS_SYSTEM_FONT)
         font.SetPointSize(font.GetPointSize()+2)
         
         #
@@ -2426,7 +2426,7 @@ class AdvancedInfo(wx.Frame):
         panel = ScrolledPanel(self)
         sizer = wx.GridBagSizer(5, 5)
         
-        font = wx.SystemSettings_GetFont(wx.SYS_SYSTEM_FONT)
+        font = wx.SystemSettings.GetFont(wx.SYS_SYSTEM_FONT)
         font.SetPointSize(font.GetPointSize()+2)
         
         #
@@ -3554,7 +3554,7 @@ class VolumeInfo(wx.Frame):
         panel = wx.Panel(self)
         sizer = wx.GridBagSizer(5, 5)
         
-        font = wx.SystemSettings_GetFont(wx.SYS_SYSTEM_FONT)
+        font = wx.SystemSettings.GetFont(wx.SYS_SYSTEM_FONT)
         font.SetPointSize(font.GetPointSize()+2)
         
         dataText = wx.StaticText(panel, label='Estimated Data Volume:')
@@ -3813,7 +3813,7 @@ class ScheduleWindow(wx.Frame):
         panel = wx.Panel(self)
         sizer = wx.GridBagSizer(3, 3)
         
-        font = wx.SystemSettings_GetFont(wx.SYS_SYSTEM_FONT)
+        font = wx.SystemSettings.GetFont(wx.SYS_SYSTEM_FONT)
         font.SetPointSize(font.GetPointSize()+2)
         
         src = wx.StaticText(panel, label='Rescheduling Options:')
