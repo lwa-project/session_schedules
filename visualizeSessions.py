@@ -725,7 +725,7 @@ class MainWindow(wx.Frame):
         Open a file or files.
         """
         
-        dlg = wx.FileDialog(self, "Choose a file", self.dirname, "", "*.*", wx.OPEN|wx.FD_MULTIPLE)
+        dlg = wx.FileDialog(self, "Choose a file", self.dirname, "", "*.*", wx.FD_OPEN|wx.FD_MULTIPLE)
         if dlg.ShowModal() == wx.ID_OK:
             self.dirname = dlg.GetDirectory()
             filenames = dlg.GetFilenames()
