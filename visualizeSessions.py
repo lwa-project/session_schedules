@@ -172,11 +172,11 @@ class Visualization_GUI(object):
         self.showJupiter = False
         
         if station == 'lwa1':
-            self.observer = stations.lwa1.getObserver()
+            self.observer = stations.lwa1
             self.sdf = sdf
             self.adp = False
         elif station == 'lwasv':
-            self.observer = stations.lwasv.getObserver()
+            self.observer = stations.lwasv
             self.sdf = sdfADP
             self.adp = True
         else:
@@ -498,7 +498,7 @@ class Visualization_GUI(object):
         out += " Project ID: %s\n" % project.id
         out += " Session ID: %i\n" % project.sessions[0].id
         out += " Observations appear to start at %s\n" % (min(tStart)).strftime(formatString)
-        out += " -> LST at %s for this date/time is %s\n" % (lwa1.name, lst)
+        out += " -> LST at %s for this date/time is %s\n" % (self.observer.name, lst)
 
         lastDur = project.sessions[0].observations[nObs-1].dur
         lastDur = timedelta(seconds=int(lastDur/1000), microseconds=(lastDur*1000) % 1000000)
