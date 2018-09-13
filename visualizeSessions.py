@@ -48,6 +48,15 @@ formatString = '%Y/%m/%d %H:%M:%S.%f %Z'
 sessionLag = timedelta(seconds=5)
 
 
+# Deal with the different wxPython versions
+if 'phoenix' in wx.PlatformInfo:
+    AppendMenuItem = lambda x, y: x.Append(y)
+    AppendMenuMenu = lambda *args, **kwds: args[0].Append(*args[1:], **kwds)
+else:
+    AppendMenuItem = lambda x, y: x.AppendItem(y)
+    AppendMenuMenu = lambda *args, **kwds: args[0].AppendMenu(*args[1:], **kwds)
+
+
 def usage(exitCode=None):
     print """visualizeSessions.py - GUI for looking at the schedule on a station.
 
@@ -647,22 +656,22 @@ class MainWindow(wx.Frame):
         
         # File menu items
         add = wx.MenuItem(fileMenu, ID_ADD_FILES, '&Add File(s)')
-        fileMenu.AppendItem(add)
+        AppendMenuItem(fileMenu, add)
         remove = wx.MenuItem(fileMenu, ID_REMOVE_FILES, '&Remove File(s)')
-        fileMenu.AppendItem(remove)
+        AppendMenuItem(fileMenu, remove)
         fileMenu.AppendSeparator()
         quit = wx.MenuItem(fileMenu, ID_QUIT, '&Quit')
-        fileMenu.AppendItem(quit)
+        AppendMenuItem(fileMenu, quit)
         
         # Display menu items
         daynight = wx.MenuItem(dispMenu, ID_SHOW_DAYNIGHT, 'Show Day/Night', kind=wx.ITEM_CHECK)
-        dispMenu.AppendItem(daynight)
+        AppendMenuItem(dispMenu, daynight)
         jupiter = wx.MenuItem(dispMenu, ID_SHOW_JUPITER, 'Show Jupiter Visibility', kind=wx.ITEM_CHECK)
-        dispMenu.AppendItem(jupiter)
+        AppendMenuItem(dispMenu, jupiter)
         
         # Help menu items
         about = wx.MenuItem(helpMenu, ID_ABOUT, '&About')
-        helpMenu.AppendItem(about)
+        AppendMenuItem(helpMenu, about)
         
         menubar.Append(fileMenu, '&File')
         menubar.Append(dispMenu, '&Display')
@@ -678,7 +687,7 @@ class MainWindow(wx.Frame):
         # Add SDF plot
         panel1 = wx.Panel(self, -1)
         hbox1 = wx.BoxSizer(wx.VERTICAL)
-        self.figure = Figure()
+        self.figure = Figure(figsize=(4,4))
         self.canvas = FigureCanvasWxAgg(panel1, -1, self.figure)
         self.toolbar = NavigationToolbar2WxAgg(self.canvas)
         self.toolbar.Realize()

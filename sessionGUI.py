@@ -48,13 +48,34 @@ from matplotlib.backends.backend_wxagg import NavigationToolbar2WxAgg, FigureCan
 from matplotlib.figure import Figure
 from matplotlib.ticker import NullFormatter, NullLocator
 
-
 __version__ = "0.6"
 __revision__ = "$Rev$"
 __author__ = "Jayce Dowell"
 
 
 ALLOW_TBW_TBN_SAME_SDF = True
+
+
+# Deal with the different wxPython versions
+if 'phoenix' in wx.PlatformInfo:
+    AppendMenuItem = lambda x, y: x.Append(y)
+    AppendMenuMenu = lambda *args, **kwds: args[0].Append(*args[1:], **kwds)
+    InsertListItem = lambda *args, **kwds: args[0].InsertItem(*args[1:], **kwds)
+    SetListItem    = lambda *args, **kwds: args[0].SetItem(*args[1:], **kwds)
+    ## This one is a little trickier
+    def AppendToolItem(*args, **kwds):
+        args = args+(kwds['bmpDisabled'] if 'bmpDisabled' in kwds else wx.NullBitmap,)
+        return args[0].AddTool(*args[1:], 
+                               kind=kwds['kind'] if 'kind' in kwds else wx.ITEM_NORMAL,
+                               clientData=kwds['clientData'] if 'clientData' in kwds else None,
+                               shortHelp=kwds['shortHelp'] if 'shortHelp' in kwds else '',
+                               longHelp=kwds['longHelp'] if 'longHelp' in kwds else '')
+else:
+    AppendMenuItem = lambda x, y: x.AppendItem(y)
+    AppendMenuMenu = lambda *args, **kwds: args[0].AppendMenu(*args[1:], **kwds)
+    InsertListItem = lambda *args, **kwds: args[0].InsertStringItem(*args[1:], **kwds)
+    SetListItem    = lambda *args, **kwds: args[0].SetStringItem(*args[1:], **kwds)
+    AppendToolItem = lambda *args, **kwds: args[0].AddLabelTool(*args[1:], **kwds)
 
 
 def usage(exitCode=None):
@@ -480,31 +501,31 @@ class SDFCreator(wx.Frame):
         
         # File menu items
         new = wx.MenuItem(fileMenu, ID_NEW, '&New')
-        fileMenu.AppendItem(new)
+        AppendMenuItem(fileMenu, new)
         open = wx.MenuItem(fileMenu, ID_OPEN, '&Open')
-        fileMenu.AppendItem(open)
+        AppendMenuItem(fileMenu, open)
         save = wx.MenuItem(fileMenu, ID_SAVE, '&Save')
-        fileMenu.AppendItem(save)
+        AppendMenuItem(fileMenu, save)
         saveas = wx.MenuItem(fileMenu, ID_SAVE_AS, 'S&ave As')
-        fileMenu.AppendItem(saveas)
+        AppendMenuItem(fileMenu, saveas)
         fileMenu.AppendSeparator()
         quit = wx.MenuItem(fileMenu, ID_QUIT, '&Quit')
-        fileMenu.AppendItem(quit)
+        AppendMenuItem(fileMenu, quit)
         
         # Save the 'save' menu item
         self.savemenu = save
         
         # Edit menu items
         cut = wx.MenuItem(editMenu, ID_CUT, 'C&ut Selected Observation')
-        editMenu.AppendItem(cut)
+        AppendMenuItem(editMenu, cut)
         cpy = wx.MenuItem(editMenu, ID_COPY, '&Copy Selected Observation')
-        editMenu.AppendItem(cpy)
+        AppendMenuItem(editMenu, cpy)
         pstb = wx.MenuItem(editMenu, ID_PASTE_BEFORE, '&Paste Before Selected')
-        editMenu.AppendItem(pstb)
+        AppendMenuItem(editMenu, pstb)
         psta = wx.MenuItem(editMenu, ID_PASTE_AFTER, '&Paste After Selected')
-        editMenu.AppendItem(psta)
+        AppendMenuItem(editMenu, psta)
         pste = wx.MenuItem(editMenu, ID_PASTE_END, '&Paste at End of List')
-        editMenu.AppendItem(pste)
+        AppendMenuItem(editMenu, pste)
         
         # Save menu items and disable all of them
         self.editmenu['cut'] = cut
@@ -517,42 +538,42 @@ class SDFCreator(wx.Frame):
             
         # Observer menu items
         info = wx.MenuItem(obsMenu, ID_INFO, 'Observer/&Project Info.')
-        obsMenu.AppendItem(info)
+        AppendMenuItem(obsMenu, info)
         sch = wx.MenuItem(obsMenu, ID_SCHEDULE, 'Sc&heduling')
-        obsMenu.AppendItem(sch)
+        AppendMenuItem(obsMenu, sch)
         obsMenu.AppendSeparator()
         add = wx.Menu()
         addTBW = wx.MenuItem(add, ID_ADD_TBW, 'TB&W')
-        add.AppendItem(addTBW)
+        AppendMenuItem(add, addTBW)
         addTBF = wx.MenuItem(add, ID_ADD_TBF, 'TB&F')
-        add.AppendItem(addTBF)
+        AppendMenuItem(add, addTBF)
         addTBN = wx.MenuItem(add, ID_ADD_TBN, 'TB&N')
-        add.AppendItem(addTBN)
+        AppendMenuItem(add, addTBN)
         add.AppendSeparator()
         addDRXR = wx.MenuItem(add, ID_ADD_DRX_RADEC, 'DRX - &RA/Dec')
-        add.AppendItem(addDRXR)
+        AppendMenuItem(add, addDRXR)
         addDRXS = wx.MenuItem(add, ID_ADD_DRX_SOLAR, 'DRX - &Solar')
-        add.AppendItem(addDRXS)
+        AppendMenuItem(add, addDRXS)
         addDRXJ = wx.MenuItem(add, ID_ADD_DRX_JOVIAN, 'DRX - &Jovian')
-        add.AppendItem(addDRXJ)
+        AppendMenuItem(add, addDRXJ)
         addSteppedRADec = wx.MenuItem(add, ID_ADD_STEPPED_RADEC, 'DRX - Ste&pped - RA/Dec')
-        add.AppendItem(addSteppedRADec)
+        AppendMenuItem(add, addSteppedRADec)
         addSteppedAzAlt = wx.MenuItem(add, ID_ADD_STEPPED_AZALT, 'DRX - Ste&pped - Az/Alt')
-        add.AppendItem(addSteppedAzAlt)
+        AppendMenuItem(add, addSteppedAzAlt)
         editStepped = wx.MenuItem(add, ID_EDIT_STEPPED, 'DRX - Edit Selected Stepped Obs.')
-        add.AppendItem(editStepped)
-        obsMenu.AppendMenu(-1, '&Add', add)
+        AppendMenuItem(add, editStepped)
+        AppendMenuMenu(obsMenu, -1, '&Add', add)
         remove = wx.MenuItem(obsMenu, ID_REMOVE, '&Remove Selected')
-        obsMenu.AppendItem(remove)
+        AppendMenuItem(obsMenu, remove)
         validate = wx.MenuItem(obsMenu, ID_VALIDATE, '&Validate All\tF5')
-        obsMenu.AppendItem(validate)
+        AppendMenuItem(obsMenu, validate)
         obsMenu.AppendSeparator()
         resolve = wx.MenuItem(obsMenu, ID_RESOLVE, 'Resolve Selected\tF3')
-        obsMenu.AppendItem(resolve)
+        AppendMenuItem(obsMenu, resolve)
         timeseries = wx.MenuItem(obsMenu, ID_TIMESERIES, 'Session at a &Glance')
-        obsMenu.AppendItem(timeseries)
+        AppendMenuItem(obsMenu, timeseries)
         advanced = wx.MenuItem(obsMenu, ID_ADVANCED, 'Advanced &Settings')
-        obsMenu.AppendItem(advanced)
+        AppendMenuItem(obsMenu, advanced)
         
         # Save menu items
         self.obsmenu['tbw'] = addTBW
@@ -567,16 +588,16 @@ class SDFCreator(wx.Frame):
         
         # Data menu items
         volume = wx.MenuItem(obsMenu, ID_DATA_VOLUME, '&Estimated Data Volume')
-        dataMenu.AppendItem(volume)
+        AppendMenuItem(dataMenu, volume)
         
         # Help menu items
         help = wx.MenuItem(helpMenu, ID_HELP, 'Session GUI Handbook\tF1')
-        helpMenu.AppendItem(help)
+        AppendMenuItem(helpMenu, help)
         self.finfo = wx.MenuItem(helpMenu, ID_FILTER_INFO, '&Filter Codes')
-        helpMenu.AppendItem(self.finfo)
+        AppendMenuItem(helpMenu, self.finfo)
         helpMenu.AppendSeparator()
         about = wx.MenuItem(helpMenu, ID_ABOUT, '&About')
-        helpMenu.AppendItem(about)
+        AppendMenuItem(helpMenu, about)
         
         menubar.Append(fileMenu, '&File')
         menubar.Append(editMenu, '&Edit')
@@ -587,41 +608,41 @@ class SDFCreator(wx.Frame):
         
         # Toolbar
         self.toolbar = self.CreateToolBar()
-        self.toolbar.AddLabelTool(ID_NEW, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'new.png')), shortHelp='New', 
+        AppendToolItem(self.toolbar, ID_NEW, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'new.png')), shortHelp='New', 
                                 longHelp='Clear the existing setup and start a new project/session')
-        self.toolbar.AddLabelTool(ID_OPEN, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'open.png')), shortHelp='Open', 
+        AppendToolItem(self.toolbar, ID_OPEN, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'open.png')), shortHelp='Open', 
                                 longHelp='Open and load an existing SD file')
-        self.toolbar.AddLabelTool(ID_SAVE, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'save.png')), shortHelp='Save', 
+        AppendToolItem(self.toolbar, ID_SAVE, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'save.png')), shortHelp='Save', 
                                 longHelp='Save the current setup')
-        self.toolbar.AddLabelTool(ID_SAVE_AS, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'save-as.png')), shortHelp='Save as', 
+        AppendToolItem(self.toolbar, ID_SAVE_AS, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'save-as.png')), shortHelp='Save as', 
                                 longHelp='Save the current setup to a new SD file')
-        self.toolbar.AddLabelTool(ID_QUIT, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'exit.png')), shortHelp='Quit', 
+        AppendToolItem(self.toolbar, ID_QUIT, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'exit.png')), shortHelp='Quit', 
                                 longHelp='Quit (without saving)')
         self.toolbar.AddSeparator()
-        self.toolbar.AddLabelTool(ID_ADD_TBW, 'tbw', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'tbw.png')), shortHelp='Add TBW', 
+        AppendToolItem(self.toolbar, ID_ADD_TBW, 'tbw', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'tbw.png')), shortHelp='Add TBW', 
                                     longHelp='Add a new all-sky TBW observation to the list')
-        self.toolbar.AddLabelTool(ID_ADD_TBF, 'tbf', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'tbf.png')), shortHelp='Add TBF', 
+        AppendToolItem(self.toolbar, ID_ADD_TBF, 'tbf', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'tbf.png')), shortHelp='Add TBF', 
                                     longHelp='Add a new all-sky TBF observation to the list')
-        self.toolbar.AddLabelTool(ID_ADD_TBN, 'tbn', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'tbn.png')), shortHelp='Add TBN', 
+        AppendToolItem(self.toolbar, ID_ADD_TBN, 'tbn', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'tbn.png')), shortHelp='Add TBN', 
                                 longHelp='Add a new all-sky TBN observation to the list')
-        self.toolbar.AddLabelTool(ID_ADD_DRX_RADEC,  'drx-radec',  wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'drx-radec.png')),  shortHelp='Add DRX - RA/Dec', 
+        AppendToolItem(self.toolbar, ID_ADD_DRX_RADEC,  'drx-radec',  wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'drx-radec.png')),  shortHelp='Add DRX - RA/Dec', 
                                 longHelp='Add a new beam forming DRX observation that tracks the sky (ra/dec)')
-        self.toolbar.AddLabelTool(ID_ADD_DRX_SOLAR,  'drx-solar',  wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'drx-solar.png')),  shortHelp='Add DRX - Solar', 
+        AppendToolItem(self.toolbar, ID_ADD_DRX_SOLAR,  'drx-solar',  wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'drx-solar.png')),  shortHelp='Add DRX - Solar', 
                                 longHelp='Add a new beam forming DRX observation that tracks the Sun')
-        self.toolbar.AddLabelTool(ID_ADD_DRX_JOVIAN, 'drx-jovian', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'drx-jovian.png')), shortHelp='Add DRX - Jovian', 
+        AppendToolItem(self.toolbar, ID_ADD_DRX_JOVIAN, 'drx-jovian', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'drx-jovian.png')), shortHelp='Add DRX - Jovian', 
                                 longHelp='Add a new beam forming DRX observation that tracks Jupiter')
-        self.toolbar.AddLabelTool(ID_ADD_STEPPED_RADEC,  'stepped', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'stepped-radec.png')), shortHelp='Add DRX - Stepped - RA/Dec', 
+        AppendToolItem(self.toolbar, ID_ADD_STEPPED_RADEC,  'stepped', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'stepped-radec.png')), shortHelp='Add DRX - Stepped - RA/Dec', 
                                 longHelp='Add a new beam forming DRX observation with custom RA/Dec position and frequency stepping')
-        self.toolbar.AddLabelTool(ID_ADD_STEPPED_AZALT,  'stepped', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'stepped-azalt.png')), shortHelp='Add DRX - Stepped - Az/Alt', 
+        AppendToolItem(self.toolbar, ID_ADD_STEPPED_AZALT,  'stepped', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'stepped-azalt.png')), shortHelp='Add DRX - Stepped - Az/Alt', 
                                 longHelp='Add a new beam forming DRX observation with custom az/alt position and frequency stepping')
-        self.toolbar.AddLabelTool(ID_EDIT_STEPPED,  'step', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'stepped-edit.png')), shortHelp='Edit Selected Stepped Observation', 
+        AppendToolItem(self.toolbar, ID_EDIT_STEPPED,  'step', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'stepped-edit.png')), shortHelp='Edit Selected Stepped Observation', 
                                 longHelp='Add and edit steps for the currently selected stepped observation')
-        self.toolbar.AddLabelTool(ID_REMOVE, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'remove.png')), shortHelp='Remove Selected', 
+        AppendToolItem(self.toolbar, ID_REMOVE, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'remove.png')), shortHelp='Remove Selected', 
                                 longHelp='Remove the selected observations from the list')
-        self.toolbar.AddLabelTool(ID_VALIDATE, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'validate.png')), shortHelp='Validate Observations', 
+        AppendToolItem(self.toolbar, ID_VALIDATE, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'validate.png')), shortHelp='Validate Observations', 
                                 longHelp='Validate the current set of parameters and observations')
         self.toolbar.AddSeparator()
-        self.toolbar.AddLabelTool(ID_HELP, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'help.png')), shortHelp='Help', 
+        AppendToolItem(self.toolbar, ID_HELP, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'help.png')), shortHelp='Help', 
                                 longHelp='Display a brief help message for this program')
         self.toolbar.Realize()
         
@@ -1540,40 +1561,40 @@ class SDFCreator(wx.Frame):
         listIndex = id
         
         if not update:
-            index = self.listControl.InsertStringItem(listIndex, str(id))
+            index = InsertListItem(self.listControl, listIndex, str(id))
         else:
             index = listIndex
-        self.listControl.SetStringItem(index, 1, obs.name)
-        self.listControl.SetStringItem(index, 2, obs.target)
+        SetListItem(self.listControl, index, 1, obs.name)
+        SetListItem(self.listControl, index, 2, obs.target)
         if obs.comments is not None:
-            self.listControl.SetStringItem(index, 3, obs.comments)
+            SetListItem(self.listControl, index, 3, obs.comments)
         else:
-            self.listControl.SetStringItem(index, 3, 'None provided')
-        self.listControl.SetStringItem(index, 4, obs.start)
+            SetListItem(self.listControl, index, 3, 'None provided')
+        SetListItem(self.listControl, index, 4, obs.start)
         
         if self.mode == 'TBN':
             if self._getTBWValid():
-                self.listControl.SetStringItem(index, 5, obs.duration)
-                self.listControl.SetStringItem(index, 6, "--")
-                self.listControl.SetStringItem(index, 7, "--")
+                SetListItem(self.listControl, index, 5, obs.duration)
+                SetListItem(self.listControl, index, 6, "--")
+                SetListItem(self.listControl, index, 7, "--")
             else:
-                self.listControl.SetStringItem(index, 5, obs.duration)
-                self.listControl.SetStringItem(index, 6, "%.6f" % (obs.freq1*fS/2**32 / 1e6))
-                self.listControl.SetStringItem(index, 7, "%i" % obs.filter)
+                SetListItem(self.listControl, index, 5, obs.duration)
+                SetListItem(self.listControl, index, 6, "%.6f" % (obs.freq1*fS/2**32 / 1e6))
+                SetListItem(self.listControl, index, 7, "%i" % obs.filter)
         elif self.mode == 'TBW':
             if ALLOW_TBW_TBN_SAME_SDF and obs.mode == 'TBW':
-                self.listControl.SetStringItem(index, 5, obs.duration)
-                self.listControl.SetStringItem(index, 6, "--")
-                self.listControl.SetStringItem(index, 7, "--")
+                SetListItem(self.listControl, index, 5, obs.duration)
+                SetListItem(self.listControl, index, 6, "--")
+                SetListItem(self.listControl, index, 7, "--")
             elif ALLOW_TBW_TBN_SAME_SDF and obs.mode == 'TBN':
-                self.listControl.SetStringItem(index, 5, obs.duration)
-                self.listControl.SetStringItem(index, 6, "%.6f" % (obs.freq1*fS/2**32 / 1e6))
-                self.listControl.SetStringItem(index, 7, "%i" % obs.filter)
+                SetListItem(self.listControl, index, 5, obs.duration)
+                SetListItem(self.listControl, index, 6, "%.6f" % (obs.freq1*fS/2**32 / 1e6))
+                SetListItem(self.listControl, index, 7, "%i" % obs.filter)
         elif self.mode == 'TBF':
-            self.listControl.SetStringItem(index, 5, obs.duration)
-            self.listControl.SetStringItem(index, 6, "%.6f" % (obs.freq1*fS/2**32 / 1e6))
-            self.listControl.SetStringItem(index, 7, "%.6f" % (obs.freq2*fS/2**32 / 1e6))
-            self.listControl.SetStringItem(index, 8, "%i" % obs.filter)
+            SetListItem(self.listControl, index, 5, obs.duration)
+            SetListItem(self.listControl, index, 6, "%.6f" % (obs.freq1*fS/2**32 / 1e6))
+            SetListItem(self.listControl, index, 7, "%.6f" % (obs.freq2*fS/2**32 / 1e6))
+            SetListItem(self.listControl, index, 8, "%i" % obs.filter)
             
         if self.mode == 'DRX':
             def dec2sexstr(value, signed=True):
@@ -1593,32 +1614,32 @@ class SDFCreator(wx.Frame):
                     
             if obs.mode == 'STEPPED':
                 obs.getDuration()
-                self.listControl.SetStringItem(index, 5, obs.duration)
-                self.listControl.SetStringItem(index, 8, "--")
-                self.listControl.SetStringItem(index, 9, "--")
-                self.listControl.SetStringItem(index, 11, "--")
+                SetListItem(self.listControl, index, 5, obs.duration)
+                SetListItem(self.listControl, index, 8, "--")
+                SetListItem(self.listControl, index, 9, "--")
+                SetListItem(self.listControl, index, 11, "--")
             else:
-                self.listControl.SetStringItem(index, 5, obs.duration)
-                self.listControl.SetStringItem(index, 8, "%.6f" % (obs.freq1*fS/2**32 / 1e6))
-                self.listControl.SetStringItem(index, 9, "%.6f" % (obs.freq2*fS/2**32 / 1e6))
+                SetListItem(self.listControl, index, 5, obs.duration)
+                SetListItem(self.listControl, index, 8, "%.6f" % (obs.freq1*fS/2**32 / 1e6))
+                SetListItem(self.listControl, index, 9, "%.6f" % (obs.freq2*fS/2**32 / 1e6))
                 if obs.MaxSNR:
-                    self.listControl.SetStringItem(index, 11, "Yes")
+                    SetListItem(self.listControl, index, 11, "Yes")
                 else:
-                    self.listControl.SetStringItem(index, 11, "No")
+                    SetListItem(self.listControl, index, 11, "No")
                     
             if obs.mode == 'TRK_SOL':
-                self.listControl.SetStringItem(index, 6, "Sun")
-                self.listControl.SetStringItem(index, 7, "--")
+                SetListItem(self.listControl, index, 6, "Sun")
+                SetListItem(self.listControl, index, 7, "--")
             elif obs.mode == 'TRK_JOV':
-                self.listControl.SetStringItem(index, 6, "Jupiter")
-                self.listControl.SetStringItem(index, 7, "--")
+                SetListItem(self.listControl, index, 6, "Jupiter")
+                SetListItem(self.listControl, index, 7, "--")
             elif obs.mode == 'STEPPED':
-                self.listControl.SetStringItem(index, 6, "STEPPED")
-                self.listControl.SetStringItem(index, 7, "RA/Dec" if obs.RADec else "Az/Alt")
+                SetListItem(self.listControl, index, 6, "STEPPED")
+                SetListItem(self.listControl, index, 7, "RA/Dec" if obs.RADec else "Az/Alt")
             else:
-                self.listControl.SetStringItem(index, 6, dec2sexstr(obs.ra, signed=False))
-                self.listControl.SetStringItem(index, 7, dec2sexstr(obs.dec, signed=True))
-            self.listControl.SetStringItem(index, 10, "%i" % obs.filter)
+                SetListItem(self.listControl, index, 6, dec2sexstr(obs.ra, signed=False))
+                SetListItem(self.listControl, index, 7, dec2sexstr(obs.dec, signed=True))
+            SetListItem(self.listControl, index, 10, "%i" % obs.filter)
             
     def setSaveButton(self):
         """
@@ -3963,15 +3984,15 @@ class SteppedWindow(wx.Frame):
         stpMenu = wx.Menu()
         
         cut = wx.MenuItem(editMenu, ID_STEPPED_CUT, 'C&ut Selected Observation')
-        editMenu.AppendItem(cut)
+        AppendMenuItem(editMenu, cut)
         cpy = wx.MenuItem(editMenu, ID_STEPPED_COPY, '&Copy Selected Observation')
-        editMenu.AppendItem(cpy)
+        AppendMenuItem(editMenu, cpy)
         pstb = wx.MenuItem(editMenu, ID_STEPPED_PASTE_BEFORE, '&Paste Before Selected')
-        editMenu.AppendItem(pstb)
+        AppendMenuItem(editMenu, pstb)
         psta = wx.MenuItem(editMenu, ID_STEPPED_PASTE_AFTER, '&Paste After Selected')
-        editMenu.AppendItem(psta)
+        AppendMenuItem(editMenu, psta)
         pste = wx.MenuItem(editMenu, ID_STEPPED_PASTE_END, '&Paste at End of List')
-        editMenu.AppendItem(pste)
+        AppendMenuItem(editMenu, pste)
         
         # Save menu items and disable all of them
         self.editmenu['cut'] = cut
@@ -3984,12 +4005,12 @@ class SteppedWindow(wx.Frame):
             
         # Steps Menu
         addStep = wx.MenuItem(stpMenu, ID_STEPPED_ADD_SINGLE_STEP, 'Add a Step')
-        stpMenu.AppendItem(addStep)
+        AppendMenuItem(stpMenu, addStep)
         remove = wx.MenuItem(stpMenu, ID_STEPPED_REMOVE, '&Remove Selected Step(s)')
-        stpMenu.AppendItem(remove)
+        AppendMenuItem(stpMenu, remove)
         stpMenu.AppendSeparator()
         done = wx.MenuItem(stpMenu, ID_STEPPED_DONE, 'Done')
-        stpMenu.AppendItem(done)
+        AppendMenuItem(stpMenu, done)
         
         menubar.Append(editMenu, '&Edit')
         menubar.Append(stpMenu, '&Steps')
@@ -3997,11 +4018,11 @@ class SteppedWindow(wx.Frame):
         
         # Toolbar
         self.toolbar = self.CreateToolBar()
-        self.toolbar.AddLabelTool(ID_STEPPED_DONE, 'step', wx.Bitmap(os.path.join(self.parent.scriptPath, 'icons', 'stepped-done.png')), shortHelp='Finish making changes', longHelp='Finish making changes to the steps and close the window')
+        AppendToolItem(self.toolbar, ID_STEPPED_DONE, 'step', wx.Bitmap(os.path.join(self.parent.scriptPath, 'icons', 'stepped-done.png')), shortHelp='Finish making changes', longHelp='Finish making changes to the steps and close the window')
         self.toolbar.AddSeparator()
-        self.toolbar.AddLabelTool(ID_STEPPED_ADD_SINGLE_STEP,  'step', wx.Bitmap(os.path.join(self.parent.scriptPath, 'icons', 'stepped-add.png')), shortHelp='Add %s Step' % stepType, 
+        AppendToolItem(self.toolbar, ID_STEPPED_ADD_SINGLE_STEP,  'step', wx.Bitmap(os.path.join(self.parent.scriptPath, 'icons', 'stepped-add.png')), shortHelp='Add %s Step' % stepType, 
                                 longHelp='Add a new %s step with custom position and frequency stepping to to Stepped Observation #%i' % (stepType, self.obsID))
-        self.toolbar.AddLabelTool(ID_STEPPED_REMOVE, '', wx.Bitmap(os.path.join(self.parent.scriptPath, 'icons', 'remove.png')), shortHelp='Remove Selected', 
+        AppendToolItem(self.toolbar, ID_STEPPED_REMOVE, '', wx.Bitmap(os.path.join(self.parent.scriptPath, 'icons', 'remove.png')), shortHelp='Remove Selected', 
                                 longHelp='Remove the selected step from the step list for Stepped Observation #%i' % self.obsID)
         self.toolbar.Realize()
         
@@ -4398,7 +4419,7 @@ class SteppedWindow(wx.Frame):
         
         listIndex = id
         
-        index = self.listControl.InsertStringItem(listIndex, str(id))
+        index = InsertListItem(self.listControl, listIndex, str(id))
         def dec2sexstr(value, signed=True):
             sign = 1
             if value < 0:
@@ -4414,16 +4435,16 @@ class SteppedWindow(wx.Frame):
             else:
                 return '%02i:%02i:%05.2f' % (d, m, s)
                 
-        self.listControl.SetStringItem(index, 1, step.duration)
-        self.listControl.SetStringItem(index, 4, "%.6f" % (step.freq1*fS/2**32 / 1e6))
-        self.listControl.SetStringItem(index, 5, "%.6f" % (step.freq2*fS/2**32 / 1e6))
+        SetListItem(self.listControl, index, 1, step.duration)
+        SetListItem(self.listControl, index, 4, "%.6f" % (step.freq1*fS/2**32 / 1e6))
+        SetListItem(self.listControl, index, 5, "%.6f" % (step.freq2*fS/2**32 / 1e6))
         if step.MaxSNR:
-            self.listControl.SetStringItem(index, 6, "Yes")
+            SetListItem(self.listControl, index, 6, "Yes")
         else:
-            self.listControl.SetStringItem(index, 6, "No")
+            SetListItem(self.listControl, index, 6, "No")
             
-        self.listControl.SetStringItem(index, 2, dec2sexstr(step.c1, signed=False))
-        self.listControl.SetStringItem(index, 3, dec2sexstr(step.c2, signed=True))
+        SetListItem(self.listControl, index, 2, dec2sexstr(step.c1, signed=False))
+        SetListItem(self.listControl, index, 3, dec2sexstr(step.c2, signed=True))
         
     def loadSteps(self):
         """
