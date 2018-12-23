@@ -1486,7 +1486,16 @@ class SDFCreator(wx.Frame):
             self.coerceMap.append(str)
             
         if self.mode == 'TBW' and self._getTBWValid():
-            pass
+            width += 125 + 125 + 85
+            self.listControl.InsertColumn(5, 'Duration', width=125)
+            self.listControl.InsertColumn(6, 'Frequency (MHz)', width=125)
+            self.listControl.InsertColumn(7, 'Filter Code', width=85)
+            self.columnMap.append('duration')
+            self.columnMap.append('frequency1')
+            self.columnMap.append('filter')
+            self.coerceMap.append(str)
+            self.coerceMap.append(freqConv)
+            self.coerceMap.append(filterConv)
         elif self.mode == 'TBF':
             width += 125 + 125 + 125 + 85
             self.listControl.InsertColumn(5, 'Duration', width=125)
@@ -2002,7 +2011,7 @@ class ObserverInfo(wx.Frame):
         
         tid = wx.StaticText(panel, label='Session Type')
         tbwRB = wx.RadioButton(panel, -1, 'Transient Buffer-Wide (TBW)', style=wx.RB_GROUP)
-        tbfRB = wx.RadioButton(panel, -1, 'Transient Buffer-FFT (TBF)')
+        tbfRB = wx.RadioButton(panel, -1, 'Transient Buffer-Frequency Domain (TBF)')
         tbnRB = wx.RadioButton(panel, -1, 'Transient Buffer-Narrow (TBN)')
         drxRB = wx.RadioButton(panel, -1, 'Beam Forming')
         if self.parent.mode != '':
@@ -2150,13 +2159,9 @@ class ObserverInfo(wx.Frame):
             else:
                 pass
                 
-            if self.parent.adp:
-                ucfRB.Disable()
-                
         else:
             if self.parent.adp:
                 tbwRB.Disable()
-                ucfRB.Disable()
             else:
                 tbfRB.Disable()
                 
