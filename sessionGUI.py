@@ -1399,8 +1399,8 @@ class SDFCreator(wx.Frame):
                 value += (f / d)
             value *= sign
             
-            if value <= 0 or value >= 24:
-                raise ValueError("RA value must be 0 < RA < 24")
+            if value < 0 or value >= 24:
+                raise ValueError("RA value must be 0 <= RA < 24")
             else:
                 return value
                 
@@ -4272,8 +4272,8 @@ class SteppedWindow(wx.Frame):
                 value += (f / d)
             value *= sign
             
-            if value <= 0 or value >= 24:
-                raise ValueError("RA value must be 0 < RA < 24")
+            if value < 0 or value >= 24:
+                raise ValueError("RA value must be 0 <= RA < 24")
             else:
                 return value
                 
@@ -4316,8 +4316,8 @@ class SteppedWindow(wx.Frame):
                 value += (f / d)
             value *= sign
             
-            if value < 0 or value > 360:
-                raise ValueError("Azimuth values must be 0 <= dec <= 360")
+            if value < 0 or value >= 360:
+                raise ValueError("Azimuth values must be 0 <= dec < 360")
             else:
                 return value
                 
