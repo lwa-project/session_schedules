@@ -18,6 +18,7 @@ try:
 except ImportError:
     import StringIO
 from datetime import datetime, timedelta
+from xml.etree import ElementTree
 
 import conflict
 
@@ -2444,7 +2445,7 @@ class AdvancedInfo(wx.Frame):
             drxBeam = ['%i' %i for i in xrange(1, 5)]
         drxBeam.insert(0, 'MCS Decides')
         intervals = ['MCS Decides', 'Never', '1 minute', '5 minutes', '15 minutes', '30 minutes', '1 hour']
-        aspFilters = ['MCS Decides', 'Split', 'Full', 'Reduced', 'Off']
+        aspFilters = ['MCS Decides', 'Split', 'Full', 'Reduced', 'Off', 'Split @ 3MHz', 'Full @ 3MHz']
         aspAttn = ['%i' % i for i in xrange(16)]
         aspAttn.insert(0, 'MCS Decides')
         
@@ -2559,6 +2560,10 @@ class AdvancedInfo(wx.Frame):
                 aspComboFlt.SetStringSelection('Full')
             elif self.parent.project.sessions[0].observations[0].aspFlt[0] == 2:
                 aspComboFlt.SetStringSelection('Reduced')
+            elif self.parent.project.sessions[0].observations[0].aspFlt[0] == 4:
+                aspComboFlt.SetStringSelection('Split @ 3MHz')
+            elif self.parent.project.sessions[0].observations[0].aspFlt[0] == 5:
+                aspComboFlt.SetStringSelection('Full @ 3MHz')
             else:
                 aspComboFlt.SetStringSelection('Off')
                 
@@ -3048,7 +3053,8 @@ class AdvancedInfo(wx.Frame):
         self.parent.project.sessions[0].includeStationStatic = self.incSMIB.GetValue()
         self.parent.project.sessions[0].includeDesign = self.incDESG.GetValue()
         
-        aspFltDict = {'MCS Decides': -1, 'Split': 0, 'Full': 1, 'Reduced': 2, 'Off': 3}
+        aspFltDict = {'MCS Decides': -1, 'Split': 0, 'Full': 1, 'Reduced': 2, 'Off': 3, 
+                                         'Split @ 3MHz': 4, 'Full @ 3MHz': 5}
         aspFlt = aspFltDict[self.aspFlt.GetValue()]
         aspAT1 = -1 if self.aspAT1.GetValue() == 'MCS Decides' else int(self.aspAT1.GetValue())
         aspAT2 = -1 if self.aspAT2.GetValue() == 'MCS Decides' else int(self.aspAT2.GetValue())
@@ -3758,34 +3764,23 @@ class ResolveTarget(wx.Frame):
         
         self.source = self.srcText.GetValue()
         try:
-            result = urllib.urlopen('http://www3.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/NameResolver/find?target=%s' % urllib.quote_plus(self.source))
+            result = urllib.urlopen('https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oxp/SNV?%s' % urllib.quote_plus(self.source))
+            tree = ElementTree.fromstring(result.read())
+            target = tree.find('Target')
+            service = target.find('Resolver')
+            coords = service.find('jpos')
             
-            line = result.readlines()
-            target = (line[0].replace('\n', '').split('='))[1]
-            service = (line[1].replace('\n', '').split('='))[1]
-            service = service.replace('(', ' @ ')
-            coordsys = (line[2].replace('\n', '').split('='))[1]
-            ra = (line[3].replace('\n', '').split('='))[1]
-            dec = (line[4].replace('\n', '').split('='))[1]
-            
-            temp = deg_to_hms(float(ra))
-            raS = "%i:%02i:%05.2f" % (temp.hours, temp.minutes, temp.seconds)
-            temp = deg_to_dms(float(dec))
-            decS = "%+i:%02i:%04.1f" % ((-1.0 if temp.neg else 1.0)*temp.degrees, temp.minutes, temp.seconds)
+            service = service.attrib['name'].split('=', 1)[1]
+            raS, decS = coords.text.split(None, 1)
             
             self.raText.SetValue(raS)
             self.decText.SetValue(decS)
-            self.srvText.SetValue(service[0:-2])
+            self.srvText.SetValue(service)
             
             if self.observationID != -1:
                 self.appli.Enable(True)
                 
-        except IOError:
-            self.raText.SetValue("---")
-            self.decText.SetValue("---")
-            self.srvText.SetValue("Error resolving target")
-            
-        except ValueError:
+        except (IOError, ValueError, RuntimeError):
             self.raText.SetValue("---")
             self.decText.SetValue("---")
             self.srvText.SetValue("Error resolving target")
