@@ -53,6 +53,10 @@ validatorCLI.py
   Script to validate SDFs via the validation interfaces available 
   in sdf.py and with the tpss executable.  This validator runs tpss up to level 2.
 
+calibratorSearch.py
+  GUI for searching the VLSSr for phase calibrators suitable for the LWA single 
+  baseline interferometer.
+  
 Other Contents
 --------------
 docs
