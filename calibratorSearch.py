@@ -10,6 +10,7 @@ import os
 import sys
 import ephem
 import numpy
+import getopt
 import pyfits
 import urllib, urllib2
 from tempfile import NamedTemporaryFile
@@ -58,15 +59,56 @@ else:
     AppendToolItem = lambda *args, **kwds: args[0].AddLabelTool(*args[1:], **kwds)
 
 
-class CandidateList(wx.ListCtrl):
-    """
-    Class that combines an editable list with check boxes.
-    """
+def usage(exitCode=None):
+    print("""calibratorSearch.py - GUI for finding a phase calibrator for the LWA
+single baseline interferometer
+
+Usage: calibratorSearch.py [OPTIONS]
+
+Options:
+-h, --help          Display this help information
+-t, --target        Target name
+-r, --ra            Target RA in HH:MM:SS.SS format, J2000
+-d, --dec           Target dec in sDD:MM:SS.S format, J2000
+""")
     
-    def __init__(self, parent, **kwargs):
-        wx.ListCtrl.__init__(self, parent, style=wx.LC_REPORT, **kwargs)
+    if exitCode is not None:
+        sys.exit(exitCode)
+    else:
+        return True
+
+
+def parseOptions(args):
+    config = {}
+    config['target'] = None
+    config['ra'] = None
+    config['dec'] = None
+    
+    # Read in and process the command line flags
+    try:
+        opts, args = getopt.getopt(args, "ht:r:d:", ["help", "target=", "ra=", "dec="])
+    except getopt.GetoptError, err:
+        # Print help information and exit:
+        print(str(err)) # will print something like "option -a not recognized"
+        usage(exitCode=2)
         
-        self.parent = parent
+    # Work through opts
+    for opt, value in opts:
+        if opt in ('-h', '--help'):
+            usage(exitCode=0)
+        elif opt in ('-t', '--target'):
+            config['target'] = value
+        elif opt in ('-r', '--ra'):
+            ephem.hours(value)
+            config['ra'] = value
+        elif opt in ('-d', '--dec'):
+            ephem.degrees(value)
+            config['dec'] = value
+        else:
+            assert False
+            
+    # Return configuration
+    return config
 
 
 ID_QUIT = 101
@@ -77,7 +119,7 @@ ID_DISPLAY = 204
 ID_ABOUT = 301
 
 class CalibratorSearch(wx.Frame):
-    def __init__(self, parent, title, config={}):
+    def __init__(self, parent, title, target=None, ra=None, dec=None):
         wx.Frame.__init__(self, parent, title=title, size=(725, 575))
         
         self.scriptPath = os.path.abspath(__file__)
@@ -87,6 +129,19 @@ class CalibratorSearch(wx.Frame):
         self.initEvents()
         self.Show()
         
+        if target is not None:
+            # Set the target name
+            self.nameText.SetValue(target)
+            if ra is None or dec is None:
+                ## If RA/Dec is not defined, try to resolve
+                self.onResolve(None)
+        if ra is not None and dec is not None:
+            # Set the RA/Dec
+            self.raText.SetValue(ra)
+            self.decText.SetValue(dec)
+            ## Search
+            #self.onSearch(None)
+            
     def initUI(self):
         """
         Start the user interface.
@@ -213,8 +268,7 @@ class CalibratorSearch(wx.Frame):
         lbl.SetFont(font)
         
         ## Listing
-        self.listControl = CandidateList(panel3, id=ID_LISTCTRL)
-        self.listControl.parent = self
+        self.listControl = wx.ListCtrl(panel3, id=ID_LISTCTRL, style=wx.LC_REPORT)
         self.listControl.InsertColumn(0, 'Name', width=125)
         self.listControl.InsertColumn(1, 'RA (J2000)', width=100)
         self.listControl.InsertColumn(2, 'Dec (J2000)', width=100)
@@ -750,7 +804,9 @@ class ImageViewer(wx.Frame):
         
 
 if __name__ == "__main__":
+    config = parseOptions(sys.argv[1:])
+    
     app = wx.App()
-    CalibratorSearch(None, title='VLSSr Calibrator Search')
+    CalibratorSearch(None, title='VLSSr Calibrator Search', target=config['target'], ra=config['ra'], dec=config['dec'])
     app.MainLoop()
     
