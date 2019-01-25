@@ -1441,9 +1441,20 @@ class SDFCreator(wx.Frame):
             value = float(text)*1e6
             freq = int(round(value * 2**32 / fS))
             if freq < lowerLimit or freq > upperLimit:
-                raise ValueError("Frequency of %.6f MHz is out of the DP tuning range" % (value/1e6,))
+                raise ValueError("Frequency of %.6f MHz is out of the %s tuning range" % (value/1e6, 'ADP' if self.adp else 'DP'))
             else:
                 return value
+                
+        def freqOptConv(text):
+            """
+            Special converstion function for an optional frequency setting.
+            """
+            
+            value = int(text)
+            if value == 0:
+                return value
+            else:
+                return freqConv(value)
                 
         def filterConv(text):
             """
@@ -1509,7 +1520,7 @@ class SDFCreator(wx.Frame):
             self.columnMap.append('filter')
             self.coerceMap.append(str)
             self.coerceMap.append(freqConv)
-            self.coerceMap.append(freqConv)
+            self.coerceMap.append(freqOptConv)
             self.coerceMap.append(filterConv)
         elif self.mode == 'TBN' or self._getTBWValid():
             width += 125 + 125 + 85
@@ -1542,7 +1553,7 @@ class SDFCreator(wx.Frame):
             self.coerceMap.append(raConv)
             self.coerceMap.append(decConv)
             self.coerceMap.append(freqConv)
-            self.coerceMap.append(freqConv)
+            self.coerceMap.append(freqOptConv)
             self.coerceMap.append(filterConv)
             self.coerceMap.append(snrConv)
         else:
@@ -4346,9 +4357,20 @@ class SteppedWindow(wx.Frame):
             value = float(text)*1e6
             freq = int(round(value * 2**32 / fS))
             if freq < 219130984 or freq > 1928352663:
-                raise ValueError("Frequency of %.6f MHz is out of the DP tuning range" % (value/1e6,))
+                raise ValueError("Frequency of %.6f MHz is out of the %s tuning range" % (value/1e6, 'ADP' if self.parent.adp else 'DP'))
             else:
                 return value
+                
+        def freqOptConv(text):
+            """
+            Special converstion function for an optional frequency setting.
+            """
+            
+            value = int(text)
+            if value == 0:
+                return value
+            else:
+                return freqConv(value)
                 
         def snrConv(text):
             """
@@ -4396,7 +4418,7 @@ class SteppedWindow(wx.Frame):
         self.columnMap.append('frequency2')
         self.columnMap.append('MaxSNR')
         self.coerceMap.append(freqConv)
-        self.coerceMap.append(freqConv)
+        self.coerceMap.append(freqOptConv)
         self.coerceMap.append(snrConv)
         
         size = self.listControl.GetSize()
