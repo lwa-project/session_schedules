@@ -1450,7 +1450,7 @@ class SDFCreator(wx.Frame):
             Special converstion function for an optional frequency setting.
             """
             
-            value = int(text)
+            value = float(text)
             if value == 0:
                 return value
             else:
@@ -4366,8 +4366,8 @@ class SteppedWindow(wx.Frame):
             Special converstion function for an optional frequency setting.
             """
             
-            value = int(text)
-            if value == 0:
+            value = float(text)
+            if value == 0.0:
                 return value
             else:
                 return freqConv(value)
