@@ -106,9 +106,13 @@ def main(args):
     # Run the parser/validator.  This uses a copy of Steve's tpss program.  tpss is run
     # to level to to make sure that the file is valid.  If the exit status is not '2', 
     # the file is taken to be invalid.
-    validator = subprocess.Popen([_tpss, filename, '2', '0'], bufsize=-1, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdout, stderr = validator.communicate()
-    status = validator.wait()
+    try:
+        validator = subprocess.Popen([_tpss, filename, '2', '0'], bufsize=-1, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = validator.communicate()
+        status = validator.wait()
+    except OSError as e:
+        stdout, stderr = 'TPSS not used', ''
+        status = 2
     if status == 2:
         valid = True
     else:
@@ -139,8 +143,7 @@ def main(args):
         if mtch is None:
             lineNumbers.append(-1)
             commentLine = True
-        
-        
+            
         if not commentLine:
             # Match the current  file in the file.  If it doesn't match, try again
             # until it does.
@@ -150,7 +153,7 @@ def main(args):
                 mtch2 = sdfRE.search(file[fileIndex])
             # If we've made it this far we have matched
             lineNumbers.append(fileIndex+1)
-        
+            
         # Trim off the tpss version and pid values from the lines and save them
         try:
             junk, line = line.split(None, 1)
@@ -168,10 +171,15 @@ def main(args):
         if output[-1].find('FATAL') != -1:
             junk, message = output[-1].split('FATAL: ', 1)
             errors.append( {'line': lineNumbers[-2], 'message': message} )
-    
+            
     # Parse the file into a sdf.Project instance
     project = _sdf.parseSDF(filename)
     
+    # Deal with a potentiall un-runnable TPSS
+    if tpssVersion == 'TPSS not used':
+        numObsP = len(project.sessions[0].observations)
+        totDurP = sum([obs.dur for obs in project.sessions[0].observations])
+        
     # Build a couple of dictionaries to lump everything together
     tpss = {'version': tpssVersion, 'output': output, 'valid': valid, 'errors': errors, 
             'numObs': numObsP, 'totDur': totDurP}
@@ -191,7 +199,7 @@ def main(args):
     print "Total observing time: %.3f seconds" % (tpss['totDur'] / 1000.0,)
     print "TPSS version used for validation: %s" % tpss['version']
     print " "
-
+    
     if project.sessions[0].observations[0].mode not in ('TBW', 'TBN'):
         print "Source List:"
         for obs in project.sessions[0].observations:
@@ -210,7 +218,7 @@ def main(args):
                         "azimuth: %.3f degrees, elevation: %.3f degrees" % (step.c1, step.c2)
                 print "Combined visibility for all steps is %i%%." % (obs.computeVisibility() * 100,)
         print " "
-    
+        
     print "Validator Output:"
     for line in output:
         print line
