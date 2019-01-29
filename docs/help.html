@@ -34,9 +34,9 @@ Session GUI allows an observer to:
 <p>
 <a name="tbwtbn">
 <h6>Transient Buffer Modes</h6>
-Sessions for the wide-band (TBW), FFT (TBF), and narrow-band (TBN) modes are supported.  The three modes, however,
-cannot be mixed within a single session.  In particular, TBF is only available at LWA-SV and other ADP-based 
-stations while TBW is only available at LWA1.<br /><br />
+Sessions for the wide-band (TBW), frequency domain (TBF), and narrow-band (TBN) modes are supported.  
+The three modes, however, cannot be mixed within a single session.  In particular, TBF is only 
+available at LWA-SV and other ADP-based stations while TBW is only available at LWA1.<br /><br />
 
 For TBW, both 4 and 12-bit data are supported.  The upper limit for the number of samples for 4-bit data is
 36 million, and the corresponding limit for 12-bit data is 12 million.  Due to the nature of TBW, observations 
@@ -59,7 +59,10 @@ determined by MCS but can be overridden in the <a href="#mcs">advanced settings 
 <a name="drx">
 <h6>Beam Forming Modes</h6>
 Beam forming modes tracking the sky, Sun, Jupiter, and some stepped observations are avaliable.  For each 
-beam, both tunings are supported with the caveat that both tunings will use the same filter code and gain settings.  Similar to TBN the default gain value can be changed if it has been specified under the <a href="#mcs">advanced settings menu</a>.
+beam, both tunings are supported with the caveat that both tunings will use the same filter code and 
+gain settings.  Similar to TBN the default gain value can be changed if it has been specified under the 
+<a href="#mcs">advanced settings menu</a>.  It should also be noted that filter code 7 is not currently
+supported at LWA-SV and other ADP-based stations.
 <br /><br />
 The supported stepped observation types are RA/Dec and Az/Alt with the beam forming coefficients calculated 
 by MCS.  Specifying the individual antenna gains and delays is currently not supported.
