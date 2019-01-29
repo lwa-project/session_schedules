@@ -63,6 +63,7 @@ if 'phoenix' in wx.PlatformInfo:
     AppendMenuMenu = lambda *args, **kwds: args[0].Append(*args[1:], **kwds)
     InsertListItem = lambda *args, **kwds: args[0].InsertItem(*args[1:], **kwds)
     SetListItem    = lambda *args, **kwds: args[0].SetItem(*args[1:], **kwds)
+    SetDimensions  = lambda *args, **kwds: args[0].SetSize(*args[1:], **kwds)
     ## This one is a little trickier
     def AppendToolItem(*args, **kwds):
         args = args+(kwds['bmpDisabled'] if 'bmpDisabled' in kwds else wx.NullBitmap,)
@@ -76,6 +77,7 @@ else:
     AppendMenuMenu = lambda *args, **kwds: args[0].AppendMenu(*args[1:], **kwds)
     InsertListItem = lambda *args, **kwds: args[0].InsertStringItem(*args[1:], **kwds)
     SetListItem    = lambda *args, **kwds: args[0].SetStringItem(*args[1:], **kwds)
+    SetDimensions  = lambda *args, **kwds: args[0].SetDimensions(*args[1:], **kwds)
     AppendToolItem = lambda *args, **kwds: args[0].AddLabelTool(*args[1:], **kwds)
 
 
@@ -139,14 +141,158 @@ def parseOptions(args):
     return config
 
 
-class ObservationListCtrl(wx.ListCtrl, TextEditMixin, CheckListCtrlMixin):
+class ChoiceMixIn(object):
+    def __init__(self, options={}):
+        self.options = options
+        self.choices = {}
+        self.dropdown = None
+        
+        self.make_choices()
+        self.Bind(wx.EVT_CHOICE, self.CloseDropdown)
+        
+    def make_choices(self):
+        try:
+            self.dropdown.Destroy()
+        except AttributeError:
+            pass
+            
+        for col in self.options.keys():
+            choice = wx.Choice(self, -1, choices=self.options[col])
+            font = self.GetFont()
+            choice.SetFont(font)
+            
+            choice.Hide()
+            try:
+                self.choices[col].Destroy()
+            except KeyError:
+                pass
+            self.choices[col] = choice
+            self.choices[col].Bind(wx.EVT_KILL_FOCUS, self.CloseDropdown)
+            
+        self.dropdown = None
+        self.active_row = -1
+        self.active_col = -1
+        
+    def OpenDropdown(self, col, row):
+        # give the derived class a chance to Allow/Veto this edit.
+        event = wx.ListEvent(wx.wxEVT_COMMAND_LIST_BEGIN_LABEL_EDIT, self.GetId())
+        event.m_itemIndex = row
+        event.m_col = col
+        item = self.GetItem(row, col)
+        if 'phoenix' in wx.PlatformInfo:
+            event_item = event.Item
+        else:
+            event_item = event.m_item
+        event_item.SetId(item.GetId()) 
+        event_item.SetColumn(item.GetColumn()) 
+        event_item.SetData(item.GetData()) 
+        event_item.SetText(item.GetText()) 
+        ret = self.GetEventHandler().ProcessEvent(event)
+        if ret and not event.IsAllowed():
+            return   # user code doesn't allow the edit.
+            
+        x0 = self.col_locs[col]
+        x1 = self.col_locs[col+1] - x0
+        
+        scrolloffset = self.GetScrollPos(wx.HORIZONTAL)
+
+        # scroll forward
+        if x0+x1-scrolloffset > self.GetSize()[0]:
+            if wx.Platform == "__WXMSW__":
+                # don't start scrolling unless we really need to
+                offset = x0+x1-self.GetSize()[0]-scrolloffset
+                # scroll a bit more than what is minimum required
+                # so we don't have to scroll everytime the user presses TAB
+                # which is very tireing to the eye
+                addoffset = self.GetSize()[0]/4
+                # but be careful at the end of the list
+                if addoffset + scrolloffset < self.GetSize()[0]:
+                    offset += addoffset
+
+                self.ScrollList(offset, 0)
+                scrolloffset = self.GetScrollPos(wx.HORIZONTAL)
+            else:
+                # Since we can not programmatically scroll the ListCtrl
+                # close the editor so the user can scroll and open the editor
+                # again
+                self.dropdown.SetValue(self.GetItem(row, col).GetText())
+                self.active_row = row
+                self.active_col = col
+                self.CloseDropdown()
+                return
+
+        y0 = self.GetItemRect(row)[1]
+        
+        try:
+            self.dropdown = self.choices[col]
+        except KeyError:
+            return
+            
+        SetDimensions(self.dropdown, x0-scrolloffset,y0, x1,-1)
+        
+        idx = self.dropdown.FindString(self.GetItem(row, col).GetText())
+        self.dropdown.SetSelection(idx)
+        self.dropdown.Show()
+        self.dropdown.Raise()
+        #self.dropdown.SetSelection(-1,-1)
+        self.dropdown.SetFocus()
+        
+        self.active_row = row
+        self.active_col = col
+        
+    def CloseDropdown(self, event=None):
+        if self.dropdown is None:
+            return
+        text = self.dropdown.GetString(self.dropdown.GetSelection())
+        self.dropdown.Hide()
+        self.SetFocus()
+        
+        # Event can be vetoed. It doesn't has SetEditCanceled(), what would 
+        # require passing extra argument to CloseMenu() 
+        event = wx.ListEvent(wx.wxEVT_COMMAND_LIST_END_LABEL_EDIT, self.GetId())
+        if 'phoenix' in wx.PlatformInfo:
+            event.Index = self.active_row
+            event.Column = self.active_col
+            item = wx.ListItem(self.GetItem(self.active_row, self.active_col))
+            item.SetText(text)
+            event.SetItem(item)
+        else:
+            event.m_itemIndex = self.active_row
+            event.m_col = self.active_col
+            item = self.GetItem(self.active_row, self.active_col)
+            event.m_item.SetId(item.GetId()) 
+            event.m_item.SetColumn(item.GetColumn()) 
+            event.m_item.SetData(item.GetData()) 
+            event.m_item.SetText(text) #should be empty string if editor was canceled
+        ret = self.GetEventHandler().ProcessEvent(event)
+        if not ret or event.IsAllowed():
+            if self.IsVirtual():
+                # replace by whather you use to populate the virtual ListCtrl
+                # data source
+                self.SetVirtualData(self.active_row, self.active_col, text)
+            else:
+                SetListItem(self, self.active_row, self.active_col, text)
+        self.RefreshItem(self.active_row)
+
+
+class ObservationListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrlMixin):
     """
     Class that combines an editable list with check boxes.
     """
     
     def __init__(self, parent, **kwargs):
+        try:
+            adp = kwargs['adp']
+            del kwargs['adp']
+        except KeyError:
+            adp = False
+        
         wx.ListCtrl.__init__(self, parent, style=wx.LC_REPORT, **kwargs)
         TextEditMixin.__init__(self)
+        if adp:
+            ChoiceMixIn.__init__(self, {10:['1','2','3','4','5','6'], 11:['No','Yes']})
+        else:
+            ChoiceMixIn.__init__(self, {10:['1','2','3','4','5','6','7'], 11:['No','Yes']})
         CheckListCtrlMixin.__init__(self)
         
         self.nSelected = 0
@@ -240,6 +386,8 @@ class ObservationListCtrl(wx.ListCtrl, TextEditMixin, CheckListCtrlMixin):
         
         if col in [0,]:
             pass
+        elif col in self.options.keys():
+            ChoiceMixIn.OpenDropdown(self, col, row)
         elif self.parent.project.sessions[0].observations[row].mode == 'TBW' and col in [5, 6, 7]:
             pass
         elif self.parent.project.sessions[0].observations[row].mode in ['TRK_SOL', 'TRK_JOV'] and col in [6, 7]:
@@ -250,7 +398,7 @@ class ObservationListCtrl(wx.ListCtrl, TextEditMixin, CheckListCtrlMixin):
             TextEditMixin.OpenEditor(self, col, row)
 
 
-class SteppedListCtrl(wx.ListCtrl, TextEditMixin, CheckListCtrlMixin):
+class SteppedListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrlMixin):
     """
     Class that combines an editable list with check boxes.
     """
@@ -258,6 +406,7 @@ class SteppedListCtrl(wx.ListCtrl, TextEditMixin, CheckListCtrlMixin):
     def __init__(self, parent, **kwargs):
         wx.ListCtrl.__init__(self, parent, style=wx.LC_REPORT, **kwargs)
         TextEditMixin.__init__(self)
+        ChoiceMixIn.__init__(self, {6:['No','Yes']})
         CheckListCtrlMixin.__init__(self)
         
         self.nSelected = 0
@@ -314,6 +463,8 @@ class SteppedListCtrl(wx.ListCtrl, TextEditMixin, CheckListCtrlMixin):
         
         if col in [0,]:
             pass
+        elif col in self.options.keys():
+            ChoiceMixIn.OpenDropdown(self, col, row)
         else:
             TextEditMixin.OpenEditor(self, col, row)
 
@@ -384,7 +535,8 @@ ID_NEW = 11
 ID_OPEN = 12
 ID_SAVE = 13
 ID_SAVE_AS = 14
-ID_QUIT = 15
+ID_LOGGER = 15
+ID_QUIT = 16
 
 ID_INFO = 21
 ID_SCHEDULE = 22
@@ -449,6 +601,9 @@ class SDFCreator(wx.Frame):
         
         self.sdf._DRSUCapacityTB = config['drsuSize']
         
+        #self.logger = None
+        #self.onLogger(None)
+        
         if len(config['args']) > 0:
             self.filename = config['args'][0]
             self.parseFile(self.filename)
@@ -510,6 +665,9 @@ class SDFCreator(wx.Frame):
         saveas = wx.MenuItem(fileMenu, ID_SAVE_AS, 'S&ave As')
         AppendMenuItem(fileMenu, saveas)
         fileMenu.AppendSeparator()
+        #logger = wx.MenuItem(fileMenu, ID_LOGGER, '&Logger')
+        #AppendMenuItem(fileMenu, logger)
+        #fileMenu.AppendSeparator()
         quit = wx.MenuItem(fileMenu, ID_QUIT, '&Quit')
         AppendMenuItem(fileMenu, quit)
         
@@ -654,7 +812,7 @@ class SDFCreator(wx.Frame):
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         self.panel = ScrolledPanel(self, -1)
         
-        self.listControl = ObservationListCtrl(self.panel, id=ID_LISTCTRL)
+        self.listControl = ObservationListCtrl(self.panel, id=ID_LISTCTRL, adp=self.adp)
         self.listControl.parent = self
         
         hbox.Add(self.listControl, 1, wx.EXPAND)
@@ -670,6 +828,7 @@ class SDFCreator(wx.Frame):
         self.Bind(wx.EVT_MENU, self.onLoad, id=ID_OPEN)
         self.Bind(wx.EVT_MENU, self.onSave, id=ID_SAVE)
         self.Bind(wx.EVT_MENU, self.onSaveAs, id=ID_SAVE_AS)
+        #self.Bind(wx.EVT_MENU, self.onLogger, id=ID_LOGGER)
         self.Bind(wx.EVT_MENU, self.onQuit, id=ID_QUIT)
         
         # Edit menu events
@@ -711,6 +870,17 @@ class SDFCreator(wx.Frame):
         # Window manager close
         self.Bind(wx.EVT_CLOSE, self.onQuit)
         
+    def onLogger(self, event):
+        """
+        Create a new logger window, if needed
+        """
+        
+        if self.logger is None:
+            self.logger = wx.LogWindow(self, 'SDF Logger', True, False)
+        elif not self.logger.Frame.IsShown():
+            self.logger.Destroy()
+            self.logger = wx.LogWindow(self, 'SDF Logger', True, False)
+            
     def onNew(self, event):
         """
         Create a new SD session.
@@ -1797,7 +1967,7 @@ class SDFCreator(wx.Frame):
         self.listControl.setCheckDependant()
         self.initSDF()
         
-        print("Parsing file '%s'" % filename)
+        print("[%i] Parsing file '%s'" % (os.getpid(), filename))
         self.project = self.sdf.parseSDF(filename)
         self.setMenuButtons(self.project.sessions[0].observations[0].mode)
         if self.project.sessions[0].observations[0].mode == 'TBW':
