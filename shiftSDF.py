@@ -54,11 +54,11 @@ siderealRegression = solarDay - siderealDay
 def usage(exitCode=None):
     print """shiftSDF.py - The Swiss army knife of SDF time shifting utilities.  Use
 this script to:
-* Move a SDF file to a new start date/time
-* Move a SDF file to a new UTC date but the same LST
-* Switch the session ID to a new value
-* Only update one of the above and leave the time alone
-* Print out the contents of the SDF file in an easy-to-digest manner
+ * Move a SDF file to a new start date/time
+ * Move a SDF file to a new UTC date but the same LST
+ * Switch the session ID to a new value
+ * Only update one of the above and leave the time alone
+ * Print out the contents of the SDF file in an easy-to-digest manner
 
 Usage: shiftSDF.py [OPTIONS] input_file [output_file]
 
