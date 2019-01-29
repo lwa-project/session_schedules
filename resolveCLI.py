@@ -4,7 +4,7 @@
 """
 Apache mod_python module for resolving a catalog name to a RA/dec. pair using
 the name resolver service at:
-http://www1.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/NameResolver/find
+https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oxp/SNV
 
 Returns an XML file with the coordinates of the target or an error.
 """
