@@ -53,9 +53,25 @@ validatorCLI.py
   Script to validate SDFs via the validation interfaces available 
   in sdf.py and with the tpss executable.  This validator runs tpss up to level 2.
 
+swarmGUI.py
+  wxPython GUI for creating IDF from scratch or modifying existing IDF for
+  another purpose.  swarmGUI contains a variety of features for working 
+  with IDFs including a name resolver, a graphical observation layout, and 
+  a data volume estimator.
+
 calibratorSearch.py
   GUI for searching the VLSSr for phase calibrators suitable for the LWA single 
   baseline interferometer.
+
+shiftIDF.py
+  Multi-purpose tool for shifting IDF files.  This utility allows the operator
+  to:
+    * Move a IDF file to a new start date/time
+    * Move a IDF file to a new UTC date but the same LST
+    * Switch the run ID to a new value
+    * Convert TRK_SOL and TRK_JOV observations to TRK_RADEC
+    * Only update one of the above and leave the time alone
+    * Print out the contents of the IDF file in an easy-to-digest manner
   
 Other Contents
 --------------
