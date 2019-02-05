@@ -59,6 +59,9 @@ else:
     AppendToolItem = lambda *args, **kwds: args[0].AddLabelTool(*args[1:], **kwds)
 
 
+ORANGE = wx.Colour(0xFF, 0xA5, 0x00)
+
+
 def usage(exitCode=None):
     print("""calibratorSearch.py - GUI for finding a phase calibrator for the LWA
 single baseline interferometer
@@ -488,7 +491,7 @@ class CalibratorSearch(wx.Frame):
                 self.listControl.RefreshItem(item.GetId())
             elif sep > 3.0:
                 item = self.listControl.GetItem(index, 3)
-                self.listControl.SetItemTextColour(item.GetId(), wx.ORANGE)
+                self.listControl.SetItemTextColour(item.GetId(), ORANGE)
                 self.listControl.RefreshItem(item.GetId())
                 
             ## Flag things that look like they might be too faint
