@@ -7,6 +7,7 @@ if sys.version_info > (3,):
     xrange = range
 
 import os
+import re
 import sys
 import ephem
 import numpy
@@ -60,6 +61,9 @@ else:
 
 
 ORANGE = wx.Colour(0xFF, 0xA5, 0x00)
+
+
+SIMBAD_REF_RE = re.compile('^(\[(?P<ref>[A-Za-z0-9]+)\]\s*)')
 
 
 def usage(exitCode=None):
@@ -384,7 +388,7 @@ class CalibratorSearch(wx.Frame):
             resource = tree.find('VO:RESOURCE', namespaces=namespaces)
             table = resource.find('VO:TABLE', namespaces=namespaces)
             
-            rank = 0
+            rank = -1
             
             fields = []
             for f in table.findall('VO:FIELD', namespaces=namespaces):
@@ -398,7 +402,7 @@ class CalibratorSearch(wx.Frame):
                 entry_rank = int(entry['NB_REF'], 10)
                 
                 if entry_rank > rank:
-                    final_name = entry['MAIN_ID']
+                    final_name = SIMBAD_REF_RE.sub('', entry['MAIN_ID'])
                     rank = entry_rank
         except (IOError, ValueError, AttributeError, ElementTree.ParseError) as error:
             self.statusbar.SetStatusText('Error during name lookup: %s' % str(error), 0)
