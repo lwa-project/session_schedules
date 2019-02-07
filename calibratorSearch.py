@@ -382,7 +382,7 @@ class CalibratorSearch(wx.Frame):
         final_name = '---'
         
         try:
-            result = urllib.urlopen('https://simbad.u-strasbg.fr/simbad/sim-coo?Coord=%s&CooFrame=FK5&CooEpoch=%s&CooEqui=%s&CooDefinedFrames=none&Radius=%f&Radius.unit=arcsec&submit=submit%%20query&CoordList=&output.format=VOTable' % (urllib.quote_plus('%s %s' % (ra, dec)), 2000.0, 2000.0, radius_arcsec))
+            result = urllib.urlopen('https://simbad.u-strasbg.fr/simbad/sim-coo?Coord=%s&CooFrame=FK5&CooEpoch=%s&CooEqui=%s&CooDefinedFrames=none&Radius=%f&Radius.unit=arcsec&submit=submit%%20query&CoordList=&list.idopt=CATLIST&list.idcat=3C%%2C4C%%2CVLSS%%2CNVSS%%2CTXS&output.format=VOTable' % (urllib.quote_plus('%s %s' % (ra, dec)), 2000.0, 2000.0, radius_arcsec))
             tree = ElementTree.fromstring(result.read())
             namespaces = {'VO': 'http://www.ivoa.net/xml/VOTable/v1.2'}
             resource = tree.find('VO:RESOURCE', namespaces=namespaces)
@@ -407,6 +407,41 @@ class CalibratorSearch(wx.Frame):
         except (IOError, ValueError, AttributeError, ElementTree.ParseError) as error:
             self.statusbar.SetStatusText('Error during name lookup: %s' % str(error), 0)
             
+        if final_name == '---':
+            # Try with a bigger search area
+            final_name = self._reverseNameLookup(ra, dec, radius_arcsec=2*radius_arcsec)
+        else:
+            # Try to get a "better" name for the source
+            final_name = self._radioNameQuery(final_name)
+            
+        return final_name
+        
+    @lru_cache(maxsize=64)
+    def _radioNameQuery(self, name):
+        final_name = name
+        
+        preferred_order = {'3C':5, '4C':4, 'TXS':3, 'VLSS':2, 'NVSS': 1}
+        
+        rank = -1
+        for catalog in preferred_order.keys():
+            if name.startswith(catalog):
+                if preferred_order[catalog] > rank:
+                    rank = preferred_order[catalog]
+                    
+        try:
+            result = urllib.urlopen('https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oxpI/SNV?%s' % urllib.quote_plus(name))
+            tree = ElementTree.fromstring(result.read())
+            target = tree.find('Target')
+            service = target.find('Resolver')
+            for alias in service.findall('alias'):
+                for catalog in preferred_order.keys():
+                    if alias.text.startswith(catalog):
+                        if preferred_order[catalog] > rank:
+                            final_name = alias.text
+                            rank = preferred_order[catalog]
+        except (IOError, ValueError, AttributeError, ElementTree.ParseError) as error:
+            self.statusbar.SetStatusText('Error during radio name lookup: %s' % str(error), 0)
+            
         return final_name
         
     def onSearch(self, event):
@@ -428,7 +463,12 @@ class CalibratorSearch(wx.Frame):
         flux = float(self.fdText.GetValue())
         min_dist = float(self.ldText.GetValue())
         max_dist = float(self.udText.GetValue())
-        
+        if max_dist > 10.0:
+            ### Limit ourselves to a 10 degree search
+            max_dist = 10.0
+            self.udText.SetValue('%.1f' % max_dist)
+            self.udText.Refresh()
+            
         wx.BeginBusyCursor()
         
         # Find the candidates
@@ -471,6 +511,13 @@ class CalibratorSearch(wx.Frame):
                     
         except (IOError, ValueError, RuntimeError) as error:
             self.statusbar.SetStatusText('Error during search: %s' % str(error), 0)
+            
+        ## Update the status bar
+        if len(candidates) == 0:
+            self.statusbar.SetStatusText('No candidates found matching the search criteria', 0)
+        else:
+            self.statusbar.SetStatusText("Found %i candidates matching the search criteria" % len(candidates), 0)
+            
         ## Sort by distance from the target
         candidates.sort(key=lambda x:x[3])
         
