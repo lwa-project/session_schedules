@@ -1933,7 +1933,8 @@ class ObserverInfo(wx.Frame):
                 linear.SetValue(False)
                 circul.SetValue(False)
                 stokes.SetValue(True)
-                
+        stokes.Disable()
+        
         did = wx.StaticText(panel, label='Data Return Method')
         drsuRB = wx.RadioButton(panel, -1, 'DRSU', style=wx.RB_GROUP)
         usbRB  = wx.RadioButton(panel, -1, 'USB Harddrive (4 max)')
