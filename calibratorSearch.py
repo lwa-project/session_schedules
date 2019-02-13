@@ -645,6 +645,7 @@ class CalibratorSearch(wx.Frame):
         
         # Debuggers/testers
         dialog.AddDocWriter(__author__)
+        dialog.AddDocWriter('Ivey Davis')
         
         wx.AboutBox(dialog)
         
