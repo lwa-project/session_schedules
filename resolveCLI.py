@@ -14,6 +14,7 @@ import sys
 import math
 import ephem
 import urllib
+import argparse
 from xml.etree import ElementTree
 
 
@@ -51,7 +52,7 @@ def _resolveSource(name):
 
 
 def main(args):
-    target = ' '.join(args)
+    target = args.target
     ra, dec, coordsys, service = _resolveSource(target)
     
     print "Target: %s" % target
@@ -63,5 +64,12 @@ def main(args):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    parser = argparse.ArgumentParser(
+        description='resolve a catalog name to a RA/dec. pair using the CDS Sesame service', 
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        )
+    parser.add_argument('target', type=str, 
+                        help='target name')
+    args = parser.parse_args()
+    main(args)
     

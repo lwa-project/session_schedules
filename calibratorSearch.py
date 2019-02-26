@@ -11,8 +11,8 @@ import re
 import sys
 import ephem
 import numpy
-import getopt
 import pyfits
+import argparse
 import urllib, urllib2
 from tempfile import NamedTemporaryFile
 from xml.etree import ElementTree
@@ -32,6 +32,7 @@ from matplotlib.ticker import FuncFormatter, NullFormatter, NullLocator
 
 import lsl
 from lsl.misc.lru_cache import lru_cache
+from lsl.misc import parser as aph
 
 
 __version__ = "0.1"
@@ -64,58 +65,6 @@ ORANGE = wx.Colour(0xFF, 0xA5, 0x00)
 
 
 SIMBAD_REF_RE = re.compile('^(\[(?P<ref>[A-Za-z0-9]+)\]\s*)')
-
-
-def usage(exitCode=None):
-    print("""calibratorSearch.py - GUI for finding a phase calibrator for the LWA
-single baseline interferometer
-
-Usage: calibratorSearch.py [OPTIONS]
-
-Options:
--h, --help          Display this help information
--t, --target        Target name
--r, --ra            Target RA in HH:MM:SS.SS format, J2000
--d, --dec           Target dec in sDD:MM:SS.S format, J2000
-""")
-    
-    if exitCode is not None:
-        sys.exit(exitCode)
-    else:
-        return True
-
-
-def parseOptions(args):
-    config = {}
-    config['target'] = None
-    config['ra'] = None
-    config['dec'] = None
-    
-    # Read in and process the command line flags
-    try:
-        opts, args = getopt.getopt(args, "ht:r:d:", ["help", "target=", "ra=", "dec="])
-    except getopt.GetoptError, err:
-        # Print help information and exit:
-        print(str(err)) # will print something like "option -a not recognized"
-        usage(exitCode=2)
-        
-    # Work through opts
-    for opt, value in opts:
-        if opt in ('-h', '--help'):
-            usage(exitCode=0)
-        elif opt in ('-t', '--target'):
-            config['target'] = value
-        elif opt in ('-r', '--ra'):
-            ephem.hours(value)
-            config['ra'] = value
-        elif opt in ('-d', '--dec'):
-            ephem.degrees(value)
-            config['dec'] = value
-        else:
-            assert False
-            
-    # Return configuration
-    return config
 
 
 ID_QUIT = 101
@@ -859,9 +808,19 @@ class ImageViewer(wx.Frame):
         
 
 if __name__ == "__main__":
-    config = parseOptions(sys.argv[1:])
+    parser = argparse.ArgumentParser(
+        description='GUI for finding a phase calibrator for the LWA single baseline interferometer', 
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        )
+    parser.add_argument('-t', '--target', type=str, 
+                        help='target name')
+    parser.add_argument('-r', '--ra', type=aph.hours, 
+                        help='target RA; HH:MM:SS.SS format, J2000')
+    parser.add_argument('-d', '--dec', type=aph.degrees, 
+                        help='target declination; sDD:MM:SS.S format, J2000')
+    args = parser.parse_args()
     
     app = wx.App()
-    CalibratorSearch(None, title='VLSSr Calibrator Search', target=config['target'], ra=config['ra'], dec=config['dec'])
+    CalibratorSearch(None, title='VLSSr Calibrator Search', target=args.target, ra=args.ra, dec=args.dec)
     app.MainLoop()
     

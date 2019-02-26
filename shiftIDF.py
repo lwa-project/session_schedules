@@ -21,7 +21,7 @@ import sys
 import pytz
 import math
 import ephem
-import getopt
+import argparse
 
 from datetime import datetime, date, time, timedelta
 
@@ -34,6 +34,7 @@ try:
     from lsl.common import idf
 except ImportError:
     import idf
+from lsl.misc import parser as aph
 
 
 __version__ = "0.1"
@@ -47,97 +48,6 @@ formatString = '%Y/%m/%d %H:%M:%S.%f %Z'
 solarDay    = timedelta(seconds=24*3600, microseconds=0)
 siderealDay = timedelta(seconds=23*3600+56*60+4, microseconds=91000)
 siderealRegression = solarDay - siderealDay
-
-
-def usage(exitCode=None):
-    print """shiftIDF.py - The Swiss army knife of IDF time shifting utilities.  Use
-this script to:
- * Move a IDF file to a new start date/time
- * Move a IDF file to a new UTC date but the same LST
- * Switch the run ID to a new value
- * Only update one of the above and leave the time alone
- * Print out the contents of the IDF file in an easy-to-digest manner
-
-Usage: shiftIDF.py [OPTIONS] input_file [output_file]
-
-Options:
--h, --help           Display this help information
--l, --lst            Run in new date, same LST mode
--d, --date           Date to use in YYYY/MM/DD format
--t, --time           Time to use in HH:MM:SS.SSS format
--r, --rid            Update run ID/New run ID value
--n, --no-update      Do not update the time, only apply other options
--q, --query          Query the IDF only, make no changes
-
-Note:
-* If an output file is not specified, one will be automatically
-    determined.
-* The -t and -l options are mutually exclusive.
-"""
-
-    if exitCode is not None:
-        sys.exit(exitCode)
-    else:
-        return True
-
-
-def parseOptions(args):
-    config = {}
-    config['queryOnly'] = False
-    config['lstMode'] = False
-    config['updateTime'] = True
-    config['time'] = None
-    config['date'] = None
-    config['runID'] = None
-
-    # Read in and process the command line flags
-    try:
-        opts, args = getopt.getopt(args, "hld:t:r:nq", ["help", "lst", "date=", "time=", "rid=", "no-update", "query"])
-    except getopt.GetoptError, err:
-        # Print help information and exit:
-        print str(err) # will print something like "option -a not recognized"
-        usage(exitCode=2)
-    
-    # Work through opts
-    for opt, value in opts:
-        if opt in ('-h', '--help'):
-            usage(exitCode=0)
-        elif opt in ('-l', '--lst'):
-            config['lstMode'] = True
-        elif opt in ('-d', '--date'):
-            try:
-                fields = value.split('/', 2)
-                fields = [int(f) for f in fields]
-                config['date'] = date(fields[0], fields[1], fields[2])
-            except ValueError:
-                raise RuntimeError("Unknown date: %s" % value)
-        elif opt in ('-t', '--time'):
-            try:
-                fields = value.split(':', 2)
-                fields = [int(fields[0]), int(fields[1]), int(float(fields[2])), int((float(fields[2])*1e6) % 1000000)]
-                config['time'] = time(fields[0], fields[1], fields[2], fields[3])
-            except ValueError:
-                raise RuntimeError("Unknown time: %s" % value)
-        elif opt in ('-r', '--rid'):
-            config['runID'] = int(value)
-        elif opt in ('-n', '--no-update'):
-            config['updateTime'] = False
-        elif opt in ('-q', '--query'):
-            config['queryOnly'] = True
-        else:
-            assert False
-            
-    # Add in arguments
-    config['args'] = args
-    
-    # Validate
-    if config['time'] is not None and config['lstMode']:
-        raise RuntimeError("Specifying a time and LST shifting are mutually exclusive")
-    if len(config['args']) not in (1, 2):
-        raise RuntimeError("Must specify a IDF file")
-        
-    # Return configuration
-    return config
 
 
 def getScanStartStop(scn):
@@ -162,11 +72,8 @@ def getScanStartStop(scn):
 
 
 def main(args):
-    # Parse options/get file name
-    config = parseOptions(args)
-    
     # Filenames in an easier format - input
-    inputIDF  = config['args'][0]
+    inputIDF  = args.filename
     
     # Parse the input file and get the dates of the scans
     station = stations.lwa1
@@ -197,14 +104,14 @@ def main(args):
     print " -> LST at %s for this date/time is %s" % (station.name, lst)
     
     # Filenames in an easier format - output
-    if not config['queryOnly']:
-        try:
-            outputIDF = config['args'][1]
-        except IndexError:
+    if not args.query:
+        if args.outname is not None:
+            outputIDF = args.outname
+        else:
             outputIDF  = None
             
     # Query only mode starts here...
-    if config['queryOnly']:
+    if args.query:
         lastDur = project.runs[0].scans[nObs-1].dur
         lastDur = timedelta(seconds=int(lastDur/1000), microseconds=(lastDur*1000) % 1000000)
         runDur = max(tStart) - min(tStart) + lastDur
@@ -260,10 +167,10 @@ def main(args):
     #
     # Query the time and compute the time shifts
     #
-    if config['updateTime']:
+    if (not args.no_update):
         # Get the new start date/time in UTC and report on the difference
-        if config['lstMode']:
-            if config['date'] is None:
+        if args.lst:
+            if args.date is None:
                 print " "
                 print "Enter the new UTC start date:"
                 tNewStart = raw_input('YYYY/MM/DD-> ')
@@ -277,7 +184,7 @@ def main(args):
                     sys.exit(1)
                     
             else:
-                tNewStart = datetime.combine(config['date'], min(tStart).time())
+                tNewStart = datetime.combine(args.date, min(tStart).time())
                 
             tNewStart = _UTC.localize(tNewStart)
             
@@ -306,7 +213,7 @@ def main(args):
             tNewStart = siderealShift
             
         else:
-            if config['date'] is None or config['time'] is None:
+            if args.date is None or args.time is None:
                 print " "
                 print "Enter the new UTC start date/time:"
                 tNewStart = raw_input('YYYY/MM/DD HH:MM:SS.SSS -> ')
@@ -320,7 +227,7 @@ def main(args):
                         sys.exit(1)
                         
             else:
-                tNewStart = datetime.combine(config['date'], config['time'])
+                tNewStart = datetime.combine(args.date, args.time)
             
             tNewStart = _UTC.localize(tNewStart)
             
@@ -353,7 +260,7 @@ def main(args):
     # Query and set the new run ID
     #
     print " "
-    if config['runID'] is None:
+    if args.rid is None:
         print "Enter the new run ID or return to keep current:"
         sid = raw_input('-> ')
         if len(sid) > 0:
@@ -361,7 +268,7 @@ def main(args):
         else:
             sid = project.runs[0].id
     else:
-        sid = config['runID']
+        sid = args.rid
     print "Shifting run ID from %i to %i" % (project.runs[0].id, sid)
     project.runs[0].id = sid
     
@@ -377,7 +284,7 @@ def main(args):
         #
         # Start MJD,MPM Shifting
         #
-        if config['updateTime'] and tShift != timedelta(seconds=0):
+        if (not args.no_update) and tShift != timedelta(seconds=0):
             if len(newPOOC[-1]) != 0:
                 newPOOC[-1] += ';;'
             newPOOC[-1] += 'Original MJD:%i,MPM:%i' % (project.runs[0].scans[i].mjd, project.runs[0].scans[i].mpm)
@@ -404,7 +311,7 @@ def main(args):
     # Project office comments
     #
     # Update the project office comments with this change
-    newPOSC = "Shifted IDF with shiftIDF.py (v%s, %s);;Time Shift? %s" % (__version__, __revision__, 'Yes' if config['updateTime'] else 'No')
+    newPOSC = "Shifted IDF with shiftIDF.py (v%s, %s);;Time Shift? %s" % (__version__, __revision__, 'Yes' if (not args.no_update) else 'No')
     
     if project.projectOffice.runs[0] is None:
         project.projectOffice.runs[0] = newPOSC
@@ -440,5 +347,28 @@ def main(args):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    parser = argparse.ArgumentParser(
+        description='the Swiss army knife of IDF time shifting utilities', 
+        epilog='NOTE:  If an output file is not specified, one will be automatically determined.', 
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        )
+    parser.add_argument('filename', type=str, 
+                        help='filename of IDF to edit')
+    parser.add_argument('outname', type=str, nargs='?', 
+                        help='output filename for the editted IDF')
+    mgroup = parser.add_mutually_exclusive_group(required=True)
+    mgroup.add_argument('-q', '--query', action='store_true', 
+                        help='query the IDF only, make no changes')
+    mgroup.add_argument('-n', '--no-update', action='store_true', 
+                        help='do not update the time, only apply other options')
+    mgroup.add_argument('-l', '--lst', action='store_true', 
+                        help='run in new date, same LST mode')
+    mgroup.add_argument('-t', '--time', type=aph.time, 
+                        help='time to use; HH:MM:SS.SSS format')
+    parser.add_argument('-d', '--date', type=aph.date, 
+                        help='date to use; YYYY/MM/DD format')
+    parser.add_argument('-r', '--rid', type=aph.positive_int, 
+                        help='update run ID/new run ID')
+    args = parser.parse_args()
+    main(args)
     

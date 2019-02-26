@@ -12,8 +12,8 @@ import re
 import copy
 import math
 import ephem
-import getopt
 import numpy
+import argparse
 try:
     import cStringIO as StringIO
 except ImportError:
@@ -33,6 +33,7 @@ try:
 except ImportError:
     import idf
 from lsl.correlator import uvUtils
+from lsl.misc import parser as aph
 
 import wx
 import wx.html as html
@@ -74,58 +75,6 @@ else:
     SetListItem    = lambda *args, **kwds: args[0].SetStringItem(*args[1:], **kwds)
     SetDimensions  = lambda *args, **kwds: args[0].SetDimensions(*args[1:], **kwds)
     AppendToolItem = lambda *args, **kwds: args[0].AddLabelTool(*args[1:], **kwds)
-
-
-def usage(exitCode=None):
-    print("""swarmGUI.py - GUI for making all sorts of interferometer definition files (IDFs) for
-the LWA interferometer.
-
-Usage: swarmGUI.py [OPTIONS] [input_IDF_file]
-
-Options:
--h, --help          Display this help information
--d, --drsu-size     Perform storage calcuations assuming the specified DRSU 
-                    size in TB (default = %i TB)
-""" % idf._DRSUCapacityTB)
-    
-    if exitCode is not None:
-        sys.exit(exitCode)
-    else:
-        return True
-
-
-def parseOptions(args):
-    config = {}
-    config['drsuSize'] = idf._DRSUCapacityTB
-    
-    # Read in and process the command line flags
-    try:
-        opts, args = getopt.getopt(args, "hd:s", ["help", "drsu-size="])
-    except getopt.GetoptError, err:
-        # Print help information and exit:
-        print(str(err)) # will print something like "option -a not recognized"
-        usage(exitCode=2)
-        
-    # Work through opts
-    for opt, value in opts:
-        if opt in ('-h', '--help'):
-            usage(exitCode=0)
-        elif opt in ('-d', '--drsu-size'):
-            config['drsuSize'] = int(value)
-        else:
-            assert False
-            
-    # Make sure we have a sane DRSU size
-    try:
-        assert(config['drsuSize'] > 0)
-    except AssertionError:
-        raise RuntimeError("Invalid DRSU size of %i TB (%i B)" % (config['drsuSize'], config['drsuSize']*1024**4))
-        
-    # Add in arguments
-    config['args'] = args
-    
-    # Return configuration
-    return config
 
 
 class ChoiceMixIn(object):
@@ -542,7 +491,7 @@ ID_PASTE_AFTER = 84
 ID_PASTE_END = 85
 
 class IDFCreator(wx.Frame):
-    def __init__(self, parent, title, config={}):
+    def __init__(self, parent, title, args):
         wx.Frame.__init__(self, parent, title=title, size=(750,500))
         
         self.scriptPath = os.path.abspath(__file__)
@@ -563,13 +512,13 @@ class IDFCreator(wx.Frame):
         self.initEvents()
         self.Show()
         
-        idf._DRSUCapacityTB = config['drsuSize']
+        idf._DRSUCapacityTB = args.drsu_size
         
         #self.logger = None
         #self.onLogger(None)
         
-        if len(config['args']) > 0:
-            self.filename = config['args'][0]
+        if args.filename is not None:
+            self.filename = args.filename
             self.parseFile(self.filename)
         else:
             self.filename = ''
@@ -3123,10 +3072,17 @@ class HelpWindow(wx.Frame):
 
 
 if __name__ == "__main__":
-    config = parseOptions(sys.argv[1:])
+    parser = argparse.ArgumentParser(
+        description='GUI for making all sorts of interferometer definition files (IDFs) for the LWA interferometer', 
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        )
+    parser.add_argument('filename', type=str, nargs='?', 
+                        help='filename of IDF to edit')
+    parser.add_argument('-d', '--drsu-size', type=aph.positive_int, default=idf._DRSUCapacityTB, 
+                        help='perform storage calcuations assuming the specified DRSU size in TB')
+    args = parser.parse_args()
     
     app = wx.App()
-    IDFCreator(None, title='Interferometer Definition File', config=config)
+    IDFCreator(None, 'Interferometer Definition File', args)
     app.MainLoop()
-    
     

@@ -12,7 +12,7 @@ import re
 import copy
 import math
 import ephem
-import getopt
+import argparse
 try:
     import cStringIO as StringIO
 except ImportError:
@@ -35,6 +35,7 @@ try:
 except ImportError:
     sdfADP = None
     adpReady = False
+from lsl.misc import parser as aph
 
 import wx
 import wx.html as html
@@ -79,66 +80,6 @@ else:
     SetListItem    = lambda *args, **kwds: args[0].SetStringItem(*args[1:], **kwds)
     SetDimensions  = lambda *args, **kwds: args[0].SetDimensions(*args[1:], **kwds)
     AppendToolItem = lambda *args, **kwds: args[0].AddLabelTool(*args[1:], **kwds)
-
-
-def usage(exitCode=None):
-    print("""sessionGUI.py - GUI for making all sorts of session definition files (SDFs) for
-LWA1 and LWA-SV.
-
-Usage: sessionGUI.py [OPTIONS] [input_SDF_file]
-
-Options:
--h, --help          Display this help information
--d, --drsu-size     Perform storage calcuations assuming the specified DRSU 
-                    size in TB (default = %i TB)
--s, --lwasv         Build a SDF for LWA-SV instead of LWA1 (default = LWA1)
-""" % sdf._DRSUCapacityTB)
-    
-    if exitCode is not None:
-        sys.exit(exitCode)
-    else:
-        return True
-
-
-def parseOptions(args):
-    config = {}
-    config['drsuSize'] = sdf._DRSUCapacityTB
-    config['station'] = 'lwa1'
-    
-    # Read in and process the command line flags
-    try:
-        opts, args = getopt.getopt(args, "hd:s", ["help", "drsu-size=", "lwasv"])
-    except getopt.GetoptError, err:
-        # Print help information and exit:
-        print(str(err)) # will print something like "option -a not recognized"
-        usage(exitCode=2)
-        
-    # Work through opts
-    for opt, value in opts:
-        if opt in ('-h', '--help'):
-            usage(exitCode=0)
-        elif opt in ('-d', '--drsu-size'):
-            config['drsuSize'] = int(value)
-        elif opt in ('-s', '--lwasv'):
-            config['station'] = 'lwasv'
-        else:
-            assert False
-            
-    # Make sure we have a sane DRSU size
-    try:
-        assert(config['drsuSize'] > 0)
-    except AssertionError:
-        raise RuntimeError("Invalid DRSU size of %i TB (%i B)" % (config['drsuSize'], config['drsuSize']*1024**4))
-        
-    # Make sure we are ready for LWA-SV
-    if config['station'] == 'lwasv' and not adpReady:
-        raise RuntimeError("LWA-SV requested but the ADP-compatible SDF module could not be loaded")
-        
-    # Add in arguments
-    config['args'] = args
-    
-    # Return configuration
-    return config
 
 
 class ChoiceMixIn(object):
@@ -570,13 +511,13 @@ ID_PASTE_AFTER = 84
 ID_PASTE_END = 85
 
 class SDFCreator(wx.Frame):
-    def __init__(self, parent, title, config={}):
+    def __init__(self, parent, title, args):
         wx.Frame.__init__(self, parent, title=title, size=(750,500))
         
         self.station = stations.lwa1
         self.sdf = sdf
         self.adp = False
-        if config['station'] == 'lwasv':
+        if args.lwasv:
             self.station = stations.lwasv
             self.sdf = sdfADP
             self.adp = True
@@ -599,13 +540,13 @@ class SDFCreator(wx.Frame):
         self.initEvents()
         self.Show()
         
-        self.sdf._DRSUCapacityTB = config['drsuSize']
+        self.sdf._DRSUCapacityTB = args.drsu_size
         
         #self.logger = None
         #self.onLogger(None)
         
-        if len(config['args']) > 0:
-            self.filename = config['args'][0]
+        if args.filename is not None:
+            self.filename = args.filename
             self.parseFile(self.filename)
             if self.mode == 'TBW' and not ALLOW_TBW_TBN_SAME_SDF:
                 self.finfo.Enable(False)
@@ -4652,8 +4593,18 @@ class SteppedWindow(wx.Frame):
 
 
 if __name__ == "__main__":
-    config = parseOptions(sys.argv[1:])
+    parser = argparse.ArgumentParser(
+        description='GUI for making all sorts of session definition files (SDFs) for LWA1 and LWA-SV', 
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        )
+    parser.add_argument('filename', type=str, nargs='?', 
+                        help='filename of SDF to edit')
+    parser.add_argument('-d', '--drsu-size', type=aph.positive_int, default=sdf._DRSUCapacityTB, 
+                        help='perform storage calcuations assuming the specified DRSU size in TB')
+    parser.add_argument('-s','--lwasv', action='store_true', 
+                        help='build an SDF for LWA-SV instead of LWA1')
+    args = parser.parse_args()
     
     app = wx.App()
-    SDFCreator(None, title='Session Definition File', config=config)
+    SDFCreator(None, 'Session Definition File', args)
     app.MainLoop()

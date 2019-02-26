@@ -18,18 +18,20 @@ $LastChangedDate$
 
 import os
 import sys
+import argparse
 
 from lsl.reader.tbn import FrameSize as tbnFrameSize
 from lsl.reader.tbn import filterCodes as tbnFilters
 from lsl.reader.drx import FrameSize as drxFrameSize
 from lsl.reader.drx import filterCodes as drxFilters
+from lsl.misc import parser as aph
 
 
 def main(args):
     # Parse the command line
-    mode = args[0]
-    filterCode = int(args[1])
-    duration = args[2]
+    mode = args.mode
+    filterCode = args.filter_code
+    duration = args.duration
 
     # Convert the HH:MM:SS.SSS string to a duration in seconds
     try:
@@ -89,5 +91,17 @@ def main(args):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
-
+    parser = argparse.ArgumentParser(
+        description='estimate the data volume for a TBN or DRX observation', 
+        epilog="NOTE:  For spectrometer data, the mode is given by SPC,<tlen>,<icount> where 'tlen' is the transform length (channel count) and 'icount' is the number of transforms per integration.", 
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        )
+    parser.add_argument('mode', type=str, 
+                        help='observing mode')
+    parser.add_argument('filter_code', type=aph.positive_int, 
+                        help='observing filter code')
+    parser.add_argument('duration', type=str, 
+                        help='observing duration; HH:MM:SS.SS format')
+    args = parser.parse_args()
+    main(args)
+    
