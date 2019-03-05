@@ -7,7 +7,7 @@ import math
 import pytz
 import ephem
 import numpy
-import getopt
+import argparse
 from datetime import datetime, timedelta
 
 from lsl.common import sdf, metabundle
@@ -912,16 +912,12 @@ class RemoveFilesDialog(wx.Frame):
 
 
 def main(args):
-    # Parse the command line
-    config = parseOptions(args)
-    filenames = config['args']
-    
     app = wx.App(0)
     frame = MainWindow(None, -1)
-    if len(args) > 0:
-        frame.filenames = filenames
+    if args.filename is not None:
+        frame.filenames = args.filename
         
-        frame.data = Visualization_GUI(frame, station=config['station'])
+        frame.data = Visualization_GUI(frame, station='lwasv' if args.lwasv else 'lwa1')
         frame.data.loadFiles()
         frame.data.draw()
         
@@ -929,5 +925,14 @@ def main(args):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    parser = argparse.ArgumentParser(
+        description='GUI for looking at the schedule on a station', 
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        )
+    parser.add_argument('filename', type=str, nargs='+', 
+                        help='SDF file to examine')
+    parser.add_argument('-s', '--lwasv', action='store_true', 
+                        help='files are for LWA-SV instead of LWA1')
+    args = parser.parse_args()
+    main(args)
     
