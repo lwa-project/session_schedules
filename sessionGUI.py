@@ -1705,14 +1705,9 @@ class SDFCreator(wx.Frame):
         SetListItem(self.listControl, index, 4, obs.start)
         
         if self.mode == 'TBN':
-            if self._getTBWValid():
-                SetListItem(self.listControl, index, 5, obs.duration)
-                SetListItem(self.listControl, index, 6, "--")
-                SetListItem(self.listControl, index, 7, "--")
-            else:
-                SetListItem(self.listControl, index, 5, obs.duration)
-                SetListItem(self.listControl, index, 6, "%.6f" % (obs.freq1*fS/2**32 / 1e6))
-                SetListItem(self.listControl, index, 7, "%i" % obs.filter)
+            SetListItem(self.listControl, index, 5, obs.duration)
+            SetListItem(self.listControl, index, 6, "%.6f" % (obs.freq1*fS/2**32 / 1e6))
+            SetListItem(self.listControl, index, 7, "%i" % obs.filter)
         elif self.mode == 'TBW':
             if ALLOW_TBW_TBN_SAME_SDF and obs.mode == 'TBW':
                 SetListItem(self.listControl, index, 5, obs.duration)
