@@ -245,6 +245,11 @@ class ScanListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrlMixin):
             except KeyError, AttributeError:
                 pass
                 
+            # Remove and resolve - disabled
+            self.parent.obsmenu['remove'].Enable(False)
+            self.parent.toolbar.EnableTool(ID_REMOVE, False)
+            self.parent.obsmenu['resolve'].Enable(False)
+            
         elif self.nSelected == 1:
             # Edit menu - enabled
             try:
@@ -276,6 +281,11 @@ class ScanListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrlMixin):
                 except KeyError, AttributeError:
                     pass
                     
+            # Remove and resolve - enabled
+            self.parent.obsmenu['remove'].Enable(True)
+            self.parent.toolbar.EnableTool(ID_REMOVE, True)
+            self.parent.obsmenu['resolve'].Enable(True)
+            
         else:
             # Edit menu - enabled
             try:
@@ -291,6 +301,11 @@ class ScanListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrlMixin):
             except KeyError, AttributeError:
                 pass
                 
+            # Remove and resolve - enabled and disabled, respectively
+            self.parent.obsmenu['remove'].Enable(True)
+            self.parent.toolbar.EnableTool(ID_REMOVE, True)
+            self.parent.obsmenu['resolve'].Enable(False)
+            
     def OnCheckItem(self, index, flag):
         """
         Overwrite the default OnCheckItem function so that we can control the enabling
@@ -641,7 +656,11 @@ class IDFCreator(wx.Frame):
         #self.obsmenu['steppedRADec'] = addSteppedRADec
         #self.obsmenu['steppedAzAlt'] = addSteppedAzAlt
         #self.obsmenu['steppedEdit'] = editStepped
-        
+        self.obsmenu['remove'] = remove
+        self.obsmenu['resolve'] = resolve
+        for k in ('remove', 'resolve'):
+            self.obsmenu[k].Enable(False)
+            
         # Data menu items
         volume = wx.MenuItem(obsMenu, ID_DATA_VOLUME, '&Estimated Data Volume')
         AppendMenuItem(dataMenu, volume)
@@ -698,6 +717,9 @@ class IDFCreator(wx.Frame):
         AppendToolItem(self.toolbar, ID_HELP, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'help.png')), shortHelp='Help', 
                                 longHelp='Display a brief help message for this program')
         self.toolbar.Realize()
+        
+        # Disable "remove" in the toolbar
+        self.toolbar.EnableTool(ID_REMOVE, False)
         
         # Status bar
         self.statusbar = self.CreateStatusBar()
@@ -2897,10 +2919,20 @@ class ResolveTarget(wx.Frame):
             target = tree.find('Target')
             service = target.find('Resolver')
             coords = service.find('jpos')
-            
+            try:
+                pm = service.find('pm')
+            except Exception as e:
+                pm = None
+                
             service = service.attrib['name'].split('=', 1)[1]
             raS, decS = coords.text.split(None, 1)
-            
+            if pm is not None:
+                pmRAS = float(pm.find('pmRA').text)
+                pmDecS = float(pm.find('pmDE').text)
+            else:
+                pmRAS = ''
+                pmDecS = ''
+                
             self.raText.SetValue(raS)
             self.decText.SetValue(decS)
             self.srvText.SetValue(service)

@@ -259,6 +259,11 @@ class ObservationListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrl
             except KeyError, AttributeError:
                 pass
                 
+            # Remove and resolve - disabled
+            self.parent.obsmenu['remove'].Enable(False)
+            self.parent.toolbar.EnableTool(ID_REMOVE, False)
+            self.parent.obsmenu['resolve'].Enable(False)
+            
         elif self.nSelected == 1:
             # Edit menu - enabled
             try:
@@ -290,6 +295,11 @@ class ObservationListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrl
                 except KeyError, AttributeError:
                     pass
                     
+            # Remove and resolve - enabled
+            self.parent.obsmenu['remove'].Enable(True)
+            self.parent.toolbar.EnableTool(ID_REMOVE, True)
+            self.parent.obsmenu['resolve'].Enable(True)
+            
         else:
             # Edit menu - enabled
             try:
@@ -305,6 +315,11 @@ class ObservationListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrl
             except KeyError, AttributeError:
                 pass
                 
+            # Remove and resolve - enabled and disabled, respectively
+            self.parent.obsmenu['remove'].Enable(True)
+            self.parent.toolbar.EnableTool(ID_REMOVE, True)
+            self.parent.obsmenu['resolve'].Enable(False)
+            
     def OnCheckItem(self, index, flag):
         """
         Overwrite the default OnCheckItem function so that we can control the enabling
@@ -685,7 +700,11 @@ class SDFCreator(wx.Frame):
         self.obsmenu['steppedRADec'] = addSteppedRADec
         self.obsmenu['steppedAzAlt'] = addSteppedAzAlt
         self.obsmenu['steppedEdit'] = editStepped
-        
+        self.obsmenu['remove'] = remove
+        self.obsmenu['resolve'] = resolve
+        for k in ('remove', 'resolve'):
+            self.obsmenu[k].Enable(False)
+            
         # Data menu items
         volume = wx.MenuItem(obsMenu, ID_DATA_VOLUME, '&Estimated Data Volume')
         AppendMenuItem(dataMenu, volume)
@@ -745,6 +764,9 @@ class SDFCreator(wx.Frame):
         AppendToolItem(self.toolbar, ID_HELP, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'help.png')), shortHelp='Help', 
                                 longHelp='Display a brief help message for this program')
         self.toolbar.Realize()
+        
+        # Disable "remove" in the toolbar
+        self.toolbar.EnableTool(ID_REMOVE, False)
         
         # Status bar
         self.statusbar = self.CreateStatusBar()
