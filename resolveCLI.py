@@ -43,12 +43,8 @@ def _resolveSource(name):
         raS, decS = coords.text.split(None, 1)
         coordsys = 'J2000'
         if pm is not None:
-            try:
-                pmRA = float(pm.find('pmRA').text)
-                pmDec = float(pm.find('pmDE').text)
-            except AttributeError:
-                pmRA = ''
-                pmDec = ''
+            pmRA = float(pm.find('pmRA').text)
+            pmDec = float(pm.find('pmDE').text)
         else:
             pmRA = ''
             pmDec = ''
