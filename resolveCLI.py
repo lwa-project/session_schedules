@@ -23,7 +23,7 @@ __revision__ = "$Rev$"
 __author__ = "Jayce Dowell"
 
 
-def _resolveSource(name, include_pm=False):
+def _resolveSource(name):
     """
     Resolve a source into a RA, dec pair.
     """
@@ -36,14 +36,13 @@ def _resolveSource(name, include_pm=False):
         coords = service.find('jpos')
         try:
             pm = service.find('pm')
-            print pm
         except Exception as e:
             pm = None
             
         service = service.attrib['name'].split('=', 1)[1]
         raS, decS = coords.text.split(None, 1)
         coordsys = 'J2000'
-        if pm is not None and include_pm:
+        if pm is not None:
             try:
                 pmRA = float(pm.find('pmRA').text)
                 pmDec = float(pm.find('pmDE').text)
@@ -66,21 +65,12 @@ def _resolveSource(name, include_pm=False):
             pmRA = ''
             pmDec = ''
             
-    output = [ra, dec, coordsys, service]
-    if include_pm:
-        output.extend([pmRA, pmDec])
-    return output
+    return ra, dec, coordsys, service, pmRA, pmDec
 
 
 def main(args):
     target = args.target
-    output = _resolveSource(target, include_pm=args.pm)
-    try:
-        ra, dec, coordsys, service, pmRA, pmDec = output
-    except ValueError:
-        ra, dec, coordsys, service = output
-        pmRA, pmDec = '', ''
-        
+    ra, dec, coordsys, service, pmRA, pmDec = _resolveSource(target)
     if pmRA != '':
         pmRA =  " (+%.1f mas/yr proper motion)" % pmRA
     if pmDec != '':
@@ -101,8 +91,6 @@ if __name__ == "__main__":
         )
     parser.add_argument('target', type=str, 
                         help='target name')
-    parser.add_argument('-p', '--pm', action='store_true', 
-                        help='also return the proper motion, if found')
     args = parser.parse_args()
     main(args)
     
