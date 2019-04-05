@@ -76,7 +76,18 @@ def getObsStartStop(obs):
 def main(args):
     # Filenames in an easier format - input
     inputSDF  = args.filename
-    
+    if args.date is not None:
+        y, m, d = args.date.split('/', 2)
+        args.date = date(int(y,10), int(m,10), int(d,10))
+    if args.time is not None:
+        h, m, s = args.time.split(':', 2)
+        us = int((float(s) - int(float(s)))*1e6)
+        s = int(float(s))
+        if us >= 1000000:
+            us -= 1000000
+            s += 1
+        args.time = time(int(h,10), int(m,10), s, us)
+        
     # Parse the input file and get the dates of the observations
     try:
         ## LWA-1
