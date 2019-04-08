@@ -472,6 +472,12 @@ class CalibratorSearch(wx.Frame):
         
         wx.EndBusyCursor()
         
+        fontW = wx.SystemSettings.GetFont(wx.SYS_SYSTEM_FONT)
+        fontW.SetStyle(wx.ITALIC)
+        fontE = wx.SystemSettings.GetFont(wx.SYS_SYSTEM_FONT)
+        fontE.SetStyle(wx.ITALIC)
+        fontE.SetWeight(wx.BOLD)
+        
         # Update the candidate list in the window
         self._clearCandidates()
         for i,candidate in enumerate(candidates):
@@ -488,16 +494,18 @@ class CalibratorSearch(wx.Frame):
             if sep >= 3.5:
                 item = self.listControl.GetItem(index, 3)
                 self.listControl.SetItemTextColour(item.GetId(), wx.RED)
+                self.listControl.SetItemFont(item.GetId(), fontE)
                 self.listControl.RefreshItem(item.GetId())
             elif sep > 3.0:
                 item = self.listControl.GetItem(index, 3)
                 self.listControl.SetItemTextColour(item.GetId(), ORANGE)
+                self.listControl.SetItemFont(item.GetId(), fontW)
                 self.listControl.RefreshItem(item.GetId())
                 
             ## Flag things that look like they might be too faint
             if flux < 5.0:
                 item = self.listControl.GetItem(index, 4)
-                self.listControl.SetItemTextColour(item.GetId(), wx.RED)
+                self.listControl.SetItemFont(item.GetId(), fontE)
                 self.listControl.RefreshItem(item.GetId())
                 
             ## Flag things that look like they might be too large
@@ -506,6 +514,7 @@ class CalibratorSearch(wx.Frame):
                 if maj >= 40.0:
                     item = self.listControl.GetItem(index, 5)
                     self.listControl.SetItemTextColour(item.GetId(), wx.RED)
+                    self.listControl.SetItemFont(item.GetId(), fontE)
                     self.listControl.RefreshItem(item.GetId())
             except ValueError:
                 pass
