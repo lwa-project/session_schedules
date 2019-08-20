@@ -3930,6 +3930,8 @@ class ResolveTarget(wx.Frame):
         elif self.parent.project.sessions[0].observations[self.observationID].mode != 'TRK_RADEC':
             return False
         else:
+            success = True
+            
             obsIndex = self.observationID
             for obsAttr,widget in [(6,self.raText), (7,self.decText)]:
                 try:
@@ -3949,8 +3951,12 @@ class ResolveTarget(wx.Frame):
                         self.parent.setSaveButton()
                         self.appli.Enable(False)
                 except ValueError as err:
+                    success = False
                     print('[%i] Error: %s' % (os.getpid(), str(err)))
                     
+            if success:
+                self.Close()
+                
     def onCancel(self, event):
         self.Close()
 
