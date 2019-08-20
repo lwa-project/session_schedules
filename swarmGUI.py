@@ -29,7 +29,12 @@ from lsl.common import stations
 from lsl.astro import deg_to_dms, deg_to_hms, MJD_OFFSET, DJD_OFFSET
 from lsl.reader.drx import filterCodes as DRXFilters
 try:
-    from lsl.common import idf
+    # HACK to deal with missing PM support in the idf.py module that
+    # ships with LSL v1.2.4.
+    if lsl.version.version != '1.2.4':
+        from lsl.common import idf
+    else:
+        raise ImportError
 except ImportError:
     import idf
 from lsl.correlator import uvUtils
@@ -48,7 +53,7 @@ from matplotlib.backends.backend_wxagg import NavigationToolbar2WxAgg, FigureCan
 from matplotlib.figure import Figure
 from matplotlib.ticker import NullFormatter, NullLocator
 
-__version__ = "0.1"
+__version__ = "0.2"
 __revision__ = "$Rev$"
 __author__ = "Jayce Dowell"
 
@@ -246,6 +251,8 @@ class ScanListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrlMixin):
                 pass
                 
             # Remove and resolve - disabled
+            self.parent.obsmenu['pmotion'].Enable(False)
+            self.parent.toolbar.EnableTool(ID_PMOTION, False)
             self.parent.obsmenu['remove'].Enable(False)
             self.parent.toolbar.EnableTool(ID_REMOVE, False)
             self.parent.obsmenu['resolve'].Enable(False)
@@ -282,6 +289,8 @@ class ScanListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrlMixin):
                     pass
                     
             # Remove and resolve - enabled
+            self.parent.obsmenu['pmotion'].Enable(True)
+            self.parent.toolbar.EnableTool(ID_PMOTION, True)
             self.parent.obsmenu['remove'].Enable(True)
             self.parent.toolbar.EnableTool(ID_REMOVE, True)
             self.parent.obsmenu['resolve'].Enable(True)
@@ -301,7 +310,9 @@ class ScanListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrlMixin):
             except KeyError, AttributeError:
                 pass
                 
-            # Remove and resolve - enabled and disabled, respectively
+            # Motion, remove, and resolve - enabled and disabled
+            self.parent.obsmenu['pmotion'].Enable(False)
+            self.parent.toolbar.EnableTool(ID_PMOTION, False)
             self.parent.obsmenu['remove'].Enable(True)
             self.parent.toolbar.EnableTool(ID_REMOVE, True)
             self.parent.obsmenu['resolve'].Enable(False)
@@ -483,7 +494,8 @@ ID_ADD_DRX_JOVIAN = 28
 ID_ADD_STEPPED_RADEC = 29
 ID_ADD_STEPPED_AZALT = 30
 ID_EDIT_STEPPED = 31
-ID_REMOVE = 32
+ID_PMOTION = 32
+ID_REMOVE = 33
 ID_VALIDATE = 40
 ID_TIMESERIES = 41
 ID_UVCOVERAGE = 42
@@ -632,6 +644,8 @@ class IDFCreator(wx.Frame):
         #editStepped = wx.MenuItem(add, ID_EDIT_STEPPED, 'DRX - Edit Selected Stepped Obs.')
         #AppendMenuItem(add, editStepped)
         AppendMenuMenu(obsMenu, -1, '&Add', add)
+        pmotion = wx.MenuItem(obsMenu, ID_PMOTION, '&Proper Motion')
+        AppendMenuItem(obsMenu, pmotion)
         remove = wx.MenuItem(obsMenu, ID_REMOVE, '&Remove Selected')
         AppendMenuItem(obsMenu, remove)
         validate = wx.MenuItem(obsMenu, ID_VALIDATE, '&Validate All\tF5')
@@ -656,9 +670,10 @@ class IDFCreator(wx.Frame):
         #self.obsmenu['steppedRADec'] = addSteppedRADec
         #self.obsmenu['steppedAzAlt'] = addSteppedAzAlt
         #self.obsmenu['steppedEdit'] = editStepped
+        self.obsmenu['pmotion'] = pmotion
         self.obsmenu['remove'] = remove
         self.obsmenu['resolve'] = resolve
-        for k in ('remove', 'resolve'):
+        for k in ('pmotion', 'remove', 'resolve'):
             self.obsmenu[k].Enable(False)
             
         # Data menu items
@@ -706,6 +721,8 @@ class IDFCreator(wx.Frame):
         #                        longHelp='Add a new beam forming DRX scan with custom az/alt position and frequency stepping')
         #AppendToolItem(self.toolbar, ID_EDIT_STEPPED,  'step', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'stepped-edit.png')), shortHelp='Edit Selected Stepped Scan', 
         #                        longHelp='Add and edit steps for the currently selected stepped scan')
+        AppendToolItem(self.toolbar, ID_PMOTION, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'proper-motion.png')), shortHelp='Advanced Options', 
+                                longHelp='Set the proper motion for this scan')
         AppendToolItem(self.toolbar, ID_REMOVE, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'remove.png')), shortHelp='Remove Selected', 
                                 longHelp='Remove the selected scans from the list')
         AppendToolItem(self.toolbar, ID_VALIDATE, '', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'validate.png')), shortHelp='Validate Scans', 
@@ -718,7 +735,8 @@ class IDFCreator(wx.Frame):
                                 longHelp='Display a brief help message for this program')
         self.toolbar.Realize()
         
-        # Disable "remove" in the toolbar
+        # Disable "pmotion" and "remove" in the toolbar
+        self.toolbar.EnableTool(ID_PMOTION, False)
         self.toolbar.EnableTool(ID_REMOVE, False)
         
         # Status bar
@@ -763,6 +781,7 @@ class IDFCreator(wx.Frame):
         #self.Bind(wx.EVT_MENU, self.onAddSteppedRADec, id=ID_ADD_STEPPED_RADEC)
         #self.Bind(wx.EVT_MENU, self.onAddSteppedAzAlt, id=ID_ADD_STEPPED_AZALT)
         #self.Bind(wx.EVT_MENU, self.onEditStepped, id=ID_EDIT_STEPPED)
+        self.Bind(wx.EVT_MENU, self.onProperMotion, id=ID_PMOTION)
         self.Bind(wx.EVT_MENU, self.onRemove, id=ID_REMOVE)
         self.Bind(wx.EVT_MENU, self.onValidate, id=ID_VALIDATE)
         self.Bind(wx.EVT_MENU, self.onResolve, id=ID_RESOLVE)
@@ -1170,6 +1189,23 @@ class IDFCreator(wx.Frame):
             self.badEdit = True
             self.badEditLocation = (obsIndex, obsAttr)
             
+    def onProperMotion(self, event):
+        """
+        Bring up the proper motion dialog box.
+        """
+        
+        nChecked = 0
+        whichChecked = None
+        for i in xrange(self.listControl.GetItemCount()):
+            if self.listControl.IsChecked(i):
+                whichChecked = i
+                nChecked += 1
+                
+        if nChecked != 1:
+            return False
+            
+        ProperMotionWindow(self, whichChecked)
+        
     def onRemove(self, event):
         """
         Remove selected scans from the main window as well as the 
@@ -1495,6 +1531,18 @@ class IDFCreator(wx.Frame):
             else:
                 return value
                 
+        def pmConv(text):
+            """
+            Special conversion function for dealing with proper motion pairs.
+            """
+            
+            try:
+                text = text.replace("---", "0.0")
+                ra, dec = [float(v) for v in text.split(None, 1)]
+            except (IndexError, TypeError):
+                raise ValueError("Proper motion must be a space-separated pair of float values")
+            return [ra, dec]
+            
         width = 50 + 100 + 100 + 100 + 235 + 125 + 150 + 150 + 125 + 125 + 85
         self.columnMap = []
         self.coerceMap = []
@@ -1510,6 +1558,9 @@ class IDFCreator(wx.Frame):
         self.listControl.InsertColumn(8, 'Tuning 1 (MHz)', width=125)
         self.listControl.InsertColumn(9, 'Tuning 2 (MHz)', width=125)
         self.listControl.InsertColumn(10, 'Filter Code', width=85)
+        # There is no "self.listControl.InsertColumn(11, ...)" since this 
+        # is meant to store the proper motion data that is accessable from
+        # a seperate window.
         self.columnMap.append('id')
         self.columnMap.append('target')
         self.columnMap.append('intent')
@@ -1521,6 +1572,7 @@ class IDFCreator(wx.Frame):
         self.columnMap.append('frequency1')
         self.columnMap.append('frequency2')
         self.columnMap.append('filter')
+        self.columnMap.append('pm')         # For proper motion
         self.coerceMap.append(str)
         self.coerceMap.append(str)
         self.coerceMap.append(intentConv)
@@ -1532,6 +1584,7 @@ class IDFCreator(wx.Frame):
         self.coerceMap.append(freqConv)
         self.coerceMap.append(freqConv)
         self.coerceMap.append(filterConv)
+        self.coerceMap.append(pmConv)       # For proper motion
         
         size = self.listControl.GetSize()
         size[0] = width
@@ -2824,9 +2877,10 @@ class VolumeInfo(wx.Frame):
         self.Close()
 
 
-ID_RESOLVE_RESOLVE = 611
-ID_RESOLVE_APPLY = 612
-ID_RESOLVE_CANCEL = 613
+ID_RESOLVE_IPM = 611
+ID_RESOLVE_RESOLVE = 612
+ID_RESOLVE_APPLY = 613
+ID_RESOLVE_CANCEL = 614
 
 class ResolveTarget(wx.Frame):
     def __init__ (self, parent):	
@@ -2876,31 +2930,47 @@ class ResolveTarget(wx.Frame):
         srv = wx.StaticText(panel, label='Service Used:')
         srvText = wx.TextCtrl(panel, style=wx.TE_READONLY)
         srvText.SetValue('---')
+        pr = wx.StaticText(panel, label='PM - RA (mas/yr):')
+        prText = wx.TextCtrl(panel, style=wx.TE_READONLY)
+        prText.SetValue('---')
+        pd = wx.StaticText(panel, label='PM - Dec (mas/yr):')
+        pdText = wx.TextCtrl(panel, style=wx.TE_READONLY)
+        pdText.SetValue('---')
         
         sizer.Add(ra, pos=(row+2, 0), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer.Add(raText, pos=(row+2, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer.Add(dec, pos=(row+3, 0), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer.Add(decText, pos=(row+3, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(srv, pos=(row+4, 0), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(srvText, pos=(row+4, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(pr, pos=(row+4, 0), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(prText, pos=(row+4, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(pd, pos=(row+5, 0), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(pdText, pos=(row+5, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(srv, pos=(row+6, 0), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(srvText, pos=(row+6, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         
         line = wx.StaticLine(panel)
-        sizer.Add(line, pos=(row+5, 0), span=(1, 5), flag=wx.EXPAND|wx.BOTTOM, border=10)
+        sizer.Add(line, pos=(row+7, 0), span=(1, 5), flag=wx.EXPAND|wx.BOTTOM, border=10)
+        
+        inclPM = wx.CheckBox(panel, ID_RESOLVE_IPM, 'Include PM')
         
         resolve = wx.Button(panel, ID_RESOLVE_RESOLVE, 'Resolve', size=(90, 28))
         appli = wx.Button(panel, ID_RESOLVE_APPLY, 'Apply', size=(90, 28))
         cancel = wx.Button(panel, ID_RESOLVE_CANCEL, 'Cancel', size=(90, 28))
         
-        sizer.Add(resolve, pos=(row+6, 2))
-        sizer.Add(appli, pos=(row+6, 3))
-        sizer.Add(cancel, pos=(row+6, 4))
+        sizer.Add(inclPM, pos=(row+8, 0))
+        sizer.Add(resolve, pos=(row+8, 2))
+        sizer.Add(appli, pos=(row+8, 3))
+        sizer.Add(cancel, pos=(row+8, 4))
         
         panel.SetSizerAndFit(sizer)
         
         self.srcText = srcText
         self.raText = raText
         self.decText = decText
+        self.prText = prText
+        self.pdText = pdText
         self.srvText = srvText
+        self.inclPM = inclPM
         self.appli = appli
         self.appli.Enable(False)
         
@@ -2926,15 +2996,21 @@ class ResolveTarget(wx.Frame):
                 
             service = service.attrib['name'].split('=', 1)[1]
             raS, decS = coords.text.split(None, 1)
-            if pm is not None:
-                pmRAS = float(pm.find('pmRA').text)
-                pmDecS = float(pm.find('pmDE').text)
+            if self.inclPM.IsChecked():
+                if pm is not None:
+                    pmRAS = pm.find('pmRA').text
+                    pmDecS = pm.find('pmDE').text
+                else:
+                    pmRAS = "---"
+                    pmDecS = "---"
             else:
-                pmRAS = ''
-                pmDecS = ''
+                pmRAS = "---"
+                pmDecS = "---"
                 
             self.raText.SetValue(raS)
             self.decText.SetValue(decS)
+            self.prText.SetValue(pmRAS)
+            self.pdText.SetValue(pmDecS)
             self.srvText.SetValue(service)
             
             if self.scanID != -1:
@@ -2943,33 +3019,47 @@ class ResolveTarget(wx.Frame):
         except (IOError, ValueError, RuntimeError):
             self.raText.SetValue("---")
             self.decText.SetValue("---")
+            self.prText.SetValue("---")
+            self.pdText.SetValue("---")
             self.srvText.SetValue("Error resolving target")
             
     def onApply(self, event):
         if self.scanID == -1:
             return False
         else:
+            success = True
+            
             obsIndex = self.scanID
-            for obsAttr,widget in [(6,self.raText), (7,self.decText)]:
+            pmText = "%s %s" % (self.prText.GetValue(), self.pdText.GetValue())
+            for obsAttr,widget in [(6,self.raText), (7,self.decText), (11,pmText)]:
                 try:
-                    newData = self.parent.coerceMap[obsAttr](widget.GetValue())
+                    try:
+                        text = widget.GetValue()
+                    except AttributeError:
+                        text = widget
+                    newData = self.parent.coerceMap[obsAttr](text)
                     
                     oldData = getattr(self.parent.project.runs[0].scans[obsIndex], self.parent.columnMap[obsAttr])
                     if newData != oldData:
                         setattr(self.parent.project.runs[0].scans[obsIndex], self.parent.columnMap[obsAttr], newData)
                         self.parent.project.runs[0].scans[obsIndex].update()
                         
-                        item = self.parent.listControl.GetItem(obsIndex, obsAttr)
-                        item.SetText(widget.GetValue())
-                        self.parent.listControl.SetItem(item)
-                        self.parent.listControl.RefreshItem(item.GetId())
-                        
+                        if obsAttr < self.parent.listControl.GetColumnCount():
+                            item = self.parent.listControl.GetItem(obsIndex, obsAttr)
+                            item.SetText(text)
+                            self.parent.listControl.SetItem(item)
+                            self.parent.listControl.RefreshItem(item.GetId())
+                            
                         self.parent.edited = True
                         self.parent.setSaveButton()
                         self.appli.Enable(False)
                 except ValueError as err:
+                    success = False
                     print('[%i] Error: %s' % (os.getpid(), str(err)))
                     
+            if success:
+                self.Close()
+                
     def onCancel(self, event):
         self.Close()
 
@@ -3064,6 +3154,103 @@ class ScheduleWindow(wx.Frame):
         
         self.Close()
         
+    def onCancel(self, event):
+        self.Close()
+
+
+ID_PMOTION_APPLY = 712
+ID_PMOTION_CANCEL = 713
+
+class ProperMotionWindow(wx.Frame):
+    def __init__ (self, parent, scanID):
+        self.parent = parent
+        self.scanID = scanID
+        self.scan = self.parent.project.runs[0].scans[self.scanID]
+        
+        title = 'Scan #%i Proper Motion' % (scanID+1,)
+        wx.Frame.__init__(self, parent, title=title, size=(375, 150))
+        
+        self.initUI()
+        self.initEvents()
+        self.Show()
+        
+    def initUI(self):
+        row = 0
+        panel = wx.Panel(self)
+        sizer = wx.GridBagSizer(5, 5)
+        
+        src = wx.StaticText(panel, label='Target Name:')
+        srcText = wx.TextCtrl(panel, style=wx.TE_READONLY)
+        srcText.SetValue(self.scan.target)
+        sizer.Add(src, pos=(row+0, 0), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(srcText, pos=(row+0, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        
+        line = wx.StaticLine(panel)
+        sizer.Add(line, pos=(row+1, 0), span=(1, 5), flag=wx.EXPAND|wx.BOTTOM, border=10)
+        
+        pr = wx.StaticText(panel, label='RA (mas/yr):')
+        prText = wx.TextCtrl(panel)
+        prText.SetValue("%+.3f" % self.scan.pm[0])
+        pd = wx.StaticText(panel, label='Dec (mas/yr):')
+        pdText = wx.TextCtrl(panel)
+        pdText.SetValue("%+.3f" % self.scan.pm[1])
+        
+        sizer.Add(pr, pos=(row+2, 0), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(prText, pos=(row+2, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(pd, pos=(row+3, 0), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(pdText, pos=(row+3, 1), span=(1, 4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        
+        line = wx.StaticLine(panel)
+        sizer.Add(line, pos=(row+4, 0), span=(1, 5), flag=wx.EXPAND|wx.BOTTOM, border=10)
+        
+        appli = wx.Button(panel, ID_PMOTION_APPLY, 'Apply', size=(90, 28))
+        cancel = wx.Button(panel, ID_PMOTION_CANCEL, 'Cancel', size=(90, 28))
+        
+        sizer.Add(appli, pos=(row+5, 3))
+        sizer.Add(cancel, pos=(row+5, 4))
+        
+        panel.SetSizerAndFit(sizer)
+        
+        self.prText = prText
+        self.pdText = pdText
+        
+    def initEvents(self):
+        self.Bind(wx.EVT_BUTTON, self.onApply, id=ID_PMOTION_APPLY)
+        self.Bind(wx.EVT_BUTTON, self.onCancel, id=ID_PMOTION_CANCEL)
+        
+    def onApply(self, event):
+        if self.scanID == -1:
+            return False
+        else:
+            success = True
+            
+            obsIndex = self.scanID
+            obsAttr = 11
+            text = "%s %s" % (self.prText.GetValue(), self.pdText.GetValue())
+            
+            try:
+                newData = self.parent.coerceMap[obsAttr](text)
+                
+                oldData = getattr(self.parent.project.runs[0].scans[obsIndex], self.parent.columnMap[obsAttr])
+                if newData != oldData:
+                    setattr(self.parent.project.runs[0].scans[obsIndex], self.parent.columnMap[obsAttr], newData)
+                    self.parent.project.runs[0].scans[obsIndex].update()
+                    
+                    if obsAttr < self.parent.listControl.GetColumnCount():
+                        item = self.parent.listControl.GetItem(obsIndex, obsAttr)
+                        item.SetText(text)
+                        self.parent.listControl.SetItem(item)
+                        self.parent.listControl.RefreshItem(item.GetId())
+                        
+                    self.parent.edited = True
+                    self.parent.setSaveButton()
+            except ValueError as err:
+                success = False
+                print('[%i] Error: %s' % (os.getpid(), str(err)))
+                
+            if success:
+                self.Close()
+                
     def onCancel(self, event):
         self.Close()
 
