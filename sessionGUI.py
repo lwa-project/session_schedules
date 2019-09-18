@@ -592,7 +592,6 @@ class SDFCreator(wx.Frame):
         self.project.sessions[0].tbwBits = 12
         self.project.sessions[0].tbwSamples = 12000000
         
-        self.project.sessions[0].tbfBits = 8
         self.project.sessions[0].tbfSamples = 1960000
         
         self.project.sessions[0].tbnGain = -1
@@ -1154,7 +1153,6 @@ class SDFCreator(wx.Frame):
         """
         
         id = self.listControl.GetItemCount() + 1
-        bits = self.project.sessions[0].tbfBits
         samples = self.project.sessions[0].tbfSamples
         self.project.sessions[0].observations.append( self.sdf.TBF('tbf-%i' % id, 'All-Sky', self._getCurrentDateString(), 42e6, 74e6, self._getDefaultFilter(), samples) )
         self.addObservation(self.project.sessions[0].observations[-1], id)
