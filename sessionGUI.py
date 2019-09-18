@@ -592,7 +592,7 @@ class SDFCreator(wx.Frame):
         self.project.sessions[0].tbwBits = 12
         self.project.sessions[0].tbwSamples = 12000000
         
-        self.project.sessions[0].tbfSamples = 1960000
+        self.project.sessions[0].tbfSamples = 12000000
         
         self.project.sessions[0].tbnGain = -1
         self.project.sessions[0].drxGain = -1
