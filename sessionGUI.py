@@ -14,9 +14,9 @@ import math
 import ephem
 import argparse
 try:
-    import cStringIO as StringIO
+    from cStringIO import StringIO
 except ImportError:
-    import StringIO
+    from io import StringIO
 from datetime import datetime, timedelta
 from xml.etree import ElementTree
 
@@ -1378,7 +1378,7 @@ class SDFCreator(wx.Frame):
             i += 1
             
         # Do a global validation
-        sys.stdout = StringIO.StringIO()
+        sys.stdout = StringIO()
         if self.project.validate(verbose=True):
             msg =  sys.stdout.getvalue()[:-1]
             sys.stdout.close()
@@ -3190,6 +3190,7 @@ class AdvancedInfo(wx.Frame):
         self.parent.project.sessions[0].includeStationStatic = self.incSMIB.GetValue()
         self.parent.project.sessions[0].includeDesign = self.incDESG.GetValue()
         
+        refresh_duration = False
         aspFltDict = {'MCS Decides': -1, 'Split': 0, 'Full': 1, 'Reduced': 2, 'Off': 3, 
                                          'Split @ 3MHz': 4, 'Full @ 3MHz': 5}
         aspFlt = aspFltDict[self.aspFlt.GetValue()]
@@ -3210,6 +3211,7 @@ class AdvancedInfo(wx.Frame):
                 self.parent.project.sessions[0].observations[i].bits = int( self.tbwBits.GetValue().split('-')[0] )
                 self.parent.project.sessions[0].observations[i].samples = int( self.tbwSamp.GetValue() )
                 self.parent.project.sessions[0].observations[i].update()
+                refresh_duration = True
                 
         if self.parent.mode == 'TBF':
             self.parent.project.sessions[0].drxBeam = self.__parseGainCombo(self.tbfBeam)
@@ -3217,6 +3219,7 @@ class AdvancedInfo(wx.Frame):
             for i in xrange(len(self.parent.project.sessions[0].observations)):
                 self.parent.project.sessions[0].observations[i].samples = int( self.tbfSamp.GetValue() )
                 self.parent.project.sessions[0].observations[i].update()
+                refresh_duration = True
                 
         if self.parent.mode == 'TBN' or (self.parent.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF):
             self.parent.project.sessions[0].tbnGain = self.__parseGainCombo(self.gain)
@@ -3340,6 +3343,16 @@ class AdvancedInfo(wx.Frame):
                 else:
                     self.parent.project.sessions[0].spcMetatag = '{Stokes=IQUV}'
                     
+        if refresh_duration:
+            col = self.parent.columnMap.index('duration')
+            for idx in xrange(self.parent.listControl.GetItemCount()):
+                obs_mode = self.parent.project.sessions[0].observations[idx].mode
+                obs_dur = self.parent.project.sessions[0].observations[idx].duration
+                if obs_mode in ('TBW', 'TBF'):
+                    item = self.parent.listControl.GetItem(idx, col)
+                    item.SetText(obs_dur)
+                    self.parent.listControl.SetItem(item)
+                    self.parent.listControl.RefreshItem(item.GetId())
         self.parent.edited = True
         self.parent.setSaveButton()
         
