@@ -15,9 +15,9 @@ import ephem
 import numpy
 import argparse
 try:
-    import cStringIO as StringIO
+    from cStringIO import StringIO
 except ImportError:
-    import StringIO
+    from io import StringIO
 from datetime import datetime, timedelta
 from xml.etree import ElementTree
 
@@ -1287,7 +1287,7 @@ class IDFCreator(wx.Frame):
             i += 1
             
         # Do a global validation
-        sys.stdout = StringIO.StringIO()
+        sys.stdout = StringIO()
         if self.project.validate(verbose=True):
             msg =  sys.stdout.getvalue()[:-1]
             sys.stdout.close()
@@ -1396,7 +1396,7 @@ class IDFCreator(wx.Frame):
             elif value >= 1e3:
                 return float(value)/1e3, 'kHz'
             else:
-                return value, Hz
+                return float(value), 'Hz'
                 
         filterInfo = "DRX"
         for dk,dv in DRXFilters.iteritems():
@@ -3099,7 +3099,7 @@ class ScheduleWindow(wx.Frame):
             solar.SetValue(True)
             fixed.SetValue(False)
         elif self.parent.project.runs[0].comments.find('ScheduleFixed') != -1:
-            sidereal.SetValue(Flase)
+            sidereal.SetValue(False)
             solar.SetValue(False)
             fixed.SetValue(True)
         else:

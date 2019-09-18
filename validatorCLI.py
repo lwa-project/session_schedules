@@ -19,10 +19,6 @@ import ephem
 import argparse
 import tempfile
 import subprocess
-try:
-    import cStringIO as StringIO
-except ImportError:
-    import StringIO
 
 from lsl.common import sdf
 from lsl.common.stations import lwa1

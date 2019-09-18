@@ -1449,7 +1449,7 @@ class SDFCreator(wx.Frame):
             elif value >= 1e3:
                 return float(value)/1e3, 'kHz'
             else:
-                return value, Hz
+                return float(value), 'Hz'
                 
         if self.mode == 'TBN':
             filterInfo = "TBN"
@@ -4007,7 +4007,7 @@ class ScheduleWindow(wx.Frame):
             solar.SetValue(True)
             fixed.SetValue(False)
         elif self.parent.project.sessions[0].comments.find('ScheduleFixed') != -1:
-            sidereal.SetValue(Flase)
+            sidereal.SetValue(False)
             solar.SetValue(False)
             fixed.SetValue(True)
         else:
