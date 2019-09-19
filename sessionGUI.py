@@ -1978,10 +1978,9 @@ class SDFCreator(wx.Frame):
         dialog.ShowModal()
 
 
-ID_OBS_INFO_UCF = 211
-ID_OBS_INFO_DRSPEC = 212
-ID_OBS_INFO_OK = 213
-ID_OBS_INFO_CANCEL = 214
+ID_OBS_INFO_DRSPEC = 211
+ID_OBS_INFO_OK = 212
+ID_OBS_INFO_CANCEL = 213
 
 _usernameRE = re.compile(r'ucfuser:[ \t]*(?P<username>[a-zA-Z]+)(\/(?P<subdir>[a-zA-Z0-9\/\+\-_]+))?')
 _cleanup0RE = re.compile(r';;(;;)+')
@@ -1994,7 +1993,7 @@ class ObserverInfo(wx.Frame):
     """
     
     def __init__(self, parent):
-        wx.Frame.__init__(self, parent, title='Observer Information', size=(825,835))
+        wx.Frame.__init__(self, parent, title='Observer Information', size=(855,835))
         
         self.parent = parent
         
@@ -2193,7 +2192,7 @@ class ObserverInfo(wx.Frame):
         did = wx.StaticText(panel, label='Data Return Method')
         drsuRB = wx.RadioButton(panel, -1, 'DRSU', style=wx.RB_GROUP)
         usbRB  = wx.RadioButton(panel, -1, 'USB Harddrive (4 max)')
-        ucfRB  = wx.RadioButton(panel, ID_OBS_INFO_UCF, 'Copy to UCF')
+        ucfRB  = wx.RadioButton(panel, -1, 'Copy to UCF')
         
         unam = wx.StaticText(panel, label='UCF Username:')
         unamText = wx.TextCtrl(panel)
@@ -2383,17 +2382,25 @@ class ObserverInfo(wx.Frame):
         self.stokes = stokes
         
     def initEvents(self):
-        self.Bind(wx.EVT_RADIOBUTTON, self.onUCF, id=ID_OBS_INFO_UCF)
+        self.Bind(wx.EVT_RADIOBUTTON, self.onRadioButtons)
         self.Bind(wx.EVT_CHECKBOX, self.onDRSpec, id=ID_OBS_INFO_DRSPEC)
         
         self.Bind(wx.EVT_BUTTON, self.onOK, id=ID_OBS_INFO_OK)
         self.Bind(wx.EVT_BUTTON, self.onCancel, id=ID_OBS_INFO_CANCEL)
         
-    def onUCF(self, event):
+    def onRadioButtons(self, event):
         """
+        Toggle allowing DR spectrometer mode on whether or not DRX is selected.
         Toggle the UCF username option.
         """
         
+        if self.drxButton.GetValue():
+            self.drsButton.Enable()
+        else:
+            self.drsButton.Disable()
+            self.drsButton.SetValue(False)
+            self.onDRSpec(event)
+            
         if self.ucfButton.GetValue():
             self.unamText.Enable()
         else:

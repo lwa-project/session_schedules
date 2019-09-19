@@ -1761,10 +1761,9 @@ class IDFCreator(wx.Frame):
         dialog.ShowModal()
 
 
-ID_OBS_INFO_UCF = 211
-ID_OBS_INFO_DRSPEC = 212
-ID_OBS_INFO_OK = 213
-ID_OBS_INFO_CANCEL = 214
+ID_OBS_INFO_DRSPEC = 211
+ID_OBS_INFO_OK = 212
+ID_OBS_INFO_CANCEL = 213
 
 _usernameRE = re.compile(r'ucfuser:[ \t]*(?P<username>[a-zA-Z]+)(\/(?P<subdir>[a-zA-Z0-9\/\+\-_]+))?')
 _cleanup0RE = re.compile(r';;(;;)+')
@@ -1962,7 +1961,7 @@ class ObserverInfo(wx.Frame):
         did = wx.StaticText(panel, label='Data Return Method')
         drsuRB = wx.RadioButton(panel, -1, 'DRSU', style=wx.RB_GROUP)
         usbRB  = wx.RadioButton(panel, -1, 'USB Harddrive (4 max)')
-        ucfRB  = wx.RadioButton(panel, ID_OBS_INFO_UCF, 'Copy to UCF')
+        ucfRB  = wx.RadioButton(panel, -1, 'Copy to UCF')
         
         unam = wx.StaticText(panel, label='UCF Username:')
         unamText = wx.TextCtrl(panel)
@@ -2003,6 +2002,7 @@ class ObserverInfo(wx.Frame):
         sizer.Add(nchnText, pos=(row+7,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer.Add(tint, pos=(row+7,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer.Add(tintText, pos=(row+7,5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(spid, pos=(row+8,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer.Add(linear, pos=(row+8,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer.Add(circul, pos=(row+8,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer.Add(stokes, pos=(row+8,5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
@@ -2061,12 +2061,12 @@ class ObserverInfo(wx.Frame):
         self.stokes = stokes
         
     def initEvents(self):
-        self.Bind(wx.EVT_RADIOBUTTON, self.onUCF, id=ID_OBS_INFO_UCF)
+        self.Bind(wx.EVT_RADIOBUTTON, self.onRadioButtons)
         
         self.Bind(wx.EVT_BUTTON, self.onOK, id=ID_OBS_INFO_OK)
         self.Bind(wx.EVT_BUTTON, self.onCancel, id=ID_OBS_INFO_CANCEL)
         
-    def onUCF(self, event):
+    def onRadioButtons(self, event):
         """
         Toggle the UCF username option.
         """
@@ -2227,7 +2227,7 @@ class AdvancedInfo(wx.Frame):
             if j >= 6:
                 j = 2
                 i += 1
-        for dummy in ('LWANA', 'OVLWA'):
+        for dummy in ('LWANA', 'OVROLWA'):
             staCheck = wx.CheckBox(panel, ID_STATION_CHECKED, label=dummy)
             staCheck.Enable(False)
             sizer.Add(staCheck, pos=(row+1+i,j), span=(1,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
