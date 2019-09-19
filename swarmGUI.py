@@ -1960,7 +1960,7 @@ class ObserverInfo(wx.Frame):
         
         did = wx.StaticText(panel, label='Data Return Method')
         drsuRB = wx.RadioButton(panel, -1, 'DRSU', style=wx.RB_GROUP)
-        usbRB  = wx.RadioButton(panel, -1, 'USB Harddrive (4 max)')
+        usbRB  = wx.RadioButton(panel, -1, 'Bare Drive (4 max)')
         ucfRB  = wx.RadioButton(panel, -1, 'Copy to UCF')
         
         unam = wx.StaticText(panel, label='UCF Username:')
