@@ -53,6 +53,8 @@ from matplotlib.backends.backend_wxagg import NavigationToolbar2WxAgg, FigureCan
 from matplotlib.figure import Figure
 from matplotlib.ticker import NullFormatter, NullLocator
 
+from calibratorSearch import CalibratorSearch as OCS
+
 __version__ = "0.2"
 __revision__ = "$Rev$"
 __author__ = "Jayce Dowell"
@@ -1321,32 +1323,14 @@ class IDFCreator(wx.Frame):
         Launch an instance of the calibrator search tool.
         """
         
-        target = None
-        ra = None
-        dec = None
-        for i in range(self.listControl.GetItemCount()):
+        whichChecked = None
+        for i in xrange(self.listControl.GetItemCount()):
             if self.listControl.IsChecked(i):
-                item = self.listControl.GetItem(i, 1)
-                target = item.GetText()
-                item = self.listControl.GetItem(i, 6)
-                ra = item.GetText()
-                item = self.listControl.GetItem(i, 7)
-                dec = item.GetText()
+                whichChecked = i
                 break
                 
-        cmd = [sys.executable, os.path.join(os.path.dirname(__file__), 'calibratorSearch.py'),]
-        if target is not None:
-            cmd.append("--target=%s" % target)
-        if ra is not None:
-            cmd.append("--ra=%s" % ra)
-        if dec is not None:
-            cmd.append("--dec=%s" % dec)
-        import subprocess
-        try:
-            subprocess.Popen(cmd)
-        except:
-            pass
-            
+        SearchWindow(self, whichChecked)
+        
     def onTimeseries(self, event):
         """
         Display a window showing the layout of the scans in time.
@@ -3253,6 +3237,59 @@ class ProperMotionWindow(wx.Frame):
                 
     def onCancel(self, event):
         self.Close()
+
+
+ID_ACCEPT = 811
+
+class SearchWindow(OCS):
+    def __init__(self, parent, scanID):
+        self.parent = parent
+        self.scanID = scanID
+        target, ra, dec = None, None, None
+        if self.scanID >= 0:
+            item = self.parent.listControl.GetItem(self.scanID, 1)
+            target = item.GetText()
+            item = self.parent.listControl.GetItem(self.scanID, 6)
+            ra = item.GetText()
+            item = self.parent.listControl.GetItem(self.scanID, 7)
+            dec = item.GetText()
+        OCS.__init__(self, self.parent, 'Calibrator Search', target=target, ra=ra, dec=dec)
+        
+    def initUI(self):
+        OCS.initUI(self)
+        select = wx.Button(self.panel3, ID_ACCEPT, 'Accept', size=(100, 28))
+        self.sizer3.Add(select, pos=(self.row+9, 5), span=(1, 1), flag=wx.EXPAND|wx.ALIGN_CENTER, border=5)
+        self.panel.SetSizerAndFit(self.sizer)
+        
+    def initEvents(self):
+        OCS.initEvents(self)
+        self.Bind(wx.EVT_BUTTON, self.onAccept, id=ID_ACCEPT)
+        
+    def onAccept(self, event):
+        index = self.listControl.GetNextSelected(-1)
+        if index != -1:
+            name = self.listControl.GetItem(index, 0)
+            name = name.GetText()
+            ra = self.listControl.GetItem(index, 1)
+            ra = ra.GetText()
+            dec = self.listControl.GetItem(index, 2)
+            dec = dec.GetText()
+            
+            if self.scanID >= 0:
+                item = self.parent.listControl.GetItem(self.scanID, 1)
+                item.SetText(name)
+                self.parent.listControl.SetItem(item)
+                self.parent.listControl.RefreshItem(item.GetId())
+                item = self.parent.listControl.GetItem(self.scanID, 6)
+                item.SetText(ra)
+                self.parent.listControl.SetItem(item)
+                self.parent.listControl.RefreshItem(item.GetId())
+                item = self.parent.listControl.GetItem(self.scanID, 7)
+                item.SetText(dec)
+                self.parent.listControl.SetItem(item)
+                self.parent.listControl.RefreshItem(item.GetId())
+                
+        wx.CallAfter(self.onQuit, event)
 
 
 class HtmlWindow(wx.html.HtmlWindow): 
