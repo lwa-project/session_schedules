@@ -248,7 +248,7 @@ class CalibratorSearch(wx.Frame):
         sizer3.Add(szText, pos=(row+9, 1), span=(1, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer3.Add(szUnit, pos=(row+9, 3), span=(1, 1), flag=wx.EXPAND|wx.ALIGN_LEFT, border=5)
         display = wx.Button(panel3, ID_DISPLAY, 'Display Selected', size=(100, 28))
-        sizer3.Add(display, pos=(row+9, 5), span=(1, 2), flag=wx.EXPAND|wx.ALIGN_CENTER, border=5)
+        sizer3.Add(display, pos=(row+9, 6), span=(1, 1), flag=wx.EXPAND|wx.ALIGN_CENTER, border=5)
         
         panel3.SetSizer(sizer3)
         sizer.Add(panel3, flag=wx.EXPAND|wx.LEFT|wx.RIGHT)
@@ -263,6 +263,13 @@ class CalibratorSearch(wx.Frame):
         self.ldText = ldText
         self.udText = udText
         self.szText = szText
+        
+        # For embedding purposes
+        self.row = row
+        self.panel = panel
+        self.sizer = sizer
+        self.panel3 = panel3
+        self.sizer3 = sizer3
         
     def initEvents(self):
         """
