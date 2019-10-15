@@ -4054,11 +4054,11 @@ class ScheduleWindow(wx.Frame):
         oldComments = oldComments.replace('SchedulFixed', '')
         
         if self.sidereal.GetValue():
-            oldComments += 'ScheduleSiderealMovable'
+            oldComments += ';;ScheduleSiderealMovable'
         elif self.solar.GetValue():
-            oldComments += 'ScheduleSolarMovable'
+            oldComments += ';;ScheduleSolarMovable'
         elif self.fixed.GetValue():
-            oldComments += 'ScheduleFixed'
+            oldComments += ';;ScheduleFixed'
         else:
             pass
             
