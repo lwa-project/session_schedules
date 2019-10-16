@@ -1274,7 +1274,7 @@ class IDFCreator(wx.Frame):
             for station in self.project.runs[0].stations:
                 print("[%i] Validating scan %i on %s" % (os.getpid(), i+1, station.id))
                 valid = obs.validate(station, verbose=True)
-                for col in xrange(len(self.columnMap)):
+                for col in xrange(len(self.columnMap)-1):  # -1 for proper motion
                     item = self.listControl.GetItem(i, col)
                     
                     if not valid:
