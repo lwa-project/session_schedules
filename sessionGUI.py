@@ -231,7 +231,7 @@ class ObservationListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrl
         wx.ListCtrl.__init__(self, parent, style=wx.LC_REPORT, **kwargs)
         TextEditMixin.__init__(self)
         if adp:
-            ChoiceMixIn.__init__(self, {10:['1','2','3','4','5','6'], 11:['No','Yes']})
+            ChoiceMixIn.__init__(self, {10:['1','2','3','4','5','6','7'], 11:['No','Yes']})
         else:
             ChoiceMixIn.__init__(self, {10:['1','2','3','4','5','6','7'], 11:['No','Yes']})
         CheckListCtrlMixin.__init__(self)
@@ -443,6 +443,7 @@ class PlotPanel(wx.Panel):
         if 'style' not in kwargs.keys():
             kwargs['style'] = wx.NO_FULL_REPAINT_ON_RESIZE
         wx.Panel.__init__(self, parent, **kwargs)
+        self.parent = parent
         
         # initialize matplotlib stuff
         self.figure = Figure(None, dpi)
@@ -1131,7 +1132,7 @@ class SDFCreator(wx.Frame):
         default to appropriate filter instead of 7.
         """
         
-        return 6 if self.adp and self.mode != 'TBN' else 7
+        return 7
         
     def onAddTBW(self, event):
         """
@@ -1454,8 +1455,6 @@ class SDFCreator(wx.Frame):
         if self.mode == 'TBN':
             filterInfo = "TBN"
             for tk,tv in TBNFilters.iteritems():
-                #if not self.adp and tk > 7:
-                #    continue
                 if tk > 7:
                     continue
                 tv, tu = units(tv)
@@ -1463,7 +1462,7 @@ class SDFCreator(wx.Frame):
         elif self.mode == 'DRX' or self.mode == 'TBF':
             filterInfo = "DRX"
             for dk,dv in DRXFilters.iteritems():
-                if self.adp and dk > 6:
+                if dk > 7:
                     continue
                 dv, du = units(dv)
                 filterInfo = "%s\n%i  %.3f %-3s" % (filterInfo, dk, dv, du)
@@ -1593,8 +1592,8 @@ class SDFCreator(wx.Frame):
             """
             
             value = int(text)
-            if value < 1 or value > (6 if self.adp and self.mode != 'TBN' else 7):
-                raise ValueError("Filter code must be an integer between 1 and %i" % (6 if self.adp and self.mode != 'TBN' else 7))
+            if value < 1 or value > 7:
+                raise ValueError("Filter code must be an integer between 1 and 7")
             else:
                 return value
                 
@@ -2912,7 +2911,7 @@ class AdvancedInfo(wx.Frame):
                 
                 bdmDipoleText.SetValue("%i" % realStand)
             else:
-                bdmDipoleText.SetValue("258")
+                bdmDipoleText.SetValue("256" if self.parent.adp else "258")
                 bdmDipoleText.Enable(False)
                 
             bdmDGain = wx.StaticText(panel, label='Stand Gain')
@@ -3254,8 +3253,8 @@ class AdvancedInfo(wx.Frame):
                 try:
                     ## Extract the stand number
                     realStand = int(self.bdmDipoleText.GetValue())
-                    if realStand < 0 or realStand > 260:
-                        self.displayError('Invalid stand number: %i' % realStand, details='0 < stand <= 260', 
+                    if realStand < 0 or realStand > (256 if self.parent.adp else 260):
+                        self.displayError('Invalid stand number: %i' % realStand, details='0 < stand <= %i' % (256 if self.parent.adp else 260), 
                                         title='Beam-Dipole Setup Error')
                         return False
                         
@@ -3284,22 +3283,22 @@ class AdvancedInfo(wx.Frame):
                 try:
                     dipoleGain = float(self.bdmDGainText.GetValue())
                     if dipoleGain < 0.0 or dipoleGain > 1.0:
-                        self.displayError('Invalid dipole gain value: %.4f' % dipoleGain, detail='0 <= gain <= 1', 
+                        self.displayError('Invalid dipole gain value: %.4f' % dipoleGain, details='0 <= gain <= 1', 
                                         title='Beam-Dipole Setup Error')
                         return False
                 except ValueError:
-                    self.displayError('Invalid dipole gain value: %s' % self.bdmDGainText.GetValue(), detail='Not a float', 
+                    self.displayError('Invalid dipole gain value: %s' % self.bdmDGainText.GetValue(), details='Not a float', 
                                     title='Beam-Dipole Setup Error')
                     return False
                     
                 try:
                     beamGain = float(self.bdmBGainText.GetValue())
                     if beamGain < 0.0 or beamGain > 1.0:
-                        self.displayError('Invalid beam gain value: %.4f' % beamGain, detail='0 <= gain <= 1', 
+                        self.displayError('Invalid beam gain value: %.4f' % beamGain, details='0 <= gain <= 1', 
                                         title='Beam-Dipole Setup Error')
                         return False
                 except ValueError:
-                    self.displayError('Invalid beam gain value: %s' % self.bdmBGainText.GetValue(), detail='Not a float', 
+                    self.displayError('Invalid beam gain value: %s' % self.bdmBGainText.GetValue(), details='Not a float', 
                                     title='Beam-Dipole Setup Error')
                     return False
                     
