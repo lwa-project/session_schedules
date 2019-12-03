@@ -226,7 +226,7 @@ class ScanListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrlMixin):
     def __init__(self, parent, **kwargs):
         wx.ListCtrl.__init__(self, parent, style=wx.LC_REPORT, **kwargs)
         TextEditMixin.__init__(self)
-        ChoiceMixIn.__init__(self, {2:['FluxCal','PhaseCal','Target'], 10:['1','2','3','4','5','6']})
+        ChoiceMixIn.__init__(self, {2:['FluxCal','PhaseCal','Target'], 10:['1','2','3','4','5','6','7']})
         CheckListCtrlMixin.__init__(self)
         
         self.nSelected = 0
@@ -437,6 +437,7 @@ class PlotPanel(wx.Panel):
         if 'style' not in kwargs.keys():
             kwargs['style'] = wx.NO_FULL_REPAINT_ON_RESIZE
         wx.Panel.__init__(self, parent, **kwargs)
+        self.parent = parent
         
         # initialize matplotlib stuff
         self.figure = Figure(None, dpi)
@@ -1069,7 +1070,7 @@ class IDFCreator(wx.Frame):
         default to appropriate filter instead of 7.
         """
         
-        return 6
+        return 7
         
     def onAddDRXR(self, event):
         """
@@ -1384,7 +1385,7 @@ class IDFCreator(wx.Frame):
                 
         filterInfo = "DRX"
         for dk,dv in DRXFilters.iteritems():
-            if dk > 6:
+            if dk > 7:
                 continue
             dv, du = units(dv)
             filterInfo = "%s\n%i  %.3f %-3s" % (filterInfo, dk, dv, du)
@@ -1510,8 +1511,8 @@ class IDFCreator(wx.Frame):
             """
             
             value = int(text)
-            if value < 1 or value > 6:
-                raise ValueError("Filter code must be an integer between 1 and 6")
+            if value < 1 or value > 7:
+                raise ValueError("Filter code must be an integer between 1 and 7")
             else:
                 return value
                 
