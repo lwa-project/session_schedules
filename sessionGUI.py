@@ -3253,8 +3253,9 @@ class AdvancedInfo(wx.Frame):
                 try:
                     ## Extract the stand number
                     realStand = int(self.bdmDipoleText.GetValue())
-                    if realStand < 0 or realStand > (256 if self.parent.adp else 260):
-                        self.displayError('Invalid stand number: %i' % realStand, details='0 < stand <= %i' % (256 if self.parent.adp else 260), 
+                    maxStand = max([ant.stand.id for ant in self.parent.station.getAntennas()])
+                    if realStand < 0 or realStand > maxStand:
+                        self.displayError('Invalid stand number: %i' % realStand, details='0 < stand <= %i' % (maxStand), 
                                         title='Beam-Dipole Setup Error')
                         return False
                         
