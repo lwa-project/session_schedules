@@ -2583,7 +2583,7 @@ class AdvancedInfo(wx.Frame):
         drxGain = ['%i' % i for i in xrange(13)]
         drxGain.insert(0, 'MCS Decides')
         if self.parent.adp:
-            drxBeam = ['%i' %i for i in xrange(1, 3)]
+            drxBeam = ['%i' %i for i in xrange(1, 4)]
         else:
             drxBeam = ['%i' %i for i in xrange(1, 5)]
         drxBeam.insert(0, 'MCS Decides')
@@ -2609,7 +2609,7 @@ class AdvancedInfo(wx.Frame):
         mrp = wx.StaticText(panel, label='MIB Recording Period:')
         mrpASP = wx.StaticText(panel, label='ASP')
         mrpDP = wx.StaticText(panel, label='DP')
-        mrpDR = wx.StaticText(panel, label='DR1 - DR5')
+        mrpDR = wx.StaticText(panel, label='DR1 - DR4')
         mrpSHL = wx.StaticText(panel, label='SHL')
         mrpMCS = wx.StaticText(panel, label='MSC')
         mrpComboASP = wx.ComboBox(panel, -1, value='MCS Decides', choices=intervals, style=wx.CB_READONLY)
@@ -2626,7 +2626,7 @@ class AdvancedInfo(wx.Frame):
         mup = wx.StaticText(panel, label='MIB Update Period:')
         mupASP = wx.StaticText(panel, label='ASP')
         mupDP = wx.StaticText(panel, label='DP')
-        mupDR = wx.StaticText(panel, label='DR1 - DR5')
+        mupDR = wx.StaticText(panel, label='DR1 - DR4')
         mupSHL = wx.StaticText(panel, label='SHL')
         mupMCS = wx.StaticText(panel, label='MSC')
         mupComboASP = wx.ComboBox(panel, -1, value='MCS Decides', choices=intervals, style=wx.CB_READONLY)
