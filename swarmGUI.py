@@ -3277,19 +3277,32 @@ class SearchWindow(OCS):
             dec = dec.GetText()
             
             if self.scanID >= 0:
-                item = self.parent.listControl.GetItem(self.scanID, 1)
-                item.SetText(name)
-                self.parent.listControl.SetItem(item)
-                self.parent.listControl.RefreshItem(item.GetId())
-                item = self.parent.listControl.GetItem(self.scanID, 6)
-                item.SetText(ra)
-                self.parent.listControl.SetItem(item)
-                self.parent.listControl.RefreshItem(item.GetId())
-                item = self.parent.listControl.GetItem(self.scanID, 7)
-                item.SetText(dec)
-                self.parent.listControl.SetItem(item)
-                self.parent.listControl.RefreshItem(item.GetId())
-                
+                obsIndex = self.scanID
+                for obsAttr,widget in [(1,name), (6,ra), (7,dec)]:
+                    try:
+                        try:
+                            text = widget.GetValue()
+                        except AttributeError:
+                            text = widget
+                        newData = self.parent.coerceMap[obsAttr](text)
+                        
+                        oldData = getattr(self.parent.project.runs[0].scans[obsIndex], self.parent.columnMap[obsAttr])
+                        if newData != oldData:
+                            setattr(self.parent.project.runs[0].scans[obsIndex], self.parent.columnMap[obsAttr], newData)
+                            self.parent.project.runs[0].scans[obsIndex].update()
+                            
+                            if obsAttr < self.parent.listControl.GetColumnCount():
+                                item = self.parent.listControl.GetItem(obsIndex, obsAttr)
+                                item.SetText(text)
+                                self.parent.listControl.SetItem(item)
+                                self.parent.listControl.RefreshItem(item.GetId())
+                                
+                            self.parent.edited = True
+                            self.parent.setSaveButton()
+                    except ValueError as err:
+                        success = False
+                        print('[%i] Error: %s' % (os.getpid(), str(err)))
+                        
         wx.CallAfter(self.onQuit, event)
 
 
