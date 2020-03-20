@@ -36,7 +36,6 @@ from lsl.misc import parser as aph
 
 
 __version__ = "0.1"
-__revision__ = "$Rev$"
 __author__ = "Jayce Dowell"
 
 

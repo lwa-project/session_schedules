@@ -26,8 +26,8 @@ import lsl
 from lsl.common.dp import fS
 from lsl.common import stations
 from lsl.astro import deg_to_dms, deg_to_hms, MJD_OFFSET, DJD_OFFSET
-from lsl.reader.tbn import filterCodes as TBNFilters
-from lsl.reader.drx import filterCodes as DRXFilters
+from lsl.reader.tbn import FILTER_CODES as TBNFilters
+from lsl.reader.drx import FILTER_CODES as DRXFilters
 from lsl.common import sdf
 try:
     from lsl.common import sdfADP
@@ -51,7 +51,6 @@ from matplotlib.figure import Figure
 from matplotlib.ticker import NullFormatter, NullLocator
 
 __version__ = "0.6"
-__revision__ = "$Rev$"
 __author__ = "Jayce Dowell"
 
 
@@ -1003,10 +1002,10 @@ class SDFCreator(wx.Frame):
                 for id in xrange(firstChecked+len(self.buffer)-1, -1, -1):
                     dur = self.project.sessions[0].observations[id].dur
                     
-                    tStart, _ = self.sdf.getObservationStartStop(self.project.sessions[0].observations[id+1])
+                    tStart, _ = self.sdf.get_observation_start_stop(self.project.sessions[0].observations[id+1])
                     tStart -= timedelta(seconds=dur//1000, microseconds=(dur%1000)*1000)
                     cStart = 'UTC %i %02i %02i %02i:%02i:%06.3f' % (tStart.year, tStart.month, tStart.day, tStart.hour, tStart.minute, tStart.second+tStart.microsecond/1e6)
-                    self.project.sessions[0].observations[id].setStart(cStart)
+                    self.project.sessions[0].observations[id].set_start(cStart)
                     self.addObservation(self.project.sessions[0].observations[id], id, update=True)
                     
     def onPasteAfter(self, event):
@@ -1038,9 +1037,9 @@ class SDFCreator(wx.Frame):
             # Fix the times on DRX observations to make thing continuous
             if self.mode == 'DRX':
                 for id in xrange(lastChecked+1, self.listControl.GetItemCount()):
-                    _, tStop = self.sdf.getObservationStartStop(self.project.sessions[0].observations[id-1])
+                    _, tStop = self.sdf.get_observation_start_stop(self.project.sessions[0].observations[id-1])
                     cStart = 'UTC %i %02i %02i %02i:%02i:%06.3f' % (tStop.year, tStop.month, tStop.day, tStop.hour, tStop.minute, tStop.second+tStop.microsecond/1e6)
-                    self.project.sessions[0].observations[id].setStart(cStart)
+                    self.project.sessions[0].observations[id].set_start(cStart)
                     self.addObservation(self.project.sessions[0].observations[id], id, update=True)
                     
     def onPasteEnd(self, event):
@@ -1072,9 +1071,9 @@ class SDFCreator(wx.Frame):
         # Fix the times on DRX observations to make thing continuous
         if self.mode == 'DRX':
             for id in xrange(lastChecked+1, self.listControl.GetItemCount()):
-                _, tStop = self.sdf.getObservationStartStop(self.project.sessions[0].observations[id-1])
+                _, tStop = self.sdf.get_observation_start_stop(self.project.sessions[0].observations[id-1])
                 cStart = 'UTC %i %02i %02i %02i:%02i:%06.3f' % (tStop.year, tStop.month, tStop.day, tStop.hour, tStop.minute, tStop.second+tStop.microsecond/1e6)
-                self.project.sessions[0].observations[id].setStart(cStart)
+                self.project.sessions[0].observations[id].set_start(cStart)
                 self.addObservation(self.project.sessions[0].observations[id], id, update=True)
                 
     def onInfo(self, event):
@@ -1118,9 +1117,9 @@ class SDFCreator(wx.Frame):
         tStop = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
         if self.listControl.GetItemCount() > 0:
             if self.mode == 'DRX':
-                _, tStop = self.sdf.getObservationStartStop(self.project.sessions[0].observations[-1])
+                _, tStop = self.sdf.get_observation_start_stop(self.project.sessions[0].observations[-1])
             elif self.mode == 'TBN':
-                _, tStop = self.sdf.getObservationStartStop(self.project.sessions[0].observations[-1])
+                _, tStop = self.sdf.get_observation_start_stop(self.project.sessions[0].observations[-1])
                 tStop += timedelta(seconds=20)
                 
         return 'UTC %i %02i %02i %02i:%02i:%06.3f' % (tStop.year, tStop.month, tStop.day, tStop.hour, tStop.minute, tStop.second+tStop.microsecond/1e6)
@@ -1268,9 +1267,9 @@ class SDFCreator(wx.Frame):
         self.SetStatusText('')
         try:
             # Catch for deaing with the new TBN tuning range of 5 to 93 MHz
-            isTBN = (self.project.sessions[0].observations[obsIndex].mode == 'TBN')
+            is_tbn = (self.project.sessions[0].observations[obsIndex].mode == 'TBN')
             if self.coerceMap[obsAttr].__name__ == "freqConv":
-                newData = self.coerceMap[obsAttr](event.GetText(), tbn=isTBN)
+                newData = self.coerceMap[obsAttr](event.GetText(), tbn=is_tbn)
             else:
                 newData = self.coerceMap[obsAttr](event.GetText())
                 
@@ -1599,7 +1598,7 @@ class SDFCreator(wx.Frame):
                 
         def snrConv(text):
             """
-            Special conversion function for dealing with the MaxSNR keyword input.
+            Special conversion function for dealing with the max_snr keyword input.
             """
             
             text = text.lower().capitalize()
@@ -1678,7 +1677,7 @@ class SDFCreator(wx.Frame):
             self.columnMap.append('frequency1')
             self.columnMap.append('frequency2')
             self.columnMap.append('filter')
-            self.columnMap.append('MaxSNR')
+            self.columnMap.append('max_snr')
             self.coerceMap.append(str)
             self.coerceMap.append(raConv)
             self.coerceMap.append(decConv)
@@ -1768,7 +1767,7 @@ class SDFCreator(wx.Frame):
                 SetListItem(self.listControl, index, 5, obs.duration)
                 SetListItem(self.listControl, index, 8, "%.6f" % (obs.freq1*fS/2**32 / 1e6))
                 SetListItem(self.listControl, index, 9, "%.6f" % (obs.freq2*fS/2**32 / 1e6))
-                if obs.MaxSNR:
+                if obs.max_snr:
                     SetListItem(self.listControl, index, 11, "Yes")
                 else:
                     SetListItem(self.listControl, index, 11, "No")
@@ -1911,7 +1910,7 @@ class SDFCreator(wx.Frame):
             
     def parseFile(self, filename):
         """
-        Given a filename, parse the file using the sdf.parseSDF() method and 
+        Given a filename, parse the file using the sdf.parse_sdf() method and 
         update all of the various aspects of the GUI (observation list, mode, 
         button, menu items, etc.).
         """
@@ -1923,7 +1922,7 @@ class SDFCreator(wx.Frame):
         self.initSDF()
         
         print("[%i] Parsing file '%s'" % (os.getpid(), filename))
-        self.project = self.sdf.parseSDF(filename)
+        self.project = self.sdf.parse_sdf(filename)
         self.setMenuButtons(self.project.sessions[0].observations[0].mode)
         if self.project.sessions[0].observations[0].mode == 'TBW':
             self.mode = 'TBW'
@@ -2211,14 +2210,14 @@ class ObserverInfo(wx.Frame):
         linear.Disable()
         stokes.Disable()
         
-        if self.parent.project.sessions[0].dataReturnMethod == 'DRSU':
+        if self.parent.project.sessions[0].data_return_method == 'DRSU':
             drsuRB.SetValue(True)
             usbRB.SetValue(False)
             ucfRB.SetValue(False)
             
             nchnText.SetValue("1024")
             nintText.SetValue("6144")
-        elif self.parent.project.sessions[0].dataReturnMethod == 'USB Harddrives':
+        elif self.parent.project.sessions[0].data_return_method == 'USB Harddrives':
             drsuRB.SetValue(False)
             usbRB.SetValue(True)
             ucfRB.SetValue(False)
@@ -2458,15 +2457,15 @@ class ObserverInfo(wx.Frame):
         self.parent.project.sessions[0].comments = self.sessionCommentsEntry.GetValue().replace('\n', ';;')
         
         if self.drsuButton.GetValue():
-            self.parent.project.sessions[0].dataReturnMethod = 'DRSU'
+            self.parent.project.sessions[0].data_return_method = 'DRSU'
             self.parent.project.sessions[0].spcSetup = [0, 0]
             self.parent.project.sessions[0].spcMetatag = None
         elif self.usbButton.GetValue():
-            self.parent.project.sessions[0].dataReturnMethod = 'USB Harddrives'
+            self.parent.project.sessions[0].data_return_method = 'USB Harddrives'
             self.parent.project.sessions[0].spcSetup = [0, 0]
             self.parent.project.sessions[0].spcMetatag = None
         else:
-            self.parent.project.sessions[0].dataReturnMethod = 'UCF'
+            self.parent.project.sessions[0].data_return_method = 'UCF'
             tempc = _usernameRE.sub('', self.parent.project.sessions[0].comments)
             self.parent.project.sessions[0].comments = tempc + ';;ucfuser:%s' % self.unamText.GetValue()
             
@@ -2907,7 +2906,7 @@ class AdvancedInfo(wx.Frame):
             bdmDipoleText = wx.TextCtrl(panel)
             if getattr(self.parent.project.sessions[0].observations[0], 'beamDipole', None) is not None:
                 dpStand = self.parent.project.sessions[0].observations[0].beamDipole[0]*2 - 2
-                realStand = self.parent.station.getAntennas()[dpStand].stand.id
+                realStand = self.parent.station.antennas[dpStand].stand.id
                 
                 bdmDipoleText.SetValue("%i" % realStand)
             else:
@@ -2968,7 +2967,7 @@ class AdvancedInfo(wx.Frame):
         # DROS
         #
         
-        if self.parent.project.sessions[0].dataReturnMethod == 'DR Spectrometer' or (self.parent.project.sessions[0].spcSetup[0] != 0 and self.parent.project.sessions[0].spcSetup[1] != 0):
+        if self.parent.project.sessions[0].data_return_method == 'DR Spectrometer' or (self.parent.project.sessions[0].spcSetup[0] != 0 and self.parent.project.sessions[0].spcSetup[1] != 0):
             dros = wx.StaticText(panel, label='DR Spectrometer Information')
             dros.SetFont(font)
             
@@ -3108,7 +3107,7 @@ class AdvancedInfo(wx.Frame):
         self.aspAT2 = aspComboAT2
         self.aspATS = aspComboATS
         
-        if self.parent.project.sessions[0].dataReturnMethod == 'DR Spectrometer' or (self.parent.project.sessions[0].spcSetup[0] != 0 and self.parent.project.sessions[0].spcSetup[1] != 0):
+        if self.parent.project.sessions[0].data_return_method == 'DR Spectrometer' or (self.parent.project.sessions[0].spcSetup[0] != 0 and self.parent.project.sessions[0].spcSetup[1] != 0):
             self.opt1 = opt1
             self.opt2 = opt2
             self.opt3 = opt3
@@ -3176,19 +3175,19 @@ class AdvancedInfo(wx.Frame):
                             details='%i > 3 sec' % tbfSamp, title='TBF Sample Error')
                 return False
                 
-        self.parent.project.sessions[0].recordMIB['ASP'] = self.__parseTimeCombo(self.mrpASP)
-        self.parent.project.sessions[0].recordMIB['DP_'] = self.__parseTimeCombo(self.mrpDP)
+        self.parent.project.sessions[0].recordMIB['ASP'] = self.__parse_timeCombo(self.mrpASP)
+        self.parent.project.sessions[0].recordMIB['DP_'] = self.__parse_timeCombo(self.mrpDP)
         for i in range(1,6):
-            self.parent.project.sessions[0].recordMIB['DR%i' % i] = self.__parseTimeCombo(self.mrpDR)
-        self.parent.project.sessions[0].recordMIB['SHL'] = self.__parseTimeCombo(self.mrpSHL)
-        self.parent.project.sessions[0].recordMIB['MCS'] = self.__parseTimeCombo(self.mrpMCS)
+            self.parent.project.sessions[0].recordMIB['DR%i' % i] = self.__parse_timeCombo(self.mrpDR)
+        self.parent.project.sessions[0].recordMIB['SHL'] = self.__parse_timeCombo(self.mrpSHL)
+        self.parent.project.sessions[0].recordMIB['MCS'] = self.__parse_timeCombo(self.mrpMCS)
             
-        self.parent.project.sessions[0].updateMIB['ASP'] = self.__parseTimeCombo(self.mupASP)
-        self.parent.project.sessions[0].updateMIB['DP_'] = self.__parseTimeCombo(self.mupDP)
+        self.parent.project.sessions[0].updateMIB['ASP'] = self.__parse_timeCombo(self.mupASP)
+        self.parent.project.sessions[0].updateMIB['DP_'] = self.__parse_timeCombo(self.mupDP)
         for i in range(1,6):
-            self.parent.project.sessions[0].recordMIB['DR%i' % i] = self.__parseTimeCombo(self.mupDR)
-        self.parent.project.sessions[0].updateMIB['SHL'] = self.__parseTimeCombo(self.mupSHL)
-        self.parent.project.sessions[0].updateMIB['MCS'] = self.__parseTimeCombo(self.mupMCS)
+            self.parent.project.sessions[0].recordMIB['DR%i' % i] = self.__parse_timeCombo(self.mupDR)
+        self.parent.project.sessions[0].updateMIB['SHL'] = self.__parse_timeCombo(self.mupSHL)
+        self.parent.project.sessions[0].updateMIB['MCS'] = self.__parse_timeCombo(self.mupMCS)
         
         self.parent.project.sessions[0].logScheduler = self.schLog.GetValue()
         self.parent.project.sessions[0].logExecutive = self.exeLog.GetValue()
@@ -3253,7 +3252,7 @@ class AdvancedInfo(wx.Frame):
                 try:
                     ## Extract the stand number
                     realStand = int(self.bdmDipoleText.GetValue())
-                    maxStand = max([ant.stand.id for ant in self.parent.station.getAntennas()])
+                    maxStand = max([ant.stand.id for ant in self.parent.station.antennas])
                     if realStand < 0 or realStand > maxStand:
                         self.displayError('Invalid stand number: %i' % realStand, details='0 < stand <= %i' % (maxStand), 
                                         title='Beam-Dipole Setup Error')
@@ -3262,7 +3261,7 @@ class AdvancedInfo(wx.Frame):
                     ## Make sure the stand is working according to the SSMIF
                     realStandX = None
                     realStandY = None
-                    for ant in self.parent.station.getAntennas():
+                    for ant in self.parent.station.antennas:
                         if ant.stand.id == realStand:
                             if ant.pol == 0:
                                 realStandX = ant
@@ -3270,9 +3269,9 @@ class AdvancedInfo(wx.Frame):
                                 realStandY = ant
                         if realStandX is not None and realStandY is not None:
                             break
-                    if realStandX.getStatus() != 33 or realStandY.getStatus() != 33:
+                    if realStandX.combined_status != 33 or realStandY.combined_status != 33:
                         self.displayError('Stand #%i is not fully functional' % realStand, 
-                                        details='X pol. status: %i\nY pol. status: %i' % (realStandX.getStatus(), realStandY.getStatus()), 
+                                        details='X pol. status: %i\nY pol. status: %i' % (realStandX.combined_status, realStandY.combined_status), 
                                         title='Beam-Dipole Setup Error')
                         return False
                         
@@ -3310,7 +3309,7 @@ class AdvancedInfo(wx.Frame):
                 for i in xrange(len(self.parent.project.sessions[0].observations)):
                     self.parent.project.sessions[0].observations[i].setBeamDipoleMode(*beamDipole)
                     
-        if self.parent.project.sessions[0].dataReturnMethod == 'DR Spectrometer' or (self.parent.project.sessions[0].spcSetup[0] != 0 and self.parent.project.sessions[0].spcSetup[1] != 0):
+        if self.parent.project.sessions[0].data_return_method == 'DR Spectrometer' or (self.parent.project.sessions[0].spcSetup[0] != 0 and self.parent.project.sessions[0].spcSetup[1] != 0):
             mt = self.parent.project.sessions[0].spcMetatag
             if mt is None:
                 isLinear = True
@@ -3368,7 +3367,7 @@ class AdvancedInfo(wx.Frame):
     def onCancel(self, event):
         self.Close()
         
-    def __parseTimeCombo(self, cb):
+    def __parse_timeCombo(self, cb):
         """
         Given a combo box that represents some times, parse it and return
         the time in minutes.
@@ -3564,7 +3563,7 @@ class SessionDisplay(wx.Frame):
         self.ax1 = self.figure.gca()
         
         ## The actual observations
-        observer = self.parent.station.getObserver()
+        observer = self.parent.station.get_observer()
         
         i = 0
         for o in self.obs:
@@ -3774,9 +3773,9 @@ class VolumeInfo(wx.Frame):
                 
                 tunes = 2
                 tlen, icount = self.parent.project.sessions[0].spcSetup
-                sampleRate = obs.filterCodes[obs.filter]
+                sample_rate = obs.FILTER_CODES[obs.filter]
                 duration = obs.getDuration() / 1000.0
-                dataVolume = (76 + tlen*tunes*products*4) / (1.0*tlen*icount/sampleRate) * duration
+                dataVolume = (76 + tlen*tunes*products*4) / (1.0*tlen*icount/sample_rate) * duration
             else:
                 mode = obs.mode
                 
@@ -4526,7 +4525,7 @@ class SteppedWindow(wx.Frame):
                 
         def snrConv(text):
             """
-            Special conversion function for dealing with the MaxSNR keyword input.
+            Special conversion function for dealing with the max_snr keyword input.
             """
             
             text = text.lower().capitalize()
@@ -4568,7 +4567,7 @@ class SteppedWindow(wx.Frame):
         self.listControl.InsertColumn(6, 'Max S/N Beam?', width=125)
         self.columnMap.append('frequency1')
         self.columnMap.append('frequency2')
-        self.columnMap.append('MaxSNR')
+        self.columnMap.append('max_snr')
         self.coerceMap.append(freqConv)
         self.coerceMap.append(freqOptConv)
         self.coerceMap.append(snrConv)
@@ -4612,7 +4611,7 @@ class SteppedWindow(wx.Frame):
         SetListItem(self.listControl, index, 1, step.duration)
         SetListItem(self.listControl, index, 4, "%.6f" % (step.freq1*fS/2**32 / 1e6))
         SetListItem(self.listControl, index, 5, "%.6f" % (step.freq2*fS/2**32 / 1e6))
-        if step.MaxSNR:
+        if step.max_snr:
             SetListItem(self.listControl, index, 6, "Yes")
         else:
             SetListItem(self.listControl, index, 6, "No")

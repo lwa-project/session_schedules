@@ -15,10 +15,6 @@ Options:
 -p, --population-size  GA population size (default 1,000)
 -g, --generations      Number of generations to use (default 250)
 -v, --verbose          Be verbose about shifting operations
-
-$Revision$
-$LastChangedBy$
-$LastChangedDate: 2012-03-21 17:14:20 -0600 (Wed, 21 Mar 2012) $
 """
 
 
@@ -47,7 +43,6 @@ from matplotlib import pyplot as plt
 from matplotlib.collections import LineCollection
 
 __version__ = "0.1"
-__revision__ = "$Rev$"
 
 # Date/time manipulation
 _UTC = pytz.utc
@@ -189,7 +184,7 @@ def getObsStartStop(obs):
     return tStart, tStop
 
 
-def shiftWeek(project, startWeek, observer=lwa1.getObserver()):
+def shiftWeek(project, startWeek, observer=lwa1.get_observer()):
     # Get the observations
     nObs = len(project.sessions[0].observations)
     tStart = [None,]*nObs
@@ -334,7 +329,7 @@ def describeSDF(observer, project):
     return out
 
 
-def makeRADec(project, observer=lwa1.getObserver(), verbose=False):
+def makeRADec(project, observer=lwa1.get_observer(), verbose=False):
     """
     Function to take in a Project and convert all TRK_SOL and TRK_JOV 
     observations into TRK_RADEC observations.  Returns the modified Project
@@ -375,7 +370,7 @@ def makeRADec(project, observer=lwa1.getObserver(), verbose=False):
             
             # Update the observation
             oldObs = project.sessions[0].observations[i]
-            newObs = sdf.DRX(oldObs.name, oldObs.target, oldObs.start, oldObs.duration, sRA, sDec, oldObs.frequency1, oldObs.frequency2, oldObs.filter, MaxSNR=oldObs.MaxSNR, comments=oldObs.comments)
+            newObs = sdf.DRX(oldObs.name, oldObs.target, oldObs.start, oldObs.duration, sRA, sDec, oldObs.frequency1, oldObs.frequency2, oldObs.filter, max_snr=oldObs.max_snr, comments=oldObs.comments)
             
             # Replace the observation
             project.sessions[0].observations[i] = newObs
@@ -411,7 +406,7 @@ def makeRADec(project, observer=lwa1.getObserver(), verbose=False):
             
             # Update the observation
             oldObs = project.sessions[0].observations[i]
-            newObs = sdf.DRX(oldObs.name, oldObs.target, oldObs.start, oldObs.duration, jRA, jDec, oldObs.frequency1, oldObs.frequency2, oldObs.filter, MaxSNR=oldObs.MaxSNR, comments=oldObs.comments)
+            newObs = sdf.DRX(oldObs.name, oldObs.target, oldObs.start, oldObs.duration, jRA, jDec, oldObs.frequency1, oldObs.frequency2, oldObs.filter, max_snr=oldObs.max_snr, comments=oldObs.comments)
             
             # Replace the observation
             project.sessions[0].observations[i] = newObs
@@ -475,7 +470,7 @@ def makePointingCorrection(project, corrRA=0.000, corrDec=0.000, verbose=False):
 
     # Set the project office comments for the session and each observation
     # Update the project office comments with this change
-    newPOSC = "Shifted SDF with efficianado.py (v%s, %s);;Position Shift? Yes" % (__version__, __revision__)
+    newPOSC = "Shifted SDF with efficianado.py (v%s);;Position Shift? Yes" % __version__
     
     if project.projectOffice.sessions[0] is None:
         project.projectOffice.sessions[0] = newPOSC
@@ -503,7 +498,7 @@ class gas(object):
         or solar days.
         """
         
-        def __init__(self, projects, sessionLag=sessionLag, mode='Sidereal', observer=lwa1.getObserver(), verbose=False):
+        def __init__(self, projects, sessionLag=sessionLag, mode='Sidereal', observer=lwa1.get_observer(), verbose=False):
             self.projects = projects
             self.mode = mode
             self.observer = observer
@@ -548,7 +543,7 @@ class gas(object):
             
             return self.duration
             
-        def getBeamCount(self):
+        def get_beam_count(self):
             """
             Return the number of beams the block nees to run.
             """
@@ -664,7 +659,7 @@ class gas(object):
                     if start >= m1 and start <= m2 or stop >= m1 and stop <= m2:
                         raise RuntimeError("%s runs during the maintenance period" % project)
         
-    def defineProjects(self, projects, observer=lwa1.getObserver()):
+    def defineProjects(self, projects, observer=lwa1.get_observer()):
         """
         Populate the GAS with projects to try to schedule.
         """
@@ -768,7 +763,7 @@ class gas(object):
             beams = []
             for p,o in zip(self.projects, offsets):
                 start, stop = p.getStartStop(offset=o)
-                beam = p.getBeamCount()
+                beam = p.get_beam_count()
                 starts.append(start)
                 stops.append(stop)
                 beams.append(beam)
@@ -827,13 +822,13 @@ class gas(object):
             
         return output
             
-    def run(self, extinctionInterval=50, nIterations=160):
+    def run(self, extinctionInterval=50, max_iterations=160):
         """
         Run the GAS for the current set of observations with the specified
         extinction and iteration controls.
         """
         
-        iterScale = numpy.floor(numpy.log10(nIterations)) + 1
+        iterScale = numpy.floor(numpy.log10(max_iterations)) + 1
         formatString = "Iteration %%%ii of %%%ii -> Fitness range is %%.3f to %%.3f with a mean of %%.3f" % (iterScale, iterScale)
         
         fMin = []
@@ -843,7 +838,7 @@ class gas(object):
         
         # Go... (but do it in is such a way that is it easy for the user to 
         # stop it and move on)
-        for i in xrange(nIterations):
+        for i in xrange(max_iterations):
             try:
                 ## Perform the evolution (elite children, crossover children, 
                 ## and mutation children fill new next generation.
@@ -859,7 +854,7 @@ class gas(object):
                 fStd.append(f.std())
                 
                 ## Report on the progress
-                print formatString % (i+1, nIterations, f.max(), f.min(), f.mean())
+                print formatString % (i+1, max_iterations, f.max(), f.min(), f.mean())
                 
             except KeyboardInterrupt:
                 print "\nInterrupted after %i iterations..." % i
@@ -1078,11 +1073,11 @@ def main(args):
     maintenance.sort()
     
     # Load the station
-    observer = lwa1.getObserver()
+    observer = lwa1.get_observer()
     
     sessionSDFs = []
     for filename in config['args']:
-        project = sdf.parseSDF(filename)
+        project = sdf.parse_sdf(filename)
         sessionSDFs.append(project)
     
     # Try to work out a schedule
@@ -1110,7 +1105,7 @@ def main(args):
     g.defineProjects(sessionSDFs)
     g.setMaintenance(maintenance)
     g.validateParameters()
-    fMax, fMin, fMean, fStd = g.run(nIterations=config['generations'])
+    fMax, fMin, fMean, fStd = g.run(max_iterations=config['generations'])
     
     ## Plot population evolution
     fig = plt.figure()

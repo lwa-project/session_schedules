@@ -27,7 +27,7 @@ import lsl
 from lsl.common.dp import fS
 from lsl.common import stations
 from lsl.astro import deg_to_dms, deg_to_hms, MJD_OFFSET, DJD_OFFSET
-from lsl.reader.drx import filterCodes as DRXFilters
+from lsl.reader.drx import FILTER_CODES as DRXFilters
 try:
     # HACK to deal with missing PM support in the idf.py module that
     # ships with LSL v1.2.4.
@@ -37,7 +37,7 @@ try:
         raise ImportError
 except ImportError:
     import idf
-from lsl.correlator import uvUtils
+from lsl.correlator import uvutil
 from lsl.misc import parser as aph
 
 import wx
@@ -56,7 +56,6 @@ from matplotlib.ticker import NullFormatter, NullLocator
 from calibratorSearch import CalibratorSearch as OCS
 
 __version__ = "0.2"
-__revision__ = "$Rev$"
 __author__ = "Jayce Dowell"
 
 
@@ -969,7 +968,7 @@ class IDFCreator(wx.Frame):
                 tStart, _ = idf.getScanStartStop(self.project.runs[0].scans[id+1])
                 tStart -= timedelta(seconds=dur//1000, microseconds=(dur%1000)*1000)
                 cStart = 'UTC %i %02i %02i %02i:%02i:%06.3f' % (tStart.year, tStart.month, tStart.day, tStart.hour, tStart.minute, tStart.second+tStart.microsecond/1e6)
-                self.project.runs[0].scans[id].setStart(cStart)
+                self.project.runs[0].scans[id].set_start(cStart)
                 self.addScan(self.project.runs[0].scans[id], id, update=True)
                 
     def onPasteAfter(self, event):
@@ -1002,7 +1001,7 @@ class IDFCreator(wx.Frame):
             for id in xrange(lastChecked+1, self.listControl.GetItemCount()):
                 _, tStop = idf.getScanStartStop(self.project.runs[0].scans[id-1])
                 cStart = 'UTC %i %02i %02i %02i:%02i:%06.3f' % (tStop.year, tStop.month, tStop.day, tStop.hour, tStop.minute, tStop.second+tStop.microsecond/1e6)
-                self.project.runs[0].scans[id].setStart(cStart)
+                self.project.runs[0].scans[id].set_start(cStart)
                 self.addScan(self.project.runs[0].scans[id], id, update=True)
                 
     def onPasteEnd(self, event):
@@ -1035,7 +1034,7 @@ class IDFCreator(wx.Frame):
         for id in xrange(lastChecked+1, self.listControl.GetItemCount()):
             _, tStop = idf.getScanStartStop(self.project.runs[0].scans[id-1])
             cStart = 'UTC %i %02i %02i %02i:%02i:%06.3f' % (tStop.year, tStop.month, tStop.day, tStop.hour, tStop.minute, tStop.second+tStop.microsecond/1e6)
-            self.project.runs[0].scans[id].setStart(cStart)
+            self.project.runs[0].scans[id].set_start(cStart)
             self.addScan(self.project.runs[0].scans[id], id, update=True)
             
     def onInfo(self, event):
@@ -1697,7 +1696,7 @@ class IDFCreator(wx.Frame):
             
     def parseFile(self, filename):
         """
-        Given a filename, parse the file using the idf.parseIDF() method and 
+        Given a filename, parse the file using the idf.parse_idF() method and 
         update all of the various aspects of the GUI (scan list, mode, 
         button, menu items, etc.).
         """
@@ -1709,7 +1708,7 @@ class IDFCreator(wx.Frame):
         self.initIDF()
         
         print("[%i] Parsing file '%s'" % (os.getpid(), filename))
-        self.project = idf.parseIDF(filename)
+        self.project = idf.parse_idF(filename)
         self.setMenuButtons(self.project.runs[0].scans[0].mode)
         if self.project.runs[0].scans[0].mode[0:3] == 'TRK':
             self.mode = 'DRX'
@@ -1952,12 +1951,12 @@ class ObserverInfo(wx.Frame):
         unamText = wx.TextCtrl(panel)
         unamText.Disable()
         
-        if self.parent.project.runs[0].dataReturnMethod == 'DRSU':
+        if self.parent.project.runs[0].data_return_method == 'DRSU':
             drsuRB.SetValue(True)
             usbRB.SetValue(False)
             ucfRB.SetValue(False)
             
-        elif self.parent.project.runs[0].dataReturnMethod == 'USB Harddrives':
+        elif self.parent.project.runs[0].data_return_method == 'USB Harddrives':
             drsuRB.SetValue(False)
             usbRB.SetValue(True)
             ucfRB.SetValue(False)
@@ -2107,11 +2106,11 @@ class ObserverInfo(wx.Frame):
             self.parent.project.runs[0].corr_basis = 'stokes'
             
         if self.drsuButton.GetValue():
-            self.parent.project.runs[0].dataReturnMethod = 'DRSU'
+            self.parent.project.runs[0].data_return_method = 'DRSU'
         elif self.usbButton.GetValue():
-            self.parent.project.runs[0].dataReturnMethod = 'USB Harddrives'
+            self.parent.project.runs[0].data_return_method = 'USB Harddrives'
         else:
-            self.parent.project.runs[0].dataReturnMethod = 'UCF'
+            self.parent.project.runs[0].data_return_method = 'UCF'
             tempc = _usernameRE.sub('', self.parent.project.runs[0].comments)
             self.parent.project.runs[0].comments = tempc + ';;ucfuser:%s' % self.unamText.GetValue()
             
@@ -2471,7 +2470,7 @@ class RunDisplay(wx.Frame):
                 dt = 0.0
                 
                 ## The actual scans
-                observer = station.getObserver()
+                observer = station.get_observer()
                 
                 while dt < o.dur/1000.0:
                     observer.date = o.mjd + (o.mpm/1000.0 + dt)/3600/24.0 + MJD_OFFSET - DJD_OFFSET
@@ -2655,7 +2654,7 @@ class RunUVCoverageDisplay(wx.Frame):
         
         ## Build up the list of antennas to use for the UV coverage calculation
         antennas = []
-        observer = stations.lwa1.getObserver()
+        observer = stations.lwa1.get_observer()
         for station in self.parent.project.runs[0].stations:
             stand = stations.Stand(len(antennas), *(stations.lwa1.getENZOffset(station)))
             cable = stations.Cable('%s-%s' % (station.id, 0), 0.0, vf=1.0, dd=0.0)
@@ -2688,10 +2687,10 @@ class RunUVCoverageDisplay(wx.Frame):
                 HA = (observer.sidereal_time() - src.ra) * 12/numpy.pi
                 dec = src.dec * 180/numpy.pi
                 
-                uvw = uvUtils.computeUVW(antennas, HA=HA, dec=dec, freq=o.frequency1, site=observer, IncludeAuto=False)
+                uvw = uvutil.compute_uvw(antennas, HA=HA, dec=dec, freq=o.frequency1, site=observer, include_auto=False)
                 uv_coverage[src.name+"@T1"].append( uvw/1e3 )
                             
-                uvw = uvUtils.computeUVW(antennas, HA=HA, dec=dec, freq=o.frequency2, site=observer, IncludeAuto=False)
+                uvw = uvutil.compute_uvw(antennas, HA=HA, dec=dec, freq=o.frequency2, site=observer, include_auto=False)
                 uv_coverage[src.name+"@T2"].append( uvw/1e3 )
                 
                 dt += stepSize
@@ -2703,10 +2702,10 @@ class RunUVCoverageDisplay(wx.Frame):
             HA = (observer.sidereal_time() - src.ra) * 12/numpy.pi
             dec = src.dec * 180/numpy.pi
             
-            uvw = uvUtils.computeUVW(antennas, HA=HA, dec=dec, freq=o.frequency1, site=observer, IncludeAuto=False)
+            uvw = uvutil.compute_uvw(antennas, HA=HA, dec=dec, freq=o.frequency1, site=observer, include_auto=False)
             uv_coverage[src.name+"@T1"].append( uvw/1e3 )
                         
-            uvw = uvUtils.computeUVW(antennas, HA=HA, dec=dec, freq=o.frequency2, site=observer, IncludeAuto=False)
+            uvw = uvutil.compute_uvw(antennas, HA=HA, dec=dec, freq=o.frequency2, site=observer, include_auto=False)
             uv_coverage[src.name+"@T2"].append( uvw/1e3 )
             
             i += 1

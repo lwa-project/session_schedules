@@ -11,8 +11,7 @@ to beam 0.
 """
 
 __version__ = '0.1'
-__revision__ = '$Rev$'
-__all__ = ['lowestIdleBeam', 'unravelObs', 'assignBeams', '__version__', '__revision__', '__all__']
+__all__ = ['lowestIdleBeam', 'unravelObs', 'assignBeams']
 
 
 def lowestIdleBeam(beams):

@@ -4,10 +4,6 @@
 """
 Wrapper around the validator.py module to make it useable from the
 command line.
-
-$Rev$
-$LastChangedBy$
-$LastChangedDate$
 """ 
 
 import os
@@ -118,7 +114,7 @@ def main(args):
             errors.append( {'line': lineNumbers[-2], 'message': message} )
             
     # Parse the file into a sdf.Project instance
-    project = _sdf.parseSDF(args.filename)
+    project = _sdf.parse_sdf(args.filename)
     
     # Deal with a potentiall un-runnable TPSS
     if tpssVersion == 'TPSS not used':

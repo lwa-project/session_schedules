@@ -36,7 +36,6 @@ from matplotlib import pyplot as plt
 from matplotlib.collections import LineCollection
 
 __version__ = "0.2"
-__revision__ = "$Rev$"
 __author__ = "Jayce Dowell"
 
 # Date/time manipulation
@@ -208,12 +207,12 @@ class Visualization_GUI(object):
         # Loop over filenames
         for filename in self.frame.filenames:
             try:
-                project = self.sdf.parseSDF(filename)
+                project = self.sdf.parse_sdf(filename)
                 dataFile = None
             except Exception as e:
                 try:
-                    project = metabundle.getSessionDefinition(filename)
-                    dataFile = metabundle.getSessionMetaData(filename)
+                    project = metabundle.get_sdf(filename)
+                    dataFile = metabundle.get_session_metadata(filename)
                 except Exception as e:
                     print "Warning: Cannot parse '%s'" % os.path.basename(filename)
                     continue

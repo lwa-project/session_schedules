@@ -19,7 +19,6 @@ from xml.etree import ElementTree
 
 
 __version__ = "0.2"
-__revision__ = "$Rev$"
 __author__ = "Jayce Dowell"
 
 

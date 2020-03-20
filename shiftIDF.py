@@ -10,10 +10,6 @@ shiftIDF.py <input_IDF> <output_IDF>
 
 Options:
 None
-
-$Revision$
-$LastChangedBy: jdowell $
-$LastChangedDate: 2012-03-21 17:14:20 -0600 (Wed, 21 Mar 2012) $
 """
 
 import os
@@ -38,7 +34,6 @@ from lsl.misc import parser as aph
 
 
 __version__ = "0.1"
-__revision__ = "$Rev$"
 
 # Date/time manipulation
 _UTC = pytz.utc
@@ -88,10 +83,10 @@ def main(args):
         
     # Parse the input file and get the dates of the scans
     station = stations.lwa1
-    project = idf.parseIDF(inputIDF)
+    project = idf.parse_idF(inputIDF)
     
     # Load the station and objects to find the Sun and Jupiter
-    observer = station.getObserver()
+    observer = station.get_observer()
     Sun = ephem.Sun()
     Jupiter = ephem.Jupiter()
     
@@ -322,7 +317,7 @@ def main(args):
     # Project office comments
     #
     # Update the project office comments with this change
-    newPOSC = "Shifted IDF with shiftIDF.py (v%s, %s);;Time Shift? %s" % (__version__, __revision__, 'Yes' if (not args.no_update) else 'No')
+    newPOSC = "Shifted IDF with shiftIDF.py (v%s);;Time Shift? %s" % (__version__, 'Yes' if (not args.no_update) else 'No')
     
     if project.projectOffice.runs[0] is None:
         project.projectOffice.runs[0] = newPOSC

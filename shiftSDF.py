@@ -10,10 +10,6 @@ shiftSDF.py <input_SDF> <output_SDF>
 
 Options:
 None
-
-$Revision$
-$LastChangedBy: jdowell $
-$LastChangedDate: 2012-03-21 17:14:20 -0600 (Wed, 21 Mar 2012) $
 """
 
 import os
@@ -40,7 +36,6 @@ from lsl.misc import parser as aph
 
 
 __version__ = "0.4"
-__revision__ = "$Rev$"
 
 # Date/time manipulation
 _UTC = pytz.utc
@@ -92,20 +87,20 @@ def main(args):
     try:
         ## LWA-1
         station = stations.lwa1
-        project = sdf.parseSDF(inputSDF)
+        project = sdf.parse_sdf(inputSDF)
         adp = False
     except Exception as e:
         if adpReady:
             ## LWA-SV
             ### Try again
             station = stations.lwasv
-            project = sdfADP.parseSDF(inputSDF)
+            project = sdfADP.parse_sdf(inputSDF)
             adp = True
         else:
             raise e
             
     # Load the station and objects to find the Sun and Jupiter
-    observer = station.getObserver()
+    observer = station.get_observer()
     Sun = ephem.Sun()
     Jupiter = ephem.Jupiter()
     
@@ -364,7 +359,7 @@ def main(args):
     # Project office comments
     #
     # Update the project office comments with this change
-    newPOSC = "Shifted SDF with shiftSDF.py (v%s, %s);;Time Shift? %s" % (__version__, __revision__, 'Yes' if (not args.no_update) else 'No')
+    newPOSC = "Shifted SDF with shiftSDF.py (v%s);;Time Shift? %s" % (__version__, 'Yes' if (not args.no_update) else 'No')
     
     if project.projectOffice.sessions[0] is None:
         project.projectOffice.sessions[0] = newPOSC
