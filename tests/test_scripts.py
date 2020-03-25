@@ -74,9 +74,9 @@ def _test_generator(script):
 if run_scripts_tests:
     _SCRIPTS = glob.glob(os.path.join(MODULE_BUILD, '..', '*.py'))
     for depth in range(1, 3):
-         path = [MODULE_BUILD, '..']
-         path.extend(['*',]*depth)
-        _SCRIPTS.extend(os.path.join(*path))
+        path = [MODULE_BUILD, '..']
+        path.extend(['*',]*depth)
+        _SCRIPTS.extend(glob.glob(os.path.join(*path)))
     _SCRIPTS = list(filter(lambda x: x.find('test_scripts.py') == -1, _SCRIPTS))
     _SCRIPTS.sort()
     for script in _SCRIPTS:
