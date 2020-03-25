@@ -30,7 +30,7 @@ install:
         matplotlib \
         scipy \
         h5py
-    - pip install git+https://github.com/lwa-project/lsl/git
+    - pip install git+https://github.com/lwa-project/lsl.git
     - pip install pylint
 
 script:
