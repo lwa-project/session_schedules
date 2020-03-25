@@ -1,0 +1,38 @@
+sudo: required
+  
+language: python
+
+python:
+    - 2.7
+    - 3.6
+    ## PyPy versions
+    #- pypy2.7-6.0
+    #- pypy3
+
+addons:
+    apt:
+        packages:
+            - build-essential
+            - curl
+            - git
+            - pkg-config
+            - software-properties-common
+            - python-dev
+            - python3-dev
+            - libfftw3-dev
+            - libgdbm-dev
+            - libhdf5-dev
+
+install:
+    - pip install \
+        setuptools \
+        numpy \
+        matplotlib \
+        scipy \
+        h5py
+    - pip install git+https://github.com/lwa-project/lsl/git
+    - pip install pylint
+
+script:
+    - cd tests
+    - python -m unittest discover
