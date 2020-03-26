@@ -22,6 +22,7 @@ addons:
             - libfftw3-dev
             - libgdbm-dev
             - libhdf5-dev
+            - libgtk-3-dev
 
 install:
     - pip install \
@@ -29,7 +30,8 @@ install:
         numpy \
         matplotlib \
         scipy \
-        h5py
+        h5py \
+        wxPython
     - pip install git+https://github.com/lwa-project/lsl.git
     - pip install pylint
 

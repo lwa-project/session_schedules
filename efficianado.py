@@ -61,16 +61,11 @@ siderealRegression = solarDay - siderealDay
 def getPointingCorrection():
     """
     Return a two-element tuple (RA in hours, Dec in degrees) of the pointing 
-    correction used by shiftLST.py.  Falls back on a correction of 
-    (0.0, 0.0) if shiftSDF.py cannot be imported
+    correction used by shiftLST.py.  Always returns (0.0, 0.0) since the
+    pointing should be correct now.
     """
     
-    try:
-        from shiftSDF import parseOptions as shiftParseOptions
-        config = shiftParseOptions([])
-        return config['pointingErrorRA'], config['pointingErrorDec']
-    except:
-        return (0.0 / 3600.0, 0.0 / 3600.0)
+    return (0.0 / 3600.0, 0.0 / 3600.0)
 
 
 def usage(exitCode=None):

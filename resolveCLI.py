@@ -56,9 +56,8 @@ def _resolveSource(name):
         coordsys = 'NA'
         ra = -99.99
         dec = -99.99
-        if include_pm:
-            pmRA = ''
-            pmDec = ''
+        pmRA = ''
+        pmDec = ''
             
     return ra, dec, coordsys, service, pmRA, pmDec
 
