@@ -86,8 +86,8 @@ Options:
 -p, --population-size  GA population size (default 1,000)
 -g, --generations      Number of generations to use (default 200)
 -v, --verbose          Be verbose about shifting operations
-"""
-
+""")
+    
     if exitCode is not None:
         sys.exit(exitCode)
     else:
@@ -114,7 +114,7 @@ def parseOptions(args):
     # Read in and process the command line flags
     try:
         opts, args = getopt.getopt(args, "hm:l:p:g:v", ["help", "maintenance=", "limits=", "population-size=", "generations=", "verbose"])
-    except getopt.GetoptError, err:
+    except getopt.GetoptError as err:
         # Print help information and exit:
         print(str(err) # will print something like "option -a not recognized")
         usage(exitCode=2)
@@ -482,7 +482,7 @@ def makePointingCorrection(project, corrRA=0.000, corrDec=0.000, verbose=False):
     for i in xrange(nObs):
         try:
             project.projectOffice.observations[0][i] += ';;%s' % newPOOC[i]
-        except Exception, e:
+        except Exception as e:
             print(e)
             project.projectOffice.observations[0][i] = '%s' % newPOOC[i]
             

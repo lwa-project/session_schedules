@@ -1453,14 +1453,16 @@ class SDFCreator(wx.Frame):
                 
         if self.mode == 'TBN':
             filterInfo = "TBN"
-            for tk,tv in TBNFilters.iteritems():
+            for tk in TBNFilters.keys():
+                tv = TBNFilters[tk]
                 if tk > 7:
                     continue
                 tv, tu = units(tv)
                 filterInfo = "%s\n%i  %.3f %-3s" % (filterInfo, tk, tv, tu)
         elif self.mode == 'DRX' or self.mode == 'TBF':
             filterInfo = "DRX"
-            for dk,dv in DRXFilters.iteritems():
+            for dk in DRXFilters.keys():
+                dv= DRXFilters[dk]
                 if dk > 7:
                     continue
                 dv, du = units(dv)
@@ -3916,11 +3918,16 @@ class ResolveTarget(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.onCancel, id=ID_RESOLVE_CANCEL)
         
     def onResolve(self, event):
-        import urllib
+        try:
+            from urllib2 import urlopen
+            from urllib import urlencode, quote_plus
+        except ImportError:
+            from urllib.request import urlopen
+            from urllib.parse import urlencode, quote_plus
         
         self.source = self.srcText.GetValue()
         try:
-            result = urllib.urlopen('https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oxp/SNV?%s' % urllib.quote_plus(self.source))
+            result = urlopen('https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oxp/SNV?%s' % quote_plus(self.source))
             tree = ElementTree.fromstring(result.read())
             target = tree.find('Target')
             service = target.find('Resolver')

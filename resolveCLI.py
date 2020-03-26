@@ -20,7 +20,12 @@ import os
 import sys
 import math
 import ephem
-import urllib
+try:
+    from urllib2 import urlopen
+    from urllib import urlencode, quote_plus
+except ImportError:
+    from urllib.request import urlopen
+    from urllib.parse import urlencode, quote_plus
 import argparse
 from xml.etree import ElementTree
 
@@ -35,7 +40,7 @@ def _resolveSource(name):
     """
     
     try:
-        result = urllib.urlopen('https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oxp/SNV?%s' % urllib.quote_plus(name))
+        result = urlopen('https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oxp/SNV?%s' % quote_plus(name))
         tree = ElementTree.fromstring(result.read())
         target = tree.find('Target')
         service = target.find('Resolver')

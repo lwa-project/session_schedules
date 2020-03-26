@@ -234,7 +234,7 @@ def main(args):
                     fields = [int(f) for f in fields]
                     tNewStart = date(fields[0], fields[1], fields[2])
                     tNewStart = datetime.combine(tNewStart, min(tStart).time())
-                except Exception, e:
+                except Exception as e:
                     print("Error: %s" % str(e))
                     sys.exit(1)
                     
@@ -277,7 +277,7 @@ def main(args):
                 except ValueError:
                     try:
                         tNewStart = datetime.strptime(tNewStart, '%Y/%m/%d %H:%M:%S')
-                    except Exception, e:
+                    except Exception as e:
                         print("Error: %s" % str(e))
                         sys.exit(1)
                         
@@ -376,7 +376,7 @@ def main(args):
     for i in xrange(nObs):
         try:
             project.project_office.observations[0][i] += ';;%s' % newPOOC[i]
-        except Exception, e:
+        except Exception as e:
             print(e)
             project.project_office.observations[0][i] = '%s' % newPOOC[i]
             
@@ -396,7 +396,7 @@ def main(args):
                 newBeam = raw_input('[1 through 4]-> ')
                 try:
                     newBeam = int(newBeam)
-                except Exception, e:
+                except Exception as e:
                     print("Error: %s" % str(e))
                     sys.exit(1)
                 if adp:

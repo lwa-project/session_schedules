@@ -14,8 +14,10 @@ import numpy
 import urllib
 try:
     from urllib2 import urlopen
+    from urllib import urlencode, quote_plus
 except ImportError:
     from urllib.request import urlopen
+    from urllib.parse import urlencode, quote_plus
 from tempfile import NamedTemporaryFile
 from xml.etree import ElementTree
 import astropy.io.fits as astrofits
@@ -312,7 +314,7 @@ class CalibratorSearch(wx.Frame):
         
         if source != '':
             try:
-                result = urllib.urlopen('https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oxp/SNV?%s' % urllib.quote_plus(source))
+                result = urlopen('https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oxp/SNV?%s' % quote_plus(source))
                 tree = ElementTree.fromstring(result.read())
                 target = tree.find('Target')
                 service = target.find('Resolver')
@@ -340,7 +342,7 @@ class CalibratorSearch(wx.Frame):
         final_name = '---'
         
         try:
-            result = urllib.urlopen('https://simbad.u-strasbg.fr/simbad/sim-coo?Coord=%s&CooFrame=FK5&CooEpoch=%s&CooEqui=%s&CooDefinedFrames=none&Radius=%f&Radius.unit=arcsec&submit=submit%%20query&CoordList=&list.idopt=CATLIST&list.idcat=3C%%2C4C%%2CVLSS%%2CNVSS%%2CTXS&output.format=VOTable' % (urllib.quote_plus('%s %s' % (ra, dec)), 2000.0, 2000.0, radius_arcsec))
+            result = urlopen('https://simbad.u-strasbg.fr/simbad/sim-coo?Coord=%s&CooFrame=FK5&CooEpoch=%s&CooEqui=%s&CooDefinedFrames=none&Radius=%f&Radius.unit=arcsec&submit=submit%%20query&CoordList=&list.idopt=CATLIST&list.idcat=3C%%2C4C%%2CVLSS%%2CNVSS%%2CTXS&output.format=VOTable' % (quote_plus('%s %s' % (ra, dec)), 2000.0, 2000.0, radius_arcsec))
             tree = ElementTree.fromstring(result.read())
             namespaces = {'VO': 'http://www.ivoa.net/xml/VOTable/v1.2'}
             resource = tree.find('VO:RESOURCE', namespaces=namespaces)
@@ -387,7 +389,7 @@ class CalibratorSearch(wx.Frame):
                     rank = preferred_order[catalog]
                     
         try:
-            result = urllib.urlopen('https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oxpI/SNV?%s' % urllib.quote_plus(name))
+            result = urlopen('https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oxpI/SNV?%s' % quote_plus(name))
             tree = ElementTree.fromstring(result.read())
             target = tree.find('Target')
             service = target.find('Resolver')
@@ -431,15 +433,15 @@ class CalibratorSearch(wx.Frame):
         
         # Find the candidates
         ## Query the candidates
-        data = urllib.urlencode({'Equinox': 3, 
-                                 'DecFit': 0, 
-                                 'FluxDensity': flux,  
-                                 'ObjName': '', 
-                                 'RA': ra.replace(':', ' '), 
-                                 'Dec': dec.replace(':', ' '), 
-                                 'searchrad': max_dist*3600, 
-                                 'verhalf': 12*60, 
-                                 'poslist': ''})
+        data = urlencode({'Equinox': 3, 
+                          'DecFit': 0, 
+                          'FluxDensity': flux,  
+                          'ObjName': '', 
+                          'RA': ra.replace(':', ' '), 
+                          'Dec': dec.replace(':', ' '), 
+                          'searchrad': max_dist*3600, 
+                          'verhalf': 12*60, 
+                          'poslist': ''})
         candidates = []
         try:
             result = urlopen('https://www.cv.nrao.edu/cgi-bin/newVLSSlist.pl', data)
@@ -538,19 +540,19 @@ class CalibratorSearch(wx.Frame):
         header = {}
         image = None
         
-        data = urllib.urlencode({'Equinox': 2, 
-                                 'ObjName': '', 
-                                 'RA': ra.replace(':', ' '), 
-                                 'Dec': dec.replace(':', ' '), 
-                                 'Size': '%f %f' % (size, size), 
-                                 'Cells': '15.0 15.0', 
-                                 'MAPROG': 'SIN',
-                                 'rotate': 0.0,  
-                                 'Type': 'image/x-fits'})
+        data = urlencode({'Equinox': 2, 
+                          'ObjName': '', 
+                          'RA': ra.replace(':', ' '), 
+                          'Dec': dec.replace(':', ' '), 
+                          'Size': '%f %f' % (size, size), 
+                          'Cells': '15.0 15.0', 
+                          'MAPROG': 'SIN',
+                          'rotate': 0.0,  
+                          'Type': 'image/x-fits'})
                     
         with NamedTemporaryFile(suffix='.fits', prefix='vlssr-') as th:
             try:
-                result = urllib2.urlopen('https://www.cv.nrao.edu/cgi-bin/newVLSSpostage.pl', data)
+                result = urlopen('https://www.cv.nrao.edu/cgi-bin/newVLSSpostage.pl', data)
                 th.write(result.read())
                 th.flush()
                 th.seek(0)
