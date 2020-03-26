@@ -361,17 +361,17 @@ def main(args):
     # Update the project office comments with this change
     newPOSC = "Shifted SDF with shiftSDF.py (v%s);;Time Shift? %s" % (__version__, 'Yes' if (not args.no_update) else 'No')
     
-    if project.projectOffice.sessions[0] is None:
-        project.projectOffice.sessions[0] = newPOSC
+    if project.project_office.sessions[0] is None:
+        project.project_office.sessions[0] = newPOSC
     else:
-        project.projectOffice.sessions[0] += ';;%s' % newPOSC
+        project.project_office.sessions[0] += ';;%s' % newPOSC
         
     for i in xrange(nObs):
         try:
-            project.projectOffice.observations[0][i] += ';;%s' % newPOOC[i]
+            project.project_office.observations[0][i] += ';;%s' % newPOOC[i]
         except Exception, e:
             print e
-            project.projectOffice.observations[0][i] = '%s' % newPOOC[i]
+            project.project_office.observations[0][i] = '%s' % newPOOC[i]
             
     #
     # Save

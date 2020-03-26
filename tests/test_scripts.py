@@ -65,6 +65,8 @@ def _test_generator(script):
                 continue
             if line.find("Module 'ephem") != -1:
                 continue
+            if line.find("Module 'wx") != -1:
+                continue
                 
             mtch = _LINT_RE.match(line)
             if mtch is not None:
