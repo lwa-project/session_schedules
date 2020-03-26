@@ -95,28 +95,24 @@ def _test_generator(script):
                 ignore = False
                 if line.find('before assignment') != -1:
                     context = _get_context(script, int(line_no), before=20, after=20)
-                    print("here with", line_no)
                     loc = context[20-1]
                     level = len(loc) - len(loc.lstrip()) - 4
-                    print("level is", level)
                     found_try = None
                     for i in range(2, 20):
                         if context[20-i][level:level+3] == 'try':
                             found_try = i
                             break
-                    print("found_try is", found_try)
                     found_except = None
                     for i in range(0, 20):
                         if context[20+i][level:level+6] == 'except':
                             found_except = i
                             break
-                    print("found_except is", found_except)
-                    if found_try and found_except:
-                        print("result is", context[20+found_except].strip().rstrip())
+                    if found_try is not None and found_except is not None:
                         if context[20+found_except].find('NameError') != -1:
                             ignore = True
                 if ignore:
                     continue
+                    
                 self.assertEqual(type, None, "%s:%s - %s" % (os.path.basename(script), line_no, info))
     return test
 
