@@ -92,6 +92,7 @@ def _test_generator(script):
             mtch = _LINT_RE.match(line)
             if mtch is not None:
                 line_no, type, info = mtch.group('line'), mtch.group('type'), mtch.group('info')
+                ignore = False
                 if line.find('before assignment') != -1:
                     context = _get_context(script, int(line_no), before=20, after=20)
                     loc = context[20-1]
@@ -108,8 +109,9 @@ def _test_generator(script):
                             break
                     if found_try and found_except:
                         if context[20+found_except].find('NameError') != -1:
-                            continue
-                            
+                            ignore = True
+                if ignore:
+                    continue
                 self.assertEqual(type, None, "%s:%s - %s" % (os.path.basename(script), line_no, info))
     return test
 
