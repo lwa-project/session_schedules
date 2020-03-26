@@ -832,16 +832,16 @@ class SDFCreator(wx.Frame):
         # Window manager close
         self.Bind(wx.EVT_CLOSE, self.onQuit)
         
-    def onLogger(self, event):
-        """
-        Create a new logger window, if needed
-        """
-        
-        if self.logger is None:
-            self.logger = wx.LogWindow(self, 'SDF Logger', True, False)
-        elif not self.logger.Frame.IsShown():
-            self.logger.Destroy()
-            self.logger = wx.LogWindow(self, 'SDF Logger', True, False)
+    #def onLogger(self, event):
+    #    """
+    #    Create a new logger window, if needed
+    #    """
+    #    
+    #    if self.logger is None:
+    #        self.logger = wx.LogWindow(self, 'SDF Logger', True, False)
+    #    elif not self.logger.Frame.IsShown():
+    #        self.logger.Destroy()
+    #        self.logger = wx.LogWindow(self, 'SDF Logger', True, False)
             
     def onNew(self, event):
         """

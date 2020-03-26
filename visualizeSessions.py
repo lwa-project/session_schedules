@@ -7,7 +7,7 @@ import math
 import pytz
 import ephem
 import numpy
-import getopt
+import argparse
 from datetime import datetime, timedelta
 
 from lsl.common import sdf, metabundle
@@ -54,56 +54,6 @@ if 'phoenix' in wx.PlatformInfo:
 else:
     AppendMenuItem = lambda x, y: x.AppendItem(y)
     AppendMenuMenu = lambda *args, **kwds: args[0].AppendMenu(*args[1:], **kwds)
-
-
-def usage(exitCode=None):
-    print """visualizeSessions.py - GUI for looking at the schedule on a station.
-
-Usage: visualizeSessions.py [OPTIONS] SDF [SDF [...]]
-
-Options:
--h, --help          Display this help information
--s, --lwasv         Build a SDF for LWA-SV instead of LWA1 (default = LWA1)
-"""
-    
-    if exitCode is not None:
-        sys.exit(exitCode)
-    else:
-        return True
-
-
-def parseOptions(args):
-    config = {}
-    config['station'] = 'lwa1'
-    
-    # Read in and process the command line flags
-    try:
-        opts, args = getopt.getopt(args, "hs", ["help", "lwasv"])
-    except getopt.GetoptError, err:
-        # Print help information and exit:
-        print str(err) # will print something like "option -a not recognized"
-        usage(exitCode=2)
-        
-    # Work through opts
-    for opt, value in opts:
-        if opt in ('-h', '--help'):
-            usage(exitCode=0)
-        elif opt in ('-d', '--drsu-size'):
-            config['drsuSize'] = int(value)
-        elif opt in ('-s', '--lwasv'):
-            config['station'] = 'lwasv'
-        else:
-            assert False
-            
-    # Make sure we are ready for LWA-SV
-    if config['station'] == 'lwasv' and not adpReady:
-        raise RuntimeError("LWA-SV requested but the ADP-compatible SDF module could not be loaded")
-        
-    # Add in arguments
-    config['args'] = args
-    
-    # Return configuration
-    return config
 
 
 def round15Minutes(tNow):
