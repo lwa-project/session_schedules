@@ -17,6 +17,7 @@ from __future__ import print_function, division
 import sys
 if sys.version_info > (3,):
     xrange = range
+    raw_input = input
     from functools import cmp_to_key
     
 import os

@@ -116,7 +116,7 @@ def parseOptions(args):
         opts, args = getopt.getopt(args, "hm:l:p:g:v", ["help", "maintenance=", "limits=", "population-size=", "generations=", "verbose"])
     except getopt.GetoptError as err:
         # Print help information and exit:
-        print(str(err) # will print something like "option -a not recognized")
+        print(str(err)) # will print something like "option -a not recognized"
         usage(exitCode=2)
         
     # Work through opts

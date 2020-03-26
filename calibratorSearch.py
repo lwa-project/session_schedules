@@ -11,7 +11,7 @@ import re
 import sys
 import ephem
 import numpy
-import urllib
+import argparse
 try:
     from urllib2 import urlopen
     from urllib import urlencode, quote_plus
