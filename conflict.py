@@ -10,6 +10,13 @@ a list of beam ID (zero indexed) and deals with conflicts by mapping all conflic
 to beam 0.
 """
 
+# Python3 compatibility
+from __future__ import print_function, division
+import sys
+if sys.version_info > (3,):
+    xrange = range
+    from functools import cmp_to_key
+
 __version__ = '0.1'
 __all__ = ['lowestIdleBeam', 'unravelObs', 'assignBeams']
 

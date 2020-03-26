@@ -248,14 +248,14 @@ class ObservationListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrl
             try:
                 self.parent.editmenu['cut'].Enable(False)
                 self.parent.editmenu['copy'].Enable(False)
-            except KeyError, AttributeError:
+            except (KeyError, AttributeError):
                 pass
                 
             # Stepped observation edits - disabled
             try:
                 self.parent.obsmenu['steppedEdit'].Enable(False)
                 self.parent.toolbar.EnableTool(ID_EDIT_STEPPED, False)
-            except KeyError, AttributeError:
+            except (KeyError, AttributeError):
                 pass
                 
             # Remove and resolve - disabled
@@ -268,7 +268,7 @@ class ObservationListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrl
             try:
                 self.parent.editmenu['cut'].Enable(True)
                 self.parent.editmenu['copy'].Enable(True)
-            except KeyError, AttributeError:
+            except (KeyError, AttributeError):
                 pass
                 
             # Stepped observation edits - enbled if there is an index and it is STEPPED, 
@@ -278,20 +278,20 @@ class ObservationListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrl
                     try:
                         self.parent.obsmenu['steppedEdit'].Enable(True)
                         self.parent.toolbar.EnableTool(ID_EDIT_STEPPED, True)
-                    except KeyError, AttributeError:
+                    except (KeyError, AttributeError):
                         pass
                 else:
                     try:
                         self.parent.obsmenu['steppedEdit'].Enable(False)
                         self.parent.toolbar.EnableTool(ID_EDIT_STEPPED, False)
-                    except KeyError, AttributeError:
+                    except (KeyError, AttributeError):
                         pass
             else:
                 # Stepped observation edits - disabled
                 try:
                     self.parent.obsmenu['steppedEdit'].Enable(False)
                     self.parent.toolbar.EnableTool(ID_EDIT_STEPPED, False)
-                except KeyError, AttributeError:
+                except (KeyError, AttributeError):
                     pass
                     
             # Remove and resolve - enabled
@@ -304,14 +304,14 @@ class ObservationListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrl
             try:
                 self.parent.editmenu['cut'].Enable(True)
                 self.parent.editmenu['copy'].Enable(True)
-            except KeyError, AttributeError:
+            except (KeyError, AttributeError):
                 pass
                 
             # Stepped observation edits - disabled
             try:
                 self.parent.obsmenu['steppedEdit'].Enable(False)
                 self.parent.toolbar.EnableTool(ID_EDIT_STEPPED, False)
-            except KeyError, AttributeError:
+            except (KeyError, AttributeError):
                 pass
                 
             # Remove and resolve - enabled and disabled, respectively
@@ -377,7 +377,7 @@ class SteppedListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrlMixi
             try:
                 self.parent.editmenu['cut'].Enable(False)
                 self.parent.editmenu['copy'].Enable(False)
-            except KeyError, AttributeError:
+            except (KeyError, AttributeError):
                 pass
                 
         elif self.nSelected == 1:
@@ -385,7 +385,7 @@ class SteppedListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrlMixi
             try:
                 self.parent.editmenu['cut'].Enable(True)
                 self.parent.editmenu['copy'].Enable(True)
-            except KeyError, AttributeError:
+            except (KeyError, AttributeError):
                 pass
                 
         else:
@@ -393,7 +393,7 @@ class SteppedListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrlMixi
             try:
                 self.parent.editmenu['cut'].Enable(True)
                 self.parent.editmenu['copy'].Enable(True)
-            except KeyError, AttributeError:
+            except (KeyError, AttributeError):
                 pass
                 
     def OnCheckItem(self, index, flag):

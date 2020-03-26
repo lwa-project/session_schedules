@@ -11,7 +11,11 @@ import re
 import sys
 import ephem
 import numpy
-import urllib, urllib2
+import urllib
+try:
+    from urllib2 import urlopen
+except ImportError:
+    from urllib.request import urlopen
 from tempfile import NamedTemporaryFile
 from xml.etree import ElementTree
 import astropy.io.fits as astrofits
@@ -438,7 +442,7 @@ class CalibratorSearch(wx.Frame):
                                  'poslist': ''})
         candidates = []
         try:
-            result = urllib2.urlopen('https://www.cv.nrao.edu/cgi-bin/newVLSSlist.pl', data)
+            result = urlopen('https://www.cv.nrao.edu/cgi-bin/newVLSSlist.pl', data)
             lines = result.readlines()
             
             ## Parse

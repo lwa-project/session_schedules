@@ -17,6 +17,12 @@ Options:
 -v, --verbose          Be verbose about shifting operations
 """
 
+# Python3 compatibility
+from __future__ import print_function, division
+import sys
+if sys.version_info > (3,):
+    xrange = range
+    from functools import cmp_to_key
 
 import os
 import sys
@@ -69,7 +75,7 @@ def getPointingCorrection():
 
 
 def usage(exitCode=None):
-    print """efficianado.py - Script to schedule observations.
+    print("""efficianado.py - Script to schedule observations.)
     
 Usage: efficianado.py [OPTIONS] YYYY/MM/DD SDF1 [SDF2 [...]]
 
@@ -110,7 +116,7 @@ def parseOptions(args):
         opts, args = getopt.getopt(args, "hm:l:p:g:v", ["help", "maintenance=", "limits=", "population-size=", "generations=", "verbose"])
     except getopt.GetoptError, err:
         # Print help information and exit:
-        print str(err) # will print something like "option -a not recognized"
+        print(str(err) # will print something like "option -a not recognized")
         usage(exitCode=2)
         
     # Work through opts
@@ -335,7 +341,7 @@ def makeRADec(project, observer=lwa1.get_observer(), verbose=False):
     newPOOC = []
     for i in xrange(nObs):
         if verbose:
-            print "Working on Observation #%i" % (i+1,)
+            print("Working on Observation #%i" % (i+1,))
         newPOOC.append("")
         
         if project.sessions[0].observations[i].mode == 'TRK_SOL':
@@ -358,11 +364,11 @@ def makeRADec(project, observer=lwa1.get_observer(), verbose=False):
             sDec = float(sol.dec) * 180.0 /math.pi
             
             if verbose:
-                print " Mode shifting"
-                print "  Mode: %s -> TRK_RADEC" % project.sessions[0].observations[i].mode
-                print "  Midpoint: %s" % tMid.strftime(formatString)
-                print "  -> RA:   %9.6f hours" % sRA
-                print "  -> Dec: %+10.6f degrees" % sDec
+                print(" Mode shifting")
+                print("  Mode: %s -> TRK_RADEC" % project.sessions[0].observations[i].mode)
+                print("  Midpoint: %s" % tMid.strftime(formatString))
+                print("  -> RA:   %9.6f hours" % sRA)
+                print("  -> Dec: %+10.6f degrees" % sDec)
             
             # Update the observation
             oldObs = project.sessions[0].observations[i]
@@ -395,11 +401,11 @@ def makeRADec(project, observer=lwa1.get_observer(), verbose=False):
             jDec = float(jov.dec) * 180.0 /math.pi
             
             if verbose:
-                print " Mode shifting"
-                print "  Mode: %s -> TRK_RADEC" % project.sessions[0].observations[i].mode
-                print "  Midpoint: %s" % tMid.strftime(formatString)
-                print "  -> RA:   %9.6f hours" % jRA
-                print "  -> Dec: %+10.6f degrees" % jDec
+                print(" Mode shifting")
+                print("  Mode: %s -> TRK_RADEC" % project.sessions[0].observations[i].mode)
+                print("  Midpoint: %s" % tMid.strftime(formatString))
+                print("  -> RA:   %9.6f hours" % jRA)
+                print("  -> Dec: %+10.6f degrees" % jDec)
             
             # Update the observation
             oldObs = project.sessions[0].observations[i]
@@ -436,7 +442,7 @@ def makePointingCorrection(project, corrRA=0.000, corrDec=0.000, verbose=False):
     newPOOC = []
     for i in xrange(nObs):
         if verbose:
-            print "Working on Observation #%i" % (i+1,)
+            print("Working on Observation #%i" % (i+1,))
         newPOOC.append("")
         
         if project.sessions[0].observations[i].mode == 'TRK_RADEC':
@@ -458,9 +464,9 @@ def makePointingCorrection(project, corrRA=0.000, corrDec=0.000, verbose=False):
                 dec = -180 - dec
             
             if verbose:
-                print " Position shifting"
-                print "  RA:   %9.6f ->  %9.6f hours" % (project.sessions[0].observations[i].ra, ra)
-                print "  Dec: %+10.6f -> %+10.6f degrees" % (project.sessions[0].observations[i].dec, dec)
+                print(" Position shifting")
+                print("  RA:   %9.6f ->  %9.6f hours" % (project.sessions[0].observations[i].ra, ra))
+                print("  Dec: %+10.6f -> %+10.6f degrees" % (project.sessions[0].observations[i].dec, dec))
             
             project.sessions[0].observations[i].ra  = ra
             project.sessions[0].observations[i].dec = dec
@@ -477,7 +483,7 @@ def makePointingCorrection(project, corrRA=0.000, corrDec=0.000, verbose=False):
         try:
             project.projectOffice.observations[0][i] += ';;%s' % newPOOC[i]
         except Exception, e:
-            print e
+            print(e)
             project.projectOffice.observations[0][i] = '%s' % newPOOC[i]
             
     return project
@@ -594,11 +600,11 @@ class gas(object):
                     mpm = int(round((diff.seconds + diff.microseconds/1000000.0)*1000.0))
                     
                     if self.verbose:
-                        print " Time shifting %s, session %i" % (project.id, project.sessions[0].id)
-                        print "  Now at %s" % start
-                        print "  MJD: %8i -> %8i" % (project.sessions[0].observations[i].mjd, mjd)
-                        print "  MPM: %8i -> %8i" % (project.sessions[0].observations[i].mpm, mpm)
-                        print "  LST: %8s -> %8s" % (str(lst[i])[:8], str(newLST)[:8])
+                        print(" Time shifting %s, session %i" % (project.id, project.sessions[0].id))
+                        print("  Now at %s" % start)
+                        print("  MJD: %8i -> %8i" % (project.sessions[0].observations[i].mjd, mjd))
+                        print("  MPM: %8i -> %8i" % (project.sessions[0].observations[i].mpm, mpm))
+                        print("  LST: %8s -> %8s" % (str(lst[i])[:8], str(newLST)[:8]))
                     
                     project.sessions[0].observations[i].mjd = mjd
                     project.sessions[0].observations[i].mpm = mpm
@@ -716,25 +722,25 @@ class gas(object):
                     continue
                         
                 if len(group) > 4:
-                    print "-> Group of %i too large, breaking" % len(group)
+                    print("-> Group of %i too large, breaking" % len(group))
                     subGroupSize = len(group)-1
                     while len(group) % subGroupSize != 0:
                         subGroupSize -= 1
-                    print "  -> Grouping in sets of %i" % subGroupSize
+                    print("  -> Grouping in sets of %i" % subGroupSize)
                     
                     for i in xrange(len(group)/subGroupSize + 1):
                         subGroup = group[i*subGroupSize:(i+1)*subGroupSize]
                         if len(subGroup) == 0:
                             continue
                         
-                        print "    -> Found group of %i sessions (%s) at LST ~%s of type %s" % (len(subGroup), subGroup[0].id, ephem.hours(lst/3600.0/24*2*numpy.pi), mode)
+                        print("    -> Found group of %i sessions (%s) at LST ~%s of type %s" % (len(subGroup), subGroup[0].id, ephem.hours(lst/3600.0/24*2*numpy.pi), mode))
                         sessions.append(self.SimultaneousBlock(subGroup, mode=mode, observer=observer, verbose=self.verbose))
                         
                 else:
-                    print "-> Found group of %i sessions (%s) at LST ~%s of type %s" % (len(group), group[0].id, ephem.hours(lst/3600.0/24*2*numpy.pi), mode)
+                    print("-> Found group of %i sessions (%s) at LST ~%s of type %s" % (len(group), group[0].id, ephem.hours(lst/3600.0/24*2*numpy.pi), mode))
                     sessions.append(self.SimultaneousBlock(group, mode=mode, observer=observer, verbose=self.verbose))
         
-        print "Total number of sessionettes is %i" % len(sessions)
+        print("Total number of sessionettes is %i" % len(sessions))
         self.projects = sessions
         
         self.nProjects = len(self.projects)
@@ -851,10 +857,10 @@ class gas(object):
                 fStd.append(f.std())
                 
                 ## Report on the progress
-                print formatString % (i+1, max_iterations, f.max(), f.min(), f.mean())
+                print(formatString % (i+1, max_iterations, f.max(), f.min(), f.mean()))
                 
             except KeyboardInterrupt:
-                print "\nInterrupted after %i iterations..." % i
+                print("\nInterrupted after %i iterations..." % i)
                 break
             
             ## Get ready for an extinction...
@@ -869,14 +875,14 @@ class gas(object):
                 if len(cut) == 0:
                     cut = random.sample(range(self.nOffsets), int(round(self.nOffsets*0.5)))
                     good = [g for g in good if g not in cut]
-                print 'Extinction -> Surviver schedule range is %.3f to %.3f days' % (-f[good].max(), -f[good].min())
-                print 'Extinction -> Schedule ranges %.3f to %.3f days perish' % (-f[cut].max(), -f[cut].min())
+                print('Extinction -> Surviver schedule range is %.3f to %.3f days' % (-f[good].max(), -f[good].min()))
+                print('Extinction -> Schedule ranges %.3f to %.3f days perish' % (-f[cut].max(), -f[cut].min()))
                 for c in cut:
                     self.offsets[c] =  [random.randint(0, self.searchLimits) for p in xrange(self.nProjects)]
                     
-                print 'Extinction -> New schedule search limit is %i days; %i survive, %i perish' % (self.searchLimits, len(good), len(cut))
+                print('Extinction -> New schedule search limit is %i days; %i survive, %i perish' % (self.searchLimits, len(good), len(cut)))
                 
-        print " "
+        print(" ")
         return fMax, fMin, fMean, fStd
     
     def getBest(self):
@@ -1082,20 +1088,20 @@ def main(args):
     startWeekLST = observer.sidereal_time()
     
     ## Information about the scheduling parameters
-    print "Schedule Setup:"
-    print "  Start day: %s" % startWeek.strftime("%A, %Y/%m/%d")
-    print "  Week of year: %i" % woy
-    print "  Search period: %i days" % config['limit']
-    print "  Maintenance Days:"
+    print("Schedule Setup:")
+    print("  Start day: %s" % startWeek.strftime("%A, %Y/%m/%d"))
+    print("  Week of year: %i" % woy)
+    print("  Search period: %i days" % config['limit'])
+    print("  Maintenance Days:")
     if len(maintenance) == 0:
-        print "    None"
+        print("    None")
     else:
         for m in maintenance:
-            print "    %s" % m.astimezone(_MST).strftime("%A, %Y/%m/%d")
-    print " "
-    print "Observations:"
-    print "  SDF count: %i" % len(sessionSDFs)
-    print " "
+            print("    %s" % m.astimezone(_MST).strftime("%A, %Y/%m/%d"))
+    print(" ")
+    print("Observations:")
+    print("  SDF count: %i" % len(sessionSDFs))
+    print(" ")
     
     ## Actually run the schedule
     g = gas(startWeek, nOffsets=config['popSize'], searchLimits=config['limit'], verbose=config['verbose'])
@@ -1118,8 +1124,8 @@ def main(args):
     # already exists then clean it out.
     schedule = []
     scheduleDir = startWeek.strftime("Schedule_%y%m%d")
-    print "Saving new SDFs in directory '%s'" % scheduleDir
-    print " "
+    print("Saving new SDFs in directory '%s'" % scheduleDir)
+    print(" ")
     try:
         os.mkdir(scheduleDir)
     except OSError:
@@ -1171,7 +1177,7 @@ def main(args):
         ## Save for the plotting
         schedule.append( project )
     
-    # Create the new lists for the plotting routines and print information 
+    # Create the new lists for the plotting routines and print(information )
     # about the scheduled efficiency.
     sessionSDFs = []
     sessionLSTs = []
@@ -1217,10 +1223,10 @@ def main(args):
     scheduleDuration = sessionStarts[last] + sessionDurations[last] - sessionStarts[first]
     scheduleDuration = scheduleDuration.seconds/3600.0 + scheduleDuration.days*24
     
-    print "Beam Usage Summary:"
-    print "  Scheduled:  %7.2f" % (beamHours,)
-    print "  Possible:   %7.2f" % (4*scheduleDuration,)
-    print "  Efficiency: %6.1f%%" % (100.0*beamHours / scheduleDuration / 4,)
+    print("Beam Usage Summary:")
+    print("  Scheduled:  %7.2f" % (beamHours,))
+    print("  Possible:   %7.2f" % (4*scheduleDuration,))
+    print("  Efficiency: %6.1f%%" % (100.0*beamHours / scheduleDuration / 4,))
     
     # Interactive Schedule Plotting
     fig = plt.figure()
@@ -1325,9 +1331,9 @@ def main(args):
                     fU = free[i]
                     fM = (fU[0].astimezone(_MST), fU[1].astimezone(_MST))
                     d = fU[1] - fU[0]
-                    print "Free time between %s and %s" % (fU[0].strftime(formatString), fU[1].strftime(formatString))
-                    print "               -> %s and %s" % (fM[0].strftime(formatString), fM[1].strftime(formatString))
-                    print "               -> %i:%02i in length" % (d.days*24+d.seconds/3600, d.seconds/60 % 60)
+                    print("Free time between %s and %s" % (fU[0].strftime(formatString), fU[1].strftime(formatString)))
+                    print("               -> %s and %s" % (fM[0].strftime(formatString), fM[1].strftime(formatString)))
+                    print("               -> %i:%02i in length" % (d.days*24+d.seconds/3600, d.seconds/60 % 60))
         else:
             project = None
             for i in xrange(len(projects)):
@@ -1336,7 +1342,7 @@ def main(args):
                     break
             
             if project is not None:
-                print describeSDF(observer, project)
+                print(describeSDF(observer, project))
             
     cid = fig.canvas.mpl_connect('button_press_event', onclick)
     

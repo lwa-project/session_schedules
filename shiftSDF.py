@@ -12,6 +12,13 @@ Options:
 None
 """
 
+# Python3 compatibility
+from __future__ import print_function, division
+import sys
+if sys.version_info > (3,):
+    xrange = range
+    from functools import cmp_to_key
+
 import os
 import sys
 import pytz
@@ -117,11 +124,11 @@ def main(args):
     lst = observer.sidereal_time()
     
     # Report on the file
-    print "Filename: %s" % inputSDF
-    print " Project ID: %s" % project.id
-    print " Session ID: %i" % project.sessions[0].id
-    print " Observations appear to start at %s" % (min(tStart)).strftime(formatString)
-    print " -> LST at %s for this date/time is %s" % (station.name, lst)
+    print("Filename: %s" % inputSDF)
+    print(" Project ID: %s" % project.id)
+    print(" Session ID: %i" % project.sessions[0].id)
+    print(" Observations appear to start at %s" % (min(tStart)).strftime(formatString))
+    print(" -> LST at %s for this date/time is %s" % (station.name, lst))
     
     # Filenames in an easier format - output
     if not args.query:
@@ -136,10 +143,10 @@ def main(args):
         lastDur = timedelta(seconds=int(lastDur/1000), microseconds=(lastDur*1000) % 1000000)
         sessionDur = max(tStart) - min(tStart) + lastDur
         
-        print " "
-        print " Total Session Duration: %s" % sessionDur
-        print " -> First observation starts at %s" % min(tStart).strftime(formatString)
-        print " -> Last observation ends at %s" % (max(tStart) + lastDur).strftime(formatString)
+        print(" ")
+        print(" Total Session Duration: %s" % sessionDur)
+        print(" -> First observation starts at %s" % min(tStart).strftime(formatString))
+        print(" -> Last observation ends at %s" % (max(tStart) + lastDur).strftime(formatString))
         if project.sessions[0].observations[0].mode not in ('TBW', 'TBN'):
             drspec = 'No'
             if project.sessions[0].spcSetup[0] != 0 and project.sessions[0].spcSetup[1] != 0:
@@ -149,8 +156,8 @@ def main(args):
                 drxBeam = "MCS decides"
             else:
                 drxBeam = "%i" % drxBeam
-            print " DRX Beam: %s" % drxBeam
-            print " DR Spectrometer used? %s" % drspec
+            print(" DRX Beam: %s" % drxBeam)
+            print(" DR Spectrometer used? %s" % drspec)
             if drspec == 'Yes':
                 mt = project.sessions[0].spcMetatag
                 if mt is None:
@@ -165,49 +172,49 @@ def main(args):
                     products = len(mt)
                     mt = [mt[1*i:1*i+1] for i in xrange(products)]
                     
-                print " -> %i channels, %i windows/integration" % tuple(project.sessions[0].spcSetup)
-                print " -> %i data products (%s)" % (products, ','.join(mt))
+                print(" -> %i channels, %i windows/integration" % tuple(project.sessions[0].spcSetup))
+                print(" -> %i data products (%s)" % (products, ','.join(mt)))
         else:
-            print " Transient Buffer: %s\n" % ('Wide band' if project.sessions[0].observations[0].mode == 'TBW' else 'Narrow band',)
+            print(" Transient Buffer: %s\n" % ('Wide band' if project.sessions[0].observations[0].mode == 'TBW' else 'Narrow band',))
             
-        print " "
-        print " Number of observations: %i" % nObs
-        print " Observation Detail:"
+        print(" ")
+        print(" Number of observations: %i" % nObs)
+        print(" Observation Detail:")
         for i in xrange(nObs):
             currDur = project.sessions[0].observations[i].dur
             currDur = timedelta(seconds=int(currDur/1000), microseconds=(currDur*1000) % 1000000)
             
-            print "  Observation #%i" % (i+1,)
+            print("  Observation #%i" % (i+1,))
             
             ## Basic setup
-            print "   Target: %s" % project.sessions[0].observations[i].target
-            print "   Mode: %s" % project.sessions[0].observations[i].mode
-            print "   Start:"
-            print "    MJD: %i" % project.sessions[0].observations[i].mjd
-            print "    MPM: %i" % project.sessions[0].observations[i].mpm
-            print "    -> %s" % getObsStartStop(project.sessions[0].observations[i])[0].strftime(formatString)
-            print "   Duration: %s" % currDur
+            print("   Target: %s" % project.sessions[0].observations[i].target)
+            print("   Mode: %s" % project.sessions[0].observations[i].mode)
+            print("   Start:")
+            print("    MJD: %i" % project.sessions[0].observations[i].mjd)
+            print("    MPM: %i" % project.sessions[0].observations[i].mpm)
+            print("    -> %s" % getObsStartStop(project.sessions[0].observations[i])[0].strftime(formatString))
+            print("   Duration: %s" % currDur)
             
             ## DP setup
             if project.sessions[0].observations[i].mode not in ('TBW',):
-                print "   Tuning 1: %.3f MHz" % (project.sessions[0].observations[i].frequency1/1e6,)
+                print("   Tuning 1: %.3f MHz" % (project.sessions[0].observations[i].frequency1/1e6,))
             if project.sessions[0].observations[i].mode not in ('TBW', 'TBN'):
-                print "   Tuning 2: %.3f MHz" % (project.sessions[0].observations[i].frequency2/1e6,)
+                print("   Tuning 2: %.3f MHz" % (project.sessions[0].observations[i].frequency2/1e6,))
             if project.sessions[0].observations[i].mode not in ('TBW',):
-                print "   Filter code: %i" % project.sessions[0].observations[i].filter
+                print("   Filter code: %i" % project.sessions[0].observations[i].filter)
                 
             ## Comments/notes
-            print "   Observer Comments: %s" % project.sessions[0].observations[i].comments
+            print("   Observer Comments: %s" % project.sessions[0].observations[i].comments)
             
         # Valid?
-        print " "
+        print(" ")
         try:
             if project.validate():
-                print " Valid?  Yes"
+                print(" Valid?  Yes")
             else:
-                print " Valid?  No"
+                print(" Valid?  No")
         except:
-            print " Valid?  No"
+            print(" Valid?  No")
             
         # And then exits
         sys.exit()
@@ -219,8 +226,8 @@ def main(args):
         # Get the new start date/time in UTC and report on the difference
         if args.lst:
             if args.date is None:
-                print " "
-                print "Enter the new UTC start date:"
+                print(" ")
+                print("Enter the new UTC start date:")
                 tNewStart = raw_input('YYYY/MM/DD-> ')
                 try:
                     fields = tNewStart.split('/', 2)
@@ -228,7 +235,7 @@ def main(args):
                     tNewStart = date(fields[0], fields[1], fields[2])
                     tNewStart = datetime.combine(tNewStart, min(tStart).time())
                 except Exception, e:
-                    print "Error: %s" % str(e)
+                    print("Error: %s" % str(e))
                     sys.exit(1)
                     
             else:
@@ -262,8 +269,8 @@ def main(args):
             
         else:
             if args.date is None or args.time is None:
-                print " "
-                print "Enter the new UTC start date/time:"
+                print(" ")
+                print("Enter the new UTC start date/time:")
                 tNewStart = raw_input('YYYY/MM/DD HH:MM:SS.SSS -> ')
                 try:
                     tNewStart = datetime.strptime(tNewStart, '%Y/%m/%d %H:%M:%S.%f')
@@ -271,7 +278,7 @@ def main(args):
                     try:
                         tNewStart = datetime.strptime(tNewStart, '%Y/%m/%d %H:%M:%S')
                     except Exception, e:
-                        print "Error: %s" % str(e)
+                        print("Error: %s" % str(e))
                         sys.exit(1)
                         
             else:
@@ -286,13 +293,13 @@ def main(args):
         observer.date = (tNewStart).strftime('%Y/%m/%d %H:%M:%S')
         lst = observer.sidereal_time()
         
-        print " "
-        print "Shifting observations to start at %s" % tNewStart.strftime(formatString)
-        print "-> Difference of %i days, %.3f seconds" % (tShift.days, (tShift.seconds + tShift.microseconds/1000000.0),)
-        print "-> LST at %s for this date/time is %s" % (station.name, lst)
+        print(" ")
+        print("Shifting observations to start at %s" % tNewStart.strftime(formatString))
+        print("-> Difference of %i days, %.3f seconds" % (tShift.days, (tShift.seconds + tShift.microseconds/1000000.0),))
+        print("-> LST at %s for this date/time is %s" % (station.name, lst))
         if tShift.days == 0 and tShift.seconds == 0 and tShift.microseconds == 0:
-            print " "
-            print "The current shift is zero.  Do you want to continue anyways?"
+            print(" ")
+            print("The current shift is zero.  Do you want to continue anyways?")
             yesNo = raw_input("-> [y/N] ")
             if yesNo not in ('y', 'Y'):
                 sys.exit()
@@ -307,9 +314,9 @@ def main(args):
     #
     # Query and set the new session ID
     #
-    print " "
+    print(" ")
     if args.sid is None:
-        print "Enter the new session ID or return to keep current:"
+        print("Enter the new session ID or return to keep current:")
         sid = raw_input('-> ')
         if len(sid) > 0:
             sid = int(sid)
@@ -317,16 +324,16 @@ def main(args):
             sid = project.sessions[0].id
     else:
         sid = args.sid
-    print "Shifting session ID from %i to %i" % (project.sessions[0].id, sid)
+    print("Shifting session ID from %i to %i" % (project.sessions[0].id, sid))
     project.sessions[0].id = sid
     
     #
     # Go! (apply the changes to the observations)
     #
-    print " "
+    print(" ")
     newPOOC = []
     for i in xrange(nObs):
-        print "Working on Observation #%i" % (i+1,)
+        print("Working on Observation #%i" % (i+1,))
         newPOOC.append("")
         
         #
@@ -347,9 +354,9 @@ def main(args):
             diff = tStart[i] - utcMidnight
             mpm = int(round((diff.seconds + diff.microseconds/1000000.0)*1000.0))
             
-            print " Time shifting"
-            print "  MJD: %8i -> %8i" % (project.sessions[0].observations[i].mjd, mjd)
-            print "  MPM: %8i -> %8i" % (project.sessions[0].observations[i].mpm, mpm)
+            print(" Time shifting")
+            print("  MJD: %8i -> %8i" % (project.sessions[0].observations[i].mjd, mjd))
+            print("  MPM: %8i -> %8i" % (project.sessions[0].observations[i].mpm, mpm))
             
             project.sessions[0].observations[i].mjd = mjd
             project.sessions[0].observations[i].mpm = mpm
@@ -370,7 +377,7 @@ def main(args):
         try:
             project.project_office.observations[0][i] += ';;%s' % newPOOC[i]
         except Exception, e:
-            print e
+            print(e)
             project.project_office.observations[0][i] = '%s' % newPOOC[i]
             
     #
@@ -384,25 +391,25 @@ def main(args):
         
         if project.sessions[0].observations[0].mode not in ('TBW', 'TBN'):
             if beam == -1:
-                print " "
-                print "Enter the DRX beam to use:"
+                print(" ")
+                print("Enter the DRX beam to use:")
                 newBeam = raw_input('[1 through 4]-> ')
                 try:
                     newBeam = int(newBeam)
                 except Exception, e:
-                    print "Error: %s" % str(e)
+                    print("Error: %s" % str(e))
                     sys.exit(1)
                 if adp:
                     if newBeam not in (1,):
-                        print "Error: beam '%i' is out of range" % newBeam
+                        print("Error: beam '%i' is out of range" % newBeam)
                         sys.exit(1)
                         
                 else:
                     if newBeam not in (1, 2, 3, 4):
-                        print "Error: beam '%i' is out of range" % newBeam
+                        print("Error: beam '%i' is out of range" % newBeam)
                         sys.exit(1)
                         
-                print "Shifting DRX beam from %i to %i" % (beam, newBeam)
+                print("Shifting DRX beam from %i to %i" % (beam, newBeam))
                 beam = newBeam
                 project.sessions[0].drxBeam = beam
                 
@@ -410,8 +417,8 @@ def main(args):
         else:
             outputSDF = '%s_%s_%s_%04i_%s.sdf' % (pID, foStart.strftime('%y%m%d'), foStart.strftime('%H%M'), sID, project.sessions[0].observations[0].mode)
             
-    print " "
-    print "Saving to: %s" % outputSDF
+    print(" ")
+    print("Saving to: %s" % outputSDF)
     fh = open(outputSDF, 'w')
     if not project.validate():
         # Make sure we are about to be valid

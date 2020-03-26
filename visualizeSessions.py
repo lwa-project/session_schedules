@@ -1,6 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+# Python3 compatibility
+from __future__ import print_function, division
+import sys
+if sys.version_info > (3,):
+    xrange = range
+    from functools import cmp_to_key
+    
 import os
 import sys
 import math
@@ -164,7 +171,7 @@ class Visualization_GUI(object):
                     project = metabundle.get_sdf(filename)
                     dataFile = metabundle.get_session_metadata(filename)
                 except Exception as e:
-                    print "Warning: Cannot parse '%s'" % os.path.basename(filename)
+                    print("Warning: Cannot parse '%s'" % os.path.basename(filename))
                     continue
                     
             pID = project.id

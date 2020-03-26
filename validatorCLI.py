@@ -127,42 +127,42 @@ def main(args):
     
     # Report
     if tpss['valid']:
-        print "Congratualtions, you have a valid SDF file."
+        print("Congratualtions, you have a valid SDF file.")
     else:
-        print "There are 1 or more errors in your SDF file."
+        print("There are 1 or more errors in your SDF file.")
         for err in tpss['errors']:
-            print "On line %i: %s" % (err['line'], err['message'])
-    print " "
+            print("On line %i: %s" % (err['line'], err['message']))
+    print(" ")
     
-    print "Summary:"
-    print "Type of observations: %s" % project.sessions[0].observations[0].mode
-    print "Total number of parsed observations: %i" % tpss['numObs']
-    print "Total observing time: %.3f seconds" % (tpss['totDur'] / 1000.0,)
-    print "TPSS version used for validation: %s" % tpss['version']
-    print " "
+    print("Summary:")
+    print("Type of observations: %s" % project.sessions[0].observations[0].mode)
+    print("Total number of parsed observations: %i" % tpss['numObs'])
+    print("Total observing time: %.3f seconds" % (tpss['totDur'] / 1000.0,))
+    print("TPSS version used for validation: %s" % tpss['version'])
+    print(" ")
     
     if project.sessions[0].observations[0].mode not in ('TBW', 'TBN'):
-        print "Source List:"
+        print("Source List:")
         for obs in project.sessions[0].observations:
             if obs.mode == 'TRK_RADEC':
-                print "%s at RA: %.3f hours, Dec.: %+.3f degrees is visible for %i%% of the observation" % (obs.target, obs.ra, obs.dec, obs.computeVisibility() * 100)
+                print("%s at RA: %.3f hours, Dec.: %+.3f degrees is visible for %i%% of the observation" % (obs.target, obs.ra, obs.dec, obs.computeVisibility() * 100))
             if obs.mode == 'TRK_SOL':
-                print "Sun is visible for %i%% of the observation" % (obs.computeVisibility() * 100,)
+                print("Sun is visible for %i%% of the observation" % (obs.computeVisibility() * 100,))
             if obs.mode == 'TRK_JOV':
-                print "Jupiter is visible for %i%% of the observation" % (obs.computeVisibility() * 100,)
+                print("Jupiter is visible for %i%% of the observation" % (obs.computeVisibility() * 100,))
             if obs.mode == 'STEPPED':
-                print "Steps are:"
+                print("Steps are:")
                 for step in obs.steps:
                     if step.RADec:
-                        print "  RA: %.3f hours, Dec.: %+.3f degrees" % (step.c1, step.c2)
+                        print("  RA: %.3f hours, Dec.: %+.3f degrees" % (step.c1, step.c2))
                     else:
-                        "azimuth: %.3f degrees, elevation: %.3f degrees" % (step.c1, step.c2)
-                print "Combined visibility for all steps is %i%%." % (obs.computeVisibility() * 100,)
-        print " "
+                        print(" azimuth: %.3f degrees, elevation: %.3f degrees" % (step.c1, step.c2))
+                print("Combined visibility for all steps is %i%%." % (obs.computeVisibility() * 100,))
+        print(" ")
         
-    print "Validator Output:"
+    print("Validator Output:")
     for line in output:
-        print line
+        print(line)
 
 
 if __name__ == "__main__":

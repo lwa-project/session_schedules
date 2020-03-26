@@ -9,6 +9,13 @@ https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oxp/SNV
 Returns an XML file with the coordinates of the target or an error.
 """
 
+# Python3 compatibility
+from __future__ import print_function, division
+import sys
+if sys.version_info > (3,):
+    xrange = range
+    from functools import cmp_to_key
+    
 import os
 import sys
 import math
@@ -70,12 +77,12 @@ def main(args):
     if pmDec != '':
         pmDec = " (+%.1f mas/yr proper motion)" % pmDec
         
-    print "Target: %s" % target
-    print "  RA:   %.4f hours%s" % (ra/15.0, pmRA)
-    print "  Dec: %+.4f degrees%s" % (dec, pmDec)
-    print "  Coord. System: %s" % coordsys
-    print "==="
-    print "Source: %s" % service
+    print("Target: %s" % target)
+    print("  RA:   %.4f hours%s" % (ra/15.0, pmRA))
+    print("  Dec: %+.4f degrees%s" % (dec, pmDec))
+    print("  Coord. System: %s" % coordsys)
+    print("===")
+    print("Source: %s" % service)
 
 
 if __name__ == "__main__":
