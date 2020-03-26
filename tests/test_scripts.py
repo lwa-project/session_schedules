@@ -76,7 +76,7 @@ if run_scripts_tests:
     for depth in range(1, 3):
         path = [MODULE_BUILD, '..']
         path.extend(['*',]*depth)
-        path.extend('*.py')
+        path.append('*.py')
         _SCRIPTS.extend(glob.glob(os.path.join(*path)))
     _SCRIPTS = list(filter(lambda x: x.find('test_scripts.py') == -1, _SCRIPTS))
     _SCRIPTS.sort()
