@@ -2198,7 +2198,7 @@ class AdvancedInfo(wx.Frame):
         i = 0
         j = 2
         staChecks = []
-        for station in stations.getFullStations():
+        for station in stations.get_full_stations():
             staCheck = wx.CheckBox(panel, ID_STATION_CHECKED, label=station.name)
             if station in self.parent.project.runs[0].stations:
                 staCheck.SetValue(True)
@@ -2321,7 +2321,7 @@ class AdvancedInfo(wx.Frame):
         
         # Stations
         new_stations = []
-        for station in stations.getFullStations():
+        for station in stations.get_full_stations():
             for name,staCheck in self.staChecks:
                 if station.name == name:
                     if staCheck.GetValue():
