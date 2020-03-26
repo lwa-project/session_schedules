@@ -43,7 +43,8 @@ _SAFE_TO_IGNORE = ["Module 'numpy",
                    "Module 'ephem",
                    "Module 'wx",
                    "Unable to import 'wx",
-                   "Instance of 'HDUList' has no 'header' member"]
+                   "Instance of 'HDUList' has no 'header' member",
+                   "Instance of 'HDUList' has no 'data' member"]
 
 
 def _get_context(filename, line, before=0, after=0):
@@ -102,7 +103,7 @@ def _test_generator(script):
                             break
                     found_except = None
                     for i in range(0, 20):
-                        if context[20+i][level:level+3] == 'except':
+                        if context[20+i][level:level+6] == 'except':
                             found_except = i
                             break
                     if found_try and found_except:
