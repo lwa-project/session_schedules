@@ -44,7 +44,8 @@ _SAFE_TO_IGNORE = ["Module 'numpy",
                    "Module 'wx",
                    "Unable to import 'wx",
                    "Instance of 'HDUList' has no 'header' member",
-                   "Instance of 'HDUList' has no 'data' member"]
+                   "Instance of 'HDUList' has no 'data' member",
+                   "Assigning to function call which doesn't return"]
 
 
 def _get_context(filename, line, before=0, after=0):
