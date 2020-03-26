@@ -65,7 +65,7 @@ def _test_generator(script):
                 continue
             if line.find("Module 'ephem") != -1:
                 continue
-            if line.find("Module 'wx") != -1 or line.find("Unable to import 'wx'") != -1:
+            if line.find("Module 'wx") != -1 or line.find("Unable to import 'wx") != -1:
                 continue
                 
             mtch = _LINT_RE.match(line)
