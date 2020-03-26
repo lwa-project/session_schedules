@@ -339,6 +339,7 @@ def makeRADec(project, observer=lwa1.get_observer(), verbose=False):
         newPOOC.append("")
         
         if project.sessions[0].observations[i].mode == 'TRK_SOL':
+            sol = ephem.Sun()
             if len(newPOOC[-1]) != 0:
                 newPOOC[-1] += ';;'
             newPOOC[-1] += 'Originally TRK_SOL'
@@ -352,9 +353,9 @@ def makeRADec(project, observer=lwa1.get_observer(), verbose=False):
             # Calculate the position of Jupiter at this time and convert the
             # RA value to decimal hours and the Dec. value to decimal degrees.
             observer.date = tMid.strftime("%Y/%m/%d %H:%M:%S")
-            Sun.compute(observer)
-            sRA = float(Sun.ra) * 180.0 / math.pi / 15.0
-            sDec = float(Sun.dec) * 180.0 /math.pi
+            sol.compute(observer)
+            sRA = float(sol.ra) * 180.0 / math.pi / 15.0
+            sDec = float(sol.dec) * 180.0 /math.pi
             
             if verbose:
                 print " Mode shifting"
@@ -375,6 +376,7 @@ def makeRADec(project, observer=lwa1.get_observer(), verbose=False):
         # center of the observation
         #
         if project.sessions[0].observations[i].mode == 'TRK_JOV':
+            jov = ephem.Jupiter()
             if len(newPOOC[-1]) != 0:
                 newPOOC[-1] += ';;'
             newPOOC[-1] += 'Originally TRK_JOV'
@@ -388,9 +390,9 @@ def makeRADec(project, observer=lwa1.get_observer(), verbose=False):
             # Calculate the position of Jupiter at this time and convert the
             # RA value to decimal hours and the Dec. value to decimal degrees.
             observer.date = tMid.strftime("%Y/%m/%d %H:%M:%S")
-            Jupiter.compute(observer)
-            jRA = float(Jupiter.ra) * 180.0 / math.pi / 15.0
-            jDec = float(Jupiter.dec) * 180.0 /math.pi
+            jov.compute(observer)
+            jRA = float(jov.ra) * 180.0 / math.pi / 15.0
+            jDec = float(jov.dec) * 180.0 /math.pi
             
             if verbose:
                 print " Mode shifting"

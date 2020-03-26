@@ -11,11 +11,10 @@ import re
 import sys
 import ephem
 import numpy
-import pyfits
-import argparse
 import urllib, urllib2
 from tempfile import NamedTemporaryFile
 from xml.etree import ElementTree
+import astropy.io.fits as astrofits
 
 import wx
 import wx.html as html
@@ -552,7 +551,7 @@ class CalibratorSearch(wx.Frame):
                 th.flush()
                 th.seek(0)
                 
-                hdulist = pyfits.open(th.name, 'readonly')
+                hdulist = astrofits.open(th.name, 'readonly')
                 for key in hdulist[0].header:
                     header[key] = hdulist[0].header[key]
                 image = hdulist[0].data[0,0,:,:]

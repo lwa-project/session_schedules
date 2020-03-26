@@ -7,7 +7,7 @@ import math
 import pytz
 import ephem
 import numpy
-import argparse
+import getopt
 from datetime import datetime, timedelta
 
 from lsl.common import sdf, metabundle
