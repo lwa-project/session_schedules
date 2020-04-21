@@ -1,11 +1,10 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
-# Python3 compatiability
+# Python2 compatiability
 from __future__ import print_function, division
 import sys
-if sys.version_info > (3,):
-    xrange = range
+if sys.version_info < (3,):
+    range = xrange
 
 import os
 import re
@@ -958,7 +957,7 @@ class SDFCreator(wx.Frame):
         """
         
         self.buffer = []
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             if self.listControl.IsChecked(i):
                 self.buffer.append( copy.deepcopy(self.project.sessions[0].observations[i]) )
                 
@@ -973,7 +972,7 @@ class SDFCreator(wx.Frame):
     def onPasteBefore(self, event):
         firstChecked = None
         
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             if self.listControl.IsChecked(i):
                 firstChecked = i
                 break
@@ -991,7 +990,7 @@ class SDFCreator(wx.Frame):
             self.setSaveButton()
             
             # Re-number the remaining rows to keep the display clean
-            for id in xrange(self.listControl.GetItemCount()):
+            for id in range(self.listControl.GetItemCount()):
                 item = self.listControl.GetItem(id, 0)
                 item.SetText('%i' % (id+1))
                 self.listControl.SetItem(item)
@@ -999,7 +998,7 @@ class SDFCreator(wx.Frame):
                 
             # Fix the times on DRX observations to make thing continuous
             if self.mode == 'DRX':
-                for id in xrange(firstChecked+len(self.buffer)-1, -1, -1):
+                for id in range(firstChecked+len(self.buffer)-1, -1, -1):
                     dur = self.project.sessions[0].observations[id].dur
                     
                     tStart, _ = self.sdf.get_observation_start_stop(self.project.sessions[0].observations[id+1])
@@ -1011,7 +1010,7 @@ class SDFCreator(wx.Frame):
     def onPasteAfter(self, event):
         lastChecked = None
         
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             if self.listControl.IsChecked(i):
                 lastChecked = i
                 
@@ -1028,7 +1027,7 @@ class SDFCreator(wx.Frame):
             self.setSaveButton()
             
             # Re-number the remaining rows to keep the display clean
-            for id in xrange(self.listControl.GetItemCount()):
+            for id in range(self.listControl.GetItemCount()):
                 item = self.listControl.GetItem(id, 0)
                 item.SetText('%i' % (id+1))
                 self.listControl.SetItem(item)
@@ -1036,7 +1035,7 @@ class SDFCreator(wx.Frame):
                 
             # Fix the times on DRX observations to make thing continuous
             if self.mode == 'DRX':
-                for id in xrange(lastChecked+1, self.listControl.GetItemCount()):
+                for id in range(lastChecked+1, self.listControl.GetItemCount()):
                     _, tStop = self.sdf.get_observation_start_stop(self.project.sessions[0].observations[id-1])
                     cStart = 'UTC %i %02i %02i %02i:%02i:%06.3f' % (tStop.year, tStop.month, tStop.day, tStop.hour, tStop.minute, tStop.second+tStop.microsecond/1e6)
                     self.project.sessions[0].observations[id].set_start(cStart)
@@ -1062,7 +1061,7 @@ class SDFCreator(wx.Frame):
             self.setSaveButton()
             
         # Re-number the remaining rows to keep the display clean
-        for id in xrange(self.listControl.GetItemCount()):
+        for id in range(self.listControl.GetItemCount()):
             item = self.listControl.GetItem(id, 0)
             item.SetText('%i' % (id+1))
             self.listControl.SetItem(item)
@@ -1070,7 +1069,7 @@ class SDFCreator(wx.Frame):
             
         # Fix the times on DRX observations to make thing continuous
         if self.mode == 'DRX':
-            for id in xrange(lastChecked+1, self.listControl.GetItemCount()):
+            for id in range(lastChecked+1, self.listControl.GetItemCount()):
                 _, tStop = self.sdf.get_observation_start_stop(self.project.sessions[0].observations[id-1])
                 cStart = 'UTC %i %02i %02i %02i:%02i:%06.3f' % (tStop.year, tStop.month, tStop.day, tStop.hour, tStop.minute, tStop.second+tStop.microsecond/1e6)
                 self.project.sessions[0].observations[id].set_start(cStart)
@@ -1245,7 +1244,7 @@ class SDFCreator(wx.Frame):
         
         nChecked = 0
         whichChecked = None
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             if self.listControl.IsChecked(i):
                 whichChecked = i
                 nChecked += 1
@@ -1315,7 +1314,7 @@ class SDFCreator(wx.Frame):
             True is returned.
             """
             
-            for i in xrange(lc.GetItemCount()):
+            for i in range(lc.GetItemCount()):
                 if lc.IsChecked(i):
                     return i+1
             return 0
@@ -1337,7 +1336,7 @@ class SDFCreator(wx.Frame):
         self.listControl.setCheckDependant()
         
         # Re-number the remaining rows to keep the display clean
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             item = self.listControl.GetItem(i, 0)
             item.SetText('%i' % (i+1))
             self.listControl.SetItem(item)
@@ -1363,7 +1362,7 @@ class SDFCreator(wx.Frame):
         for obs in self.project.sessions[0].observations:
             print("[%i] Validating observation %i" % (os.getpid(), i+1))
             valid = obs.validate(verbose=True)
-            for col in xrange(len(self.columnMap)):
+            for col in range(len(self.columnMap)):
                 item = self.listControl.GetItem(i, col)
                 
                 if not valid:
@@ -1625,7 +1624,7 @@ class SDFCreator(wx.Frame):
         self.columnMap.append('target')
         self.columnMap.append('comments')
         self.columnMap.append('start')
-        for i in xrange(5):
+        for i in range(5):
             self.coerceMap.append(str)
             
         if self.mode == 'TBW' and self._getTBWValid():
@@ -2579,18 +2578,18 @@ class AdvancedInfo(wx.Frame):
         
     def initUI(self):
         bits = ['12-bit', '4-bit']
-        tbnGain = ['%i' % i for i in xrange(31)]
+        tbnGain = ['%i' % i for i in range(31)]
         tbnGain.insert(0, 'MCS Decides')
-        drxGain = ['%i' % i for i in xrange(13)]
+        drxGain = ['%i' % i for i in range(13)]
         drxGain.insert(0, 'MCS Decides')
         if self.parent.adp:
-            drxBeam = ['%i' %i for i in xrange(1, 4)]
+            drxBeam = ['%i' %i for i in range(1, 4)]
         else:
-            drxBeam = ['%i' %i for i in xrange(1, 5)]
+            drxBeam = ['%i' %i for i in range(1, 5)]
         drxBeam.insert(0, 'MCS Decides')
         intervals = ['MCS Decides', 'Never', '1 minute', '5 minutes', '15 minutes', '30 minutes', '1 hour']
         aspFilters = ['MCS Decides', 'Split', 'Full', 'Reduced', 'Off', 'Split @ 3MHz', 'Full @ 3MHz']
-        aspAttn = ['%i' % i for i in xrange(16)]
+        aspAttn = ['%i' % i for i in range(16)]
         aspAttn.insert(0, 'MCS Decides')
         
         row = 0
@@ -3204,8 +3203,8 @@ class AdvancedInfo(wx.Frame):
         aspAT1 = -1 if self.aspAT1.GetValue() == 'MCS Decides' else int(self.aspAT1.GetValue())
         aspAT2 = -1 if self.aspAT2.GetValue() == 'MCS Decides' else int(self.aspAT2.GetValue())
         aspATS = -1 if self.aspATS.GetValue() == 'MCS Decides' else int(self.aspATS.GetValue())
-        for i in xrange(len(self.parent.project.sessions[0].observations)):
-            for j in xrange(len(self.parent.project.sessions[0].observations[0].aspFlt)):
+        for i in range(len(self.parent.project.sessions[0].observations)):
+            for j in range(len(self.parent.project.sessions[0].observations[0].aspFlt)):
                 self.parent.project.sessions[0].observations[i].aspFlt[j] = aspFlt
                 self.parent.project.sessions[0].observations[i].aspAT1[j] = aspAT1
                 self.parent.project.sessions[0].observations[i].aspAT2[j] = aspAT2
@@ -3214,7 +3213,7 @@ class AdvancedInfo(wx.Frame):
         if self.parent.mode == 'TBW' or self.parent._getTBWValid():
             self.parent.project.sessions[0].tbwGits = int( self.tbwBits.GetValue().split('-')[0] )
             self.parent.project.sessions[0].tbwSamples = int( self.tbwSamp.GetValue() )
-            for i in xrange(len(self.parent.project.sessions[0].observations)):
+            for i in range(len(self.parent.project.sessions[0].observations)):
                 self.parent.project.sessions[0].observations[i].bits = int( self.tbwBits.GetValue().split('-')[0] )
                 self.parent.project.sessions[0].observations[i].samples = int( self.tbwSamp.GetValue() )
                 self.parent.project.sessions[0].observations[i].update()
@@ -3223,24 +3222,24 @@ class AdvancedInfo(wx.Frame):
         if self.parent.mode == 'TBF':
             self.parent.project.sessions[0].drxBeam = self.__parseGainCombo(self.tbfBeam)
             self.parent.project.sessions[0].tbfSamples = int( self.tbfSamp.GetValue() )
-            for i in xrange(len(self.parent.project.sessions[0].observations)):
+            for i in range(len(self.parent.project.sessions[0].observations)):
                 self.parent.project.sessions[0].observations[i].samples = int( self.tbfSamp.GetValue() )
                 self.parent.project.sessions[0].observations[i].update()
                 refresh_duration = True
                 
         if self.parent.mode == 'TBN' or (self.parent.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF):
             self.parent.project.sessions[0].tbnGain = self.__parseGainCombo(self.gain)
-            for i in xrange(len(self.parent.project.sessions[0].observations)):
+            for i in range(len(self.parent.project.sessions[0].observations)):
                 self.parent.project.sessions[0].observations[i].gain = self.__parseGainCombo(self.gain)
                 
         if self.parent.mode == 'DRX':
             self.parent.project.sessions[0].drxBeam = self.__parseGainCombo(self.drxBeam)
             self.parent.project.sessions[0].drxGain = self.__parseGainCombo(self.gain)
-            for i in xrange(len(self.parent.project.sessions[0].observations)):
+            for i in range(len(self.parent.project.sessions[0].observations)):
                 self.parent.project.sessions[0].observations[i].gain = self.__parseGainCombo(self.gain)
                 
         for obs in self.parent.project.sessions[0].observations:
-            for i in xrange(len(self.parent.project.sessions[0].observations)):
+            for i in range(len(self.parent.project.sessions[0].observations)):
                 if obs.mode == 'TBW' or self.parent._getTBWValid():
                     obs.bits = self.parent.project.sessions[0].observations[i].bits
                     obs.samples = self.parent.project.sessions[0].observations[i].samples
@@ -3308,7 +3307,7 @@ class AdvancedInfo(wx.Frame):
                 
                 beamDipole = (realStand, beamGain, dipoleGain, outputPol)
                 
-                for i in xrange(len(self.parent.project.sessions[0].observations)):
+                for i in range(len(self.parent.project.sessions[0].observations)):
                     self.parent.project.sessions[0].observations[i].setBeamDipoleMode(*beamDipole)
                     
         if self.parent.project.sessions[0].data_return_method == 'DR Spectrometer' or (self.parent.project.sessions[0].spcSetup[0] != 0 and self.parent.project.sessions[0].spcSetup[1] != 0):
@@ -3353,7 +3352,7 @@ class AdvancedInfo(wx.Frame):
                     
         if refresh_duration:
             col = self.parent.columnMap.index('duration')
-            for idx in xrange(self.parent.listControl.GetItemCount()):
+            for idx in range(self.parent.listControl.GetItemCount()):
                 obs_mode = self.parent.project.sessions[0].observations[idx].mode
                 obs_dur = self.parent.project.sessions[0].observations[idx].duration
                 if obs_mode in ('TBW', 'TBF'):
@@ -4233,7 +4232,7 @@ class SteppedWindow(wx.Frame):
         """
         
         self.buffer = []
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             if self.listControl.IsChecked(i):
                 self.buffer.append( copy.deepcopy(self.obs.steps[i]) )
                 
@@ -4248,7 +4247,7 @@ class SteppedWindow(wx.Frame):
     def onPasteBefore(self, event):
         firstChecked = None
         
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             if self.listControl.IsChecked(i):
                 firstChecked = i
                 break
@@ -4266,7 +4265,7 @@ class SteppedWindow(wx.Frame):
             self.parent.setSaveButton()
             
         # Re-number the remaining rows to keep the display clean
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             item = self.listControl.GetItem(i, 0)
             item.SetText('%i' % (i+1))
             self.listControl.SetItem(item)
@@ -4275,7 +4274,7 @@ class SteppedWindow(wx.Frame):
     def onPasteAfter(self, event):
         lastChecked = None
         
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             if self.listControl.IsChecked(i):
                 lastChecked = i
                 
@@ -4292,7 +4291,7 @@ class SteppedWindow(wx.Frame):
             self.parent.setSaveButton()
             
         # Re-number the remaining rows to keep the display clean
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             item = self.listControl.GetItem(i, 0)
             item.SetText('%i' % (i+1))
             self.listControl.SetItem(item)
@@ -4384,7 +4383,7 @@ class SteppedWindow(wx.Frame):
             True is returned.
             """
             
-            for i in xrange(lc.GetItemCount()):
+            for i in range(lc.GetItemCount()):
                 if lc.IsChecked(i):
                     return i+1
             return 0
@@ -4400,7 +4399,7 @@ class SteppedWindow(wx.Frame):
         self.listControl.setCheckDependant()
         
         # Re-number the remaining rows to keep the display clean
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             item = self.listControl.GetItem(i, 0)
             item.SetText('%i' % (i+1))
             self.listControl.SetItem(item)

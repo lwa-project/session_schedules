@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 """
 efficianado.py - Script to pack a collection of SDFs into the shortest observing time 
@@ -17,13 +16,12 @@ Options:
 -v, --verbose          Be verbose about shifting operations
 """
 
-# Python3 compatibility
+# Python2 compatibility
 from __future__ import print_function, division
 import sys
-if sys.version_info > (3,):
-    xrange = range
-    from functools import cmp_to_key
-
+if sys.version_info < (3,):
+    range = xrange
+    
 import os
 import sys
 import copy
@@ -34,6 +32,8 @@ import numpy
 import getopt
 import random
 from datetime import datetime, timedelta
+from functools import cmp_to_key
+
 
 from multiprocessing import Pool, cpu_count
 
@@ -189,7 +189,7 @@ def shiftWeek(project, startWeek, observer=lwa1.get_observer()):
     # Get the observations
     nObs = len(project.sessions[0].observations)
     tStart = [None,]*nObs
-    for i in xrange(nObs):
+    for i in range(nObs):
         tStart[i]  = utcjd_to_unix(project.sessions[0].observations[i].mjd + MJD_OFFSET)
         tStart[i] += project.sessions[0].observations[i].mpm / 1000.0
         tStart[i]  = datetime.utcfromtimestamp(tStart[i])
@@ -241,7 +241,7 @@ def shiftWeek(project, startWeek, observer=lwa1.get_observer()):
     tShift = tNewStart - min(tStart)
     
     # Shift the start times and recompute the MJD and MPM values
-    for i in xrange(nObs):
+    for i in range(nObs):
         tStart[i] += tShift
         
     # Get the LST at the start
@@ -249,7 +249,7 @@ def shiftWeek(project, startWeek, observer=lwa1.get_observer()):
     lst = observer.sidereal_time()
     
     # Apply
-    for i in xrange(nObs):
+    for i in range(nObs):
         start = tStart[i].strftime("%Z %Y %m %d %H:%M:%S.%f")
         start = start[:-3]
 
@@ -265,7 +265,7 @@ def shiftWeek(project, startWeek, observer=lwa1.get_observer()):
         project.sessions[0].observations[i].start = start
         
     tStart = [None,]*nObs
-    for i in xrange(nObs):
+    for i in range(nObs):
         tStart[i]  = utcjd_to_unix(project.sessions[0].observations[i].mjd + MJD_OFFSET)
         tStart[i] += project.sessions[0].observations[i].mpm / 1000.0
         tStart[i]  = datetime.utcfromtimestamp(tStart[i])
@@ -283,7 +283,7 @@ def describeSDF(observer, project):
     
     nObs = len(project.sessions[0].observations)
     tStart = [None,]*nObs
-    for i in xrange(nObs):
+    for i in range(nObs):
         tStart[i]  = utcjd_to_unix(project.sessions[0].observations[i].mjd + MJD_OFFSET)
         tStart[i] += project.sessions[0].observations[i].mpm / 1000.0
         tStart[i]  = datetime.utcfromtimestamp(tStart[i])
@@ -339,7 +339,7 @@ def makeRADec(project, observer=lwa1.get_observer(), verbose=False):
     
     nObs = len(project.sessions[0].observations)
     newPOOC = []
-    for i in xrange(nObs):
+    for i in range(nObs):
         if verbose:
             print("Working on Observation #%i" % (i+1,))
         newPOOC.append("")
@@ -415,7 +415,7 @@ def makeRADec(project, observer=lwa1.get_observer(), verbose=False):
             project.sessions[0].observations[i] = newObs
     
     # Set the project office comments for each observation
-    for i in xrange(nObs):
+    for i in range(nObs):
         try:
             project.projectOffice.observations[0][i] += ';;%s' % newPOOC[i]
         except:
@@ -440,7 +440,7 @@ def makePointingCorrection(project, corrRA=0.000, corrDec=0.000, verbose=False):
     
     nObs = len(project.sessions[0].observations)
     newPOOC = []
-    for i in xrange(nObs):
+    for i in range(nObs):
         if verbose:
             print("Working on Observation #%i" % (i+1,))
         newPOOC.append("")
@@ -479,7 +479,7 @@ def makePointingCorrection(project, corrRA=0.000, corrDec=0.000, verbose=False):
         project.projectOffice.sessions[0] = newPOSC
     else:
         project.projectOffice.sessions[0] += ';;%s' % newPOSC
-    for i in xrange(nObs):
+    for i in range(nObs):
         try:
             project.projectOffice.observations[0][i] += ';;%s' % newPOOC[i]
         except Exception as e:
@@ -566,7 +566,7 @@ class gas(object):
                 nObs = len(project.sessions[0].observations)
                 tStart = [None,]*nObs
                 lst = [None,]*nObs
-                for i in xrange(nObs):
+                for i in range(nObs):
                     tStart[i]  = utcjd_to_unix(project.sessions[0].observations[i].mjd + MJD_OFFSET)
                     tStart[i] += project.sessions[0].observations[i].mpm / 1000.0
                     tStart[i]  = datetime.utcfromtimestamp(tStart[i])
@@ -576,7 +576,7 @@ class gas(object):
                     lst[i] = self.observer.sidereal_time()
                 
                 # Shift the start times and recompute the MJD and MPM values
-                for i in xrange(nObs):
+                for i in range(nObs):
                     if self.mode == 'Sidereal':
                         tStart[i] += offset*siderealDay
                     elif self.mode == 'Solar':
@@ -585,7 +585,7 @@ class gas(object):
                         pass
                 
                 # Apply
-                for i in xrange(nObs):
+                for i in range(nObs):
                     self.observer.date = tStart[i].strftime('%Y/%m/%d %H:%M:%S')
                     newLST = self.observer.sidereal_time()
                     
@@ -714,7 +714,7 @@ class gas(object):
             for pid in uniquePIDs:
                 group = []
                 mode = 'Sidereal'
-                for i in xrange(len(projects)):
+                for i in range(len(projects)):
                     if int(round(sessionLSTs[i]*24/(2*numpy.pi)*3600)) == lst and sessionNames[i] == pid:
                         group.append(projects[i])
                         mode = sessionModes[i]
@@ -728,7 +728,7 @@ class gas(object):
                         subGroupSize -= 1
                     print("  -> Grouping in sets of %i" % subGroupSize)
                     
-                    for i in xrange(len(group)/subGroupSize + 1):
+                    for i in range(len(group)/subGroupSize + 1):
                         subGroup = group[i*subGroupSize:(i+1)*subGroupSize]
                         if len(subGroup) == 0:
                             continue
@@ -744,10 +744,10 @@ class gas(object):
         self.projects = sessions
         
         self.nProjects = len(self.projects)
-        self.offsets.append([0   for p in xrange(self.nProjects)])
-        self.offsets.append([p/4 for p in xrange(self.nProjects)])
-        for o in xrange(2,self.nOffsets):
-            self.offsets.append( [random.randint(0, self.searchLimits) for p in xrange(self.nProjects)]  )
+        self.offsets.append([0   for p in range(self.nProjects)])
+        self.offsets.append([p/4 for p in range(self.nProjects)])
+        for o in range(2,self.nOffsets):
+            self.offsets.append( [random.randint(0, self.searchLimits) for p in range(self.nProjects)]  )
         
     def fitness(self):
         """
@@ -773,7 +773,7 @@ class gas(object):
             
             # Find time conflicts on the beams
             f = 0
-            for i in xrange(self.nProjects):
+            for i in range(self.nProjects):
                 startI = starts[i]
                 stopI = stops[i]
                 beamsFree1 = 4 - beams[i]
@@ -791,7 +791,7 @@ class gas(object):
                 if stopI > globalStop:
                     globalStop = stopI
                 
-                for j in xrange(i+1, self.nProjects):
+                for j in range(i+1, self.nProjects):
                     if j == i:
                         continue
                     
@@ -841,7 +841,7 @@ class gas(object):
         
         # Go... (but do it in is such a way that is it easy for the user to 
         # stop it and move on)
-        for i in xrange(max_iterations):
+        for i in range(max_iterations):
             try:
                 ## Perform the evolution (elite children, crossover children, 
                 ## and mutation children fill new next generation.
@@ -878,7 +878,7 @@ class gas(object):
                 print('Extinction -> Surviver schedule range is %.3f to %.3f days' % (-f[good].max(), -f[good].min()))
                 print('Extinction -> Schedule ranges %.3f to %.3f days perish' % (-f[cut].max(), -f[cut].min()))
                 for c in cut:
-                    self.offsets[c] =  [random.randint(0, self.searchLimits) for p in xrange(self.nProjects)]
+                    self.offsets[c] =  [random.randint(0, self.searchLimits) for p in range(self.nProjects)]
                     
                 print('Extinction -> New schedule search limit is %i days; %i survive, %i perish' % (self.searchLimits, len(good), len(cut)))
                 
@@ -915,15 +915,15 @@ class gas(object):
                 else:
                     return 0
             
-        output.sort(cmp=startSort)
+        output.sort(key=cmp_to_key(startSort))
         
         avaliable = {}
-        for beam in xrange(1, 5):
+        for beam in range(1, 5):
             avaliable[beam] = _UTC.localize(datetime(1970, 1, 1))
         avaliable['TB'] = _UTC.localize(datetime(1970, 1, 1))
             
         beam = 1
-        for i in xrange(len(output)):
+        for i in range(len(output)):
             sessionStart = getObsStartStop(output[i].sessions[0].observations[ 0])[0] - sessionLag
             sessionStop  = getObsStartStop(output[i].sessions[0].observations[-1])[1] + sessionLag
             
@@ -959,7 +959,7 @@ class gas(object):
         out = []
         
         # Loop over all genes...
-        for i in xrange(len(offsets)):
+        for i in range(len(offsets)):
             # ... and mutate one of them with a probability based on the fraction
             if random.random() < fraction:
                 newGene = random.randint(0, self.searchLimits)
@@ -1003,7 +1003,7 @@ class gas(object):
         out3.extend(offsets2[cp1:cp2])
         out3.extend(offsets1[cp2:])
         
-#		for i in xrange(len(offsets1)):
+#		for i in range(len(offsets1)):
 # 			genes = random.sample([offsets1[i], offsets2[i], offsets3[i]], 3)
 # 			out1.append(genes[0])
 # 			out2.append(genes[1])
@@ -1039,7 +1039,7 @@ class gas(object):
             best3 = best2[len(best1):]
             best2 = best2[:len(best1)]
         
-            for i in xrange(len(best1)):
+            for i in range(len(best1)):
                 children.extend( self.__crossover(self.offsets[best1[i]], self.offsets[best2[i]], self.offsets[best3[i]]) )
         
         # The new population
@@ -1050,7 +1050,7 @@ class gas(object):
         new.extend(children)
         needed = self.nOffsets - len(new)
         ## Mutation children
-        for i in xrange(needed):
+        for i in range(needed):
             new.append( self.__mutate(random.choice(self.offsets)) )
         
         # Conserve the population size
@@ -1326,7 +1326,7 @@ def main(args):
         clickTime = matplotlib.dates.num2date(event.xdata)
         
         if clickBeam == 0:
-            for i in xrange(len(free)):
+            for i in range(len(free)):
                 if clickTime >= free[i][0] and clickTime <= free[i][1]:
                     fU = free[i]
                     fM = (fU[0].astimezone(_MST), fU[1].astimezone(_MST))
@@ -1336,7 +1336,7 @@ def main(args):
                     print("               -> %i:%02i in length" % (d.days*24+d.seconds/3600, d.seconds/60 % 60))
         else:
             project = None
-            for i in xrange(len(projects)):
+            for i in range(len(projects)):
                 if clickTime >= starts[i] and clickTime <= starts[i] + durations[i] and clickBeam == beams[i]:
                     project = projects[i]
                     break

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 """
 Script to shift an SDF file in time based on the first observation.  This
@@ -12,14 +11,13 @@ Options:
 None
 """
 
-# Python3 compatibility
+# Python2 compatibility
 from __future__ import print_function, division
 import sys
-if sys.version_info > (3,):
-    xrange = range
-    raw_input = input
-    from functools import cmp_to_key
-
+if sys.version_info < (3,):
+    range = xrange
+    input = raw_input
+    
 import os
 import sys
 import pytz
@@ -114,7 +112,7 @@ def main(args):
     
     nObs = len(project.sessions[0].observations)
     tStart = [None,]*nObs
-    for i in xrange(nObs):
+    for i in range(nObs):
         tStart[i]  = utcjd_to_unix(project.sessions[0].observations[i].mjd + MJD_OFFSET)
         tStart[i] += project.sessions[0].observations[i].mpm / 1000.0
         tStart[i]  = datetime.utcfromtimestamp(tStart[i])
@@ -168,10 +166,10 @@ def main(args):
                 
                 if mt in ('XX', 'YY', 'XY', 'YX', 'XXYY', 'XXXYYXYY'):
                     products = len(mt)/2
-                    mt = [mt[2*i:2*i+2] for i in xrange(products)]
+                    mt = [mt[2*i:2*i+2] for i in range(products)]
                 else:
                     products = len(mt)
-                    mt = [mt[1*i:1*i+1] for i in xrange(products)]
+                    mt = [mt[1*i:1*i+1] for i in range(products)]
                     
                 print(" -> %i channels, %i windows/integration" % tuple(project.sessions[0].spcSetup))
                 print(" -> %i data products (%s)" % (products, ','.join(mt)))
@@ -181,7 +179,7 @@ def main(args):
         print(" ")
         print(" Number of observations: %i" % nObs)
         print(" Observation Detail:")
-        for i in xrange(nObs):
+        for i in range(nObs):
             currDur = project.sessions[0].observations[i].dur
             currDur = timedelta(seconds=int(currDur/1000), microseconds=(currDur*1000) % 1000000)
             
@@ -229,7 +227,7 @@ def main(args):
             if args.date is None:
                 print(" ")
                 print("Enter the new UTC start date:")
-                tNewStart = raw_input('YYYY/MM/DD-> ')
+                tNewStart = input('YYYY/MM/DD-> ')
                 try:
                     fields = tNewStart.split('/', 2)
                     fields = [int(f) for f in fields]
@@ -272,7 +270,7 @@ def main(args):
             if args.date is None or args.time is None:
                 print(" ")
                 print("Enter the new UTC start date/time:")
-                tNewStart = raw_input('YYYY/MM/DD HH:MM:SS.SSS -> ')
+                tNewStart = input('YYYY/MM/DD HH:MM:SS.SSS -> ')
                 try:
                     tNewStart = datetime.strptime(tNewStart, '%Y/%m/%d %H:%M:%S.%f')
                 except ValueError:
@@ -301,7 +299,7 @@ def main(args):
         if tShift.days == 0 and tShift.seconds == 0 and tShift.microseconds == 0:
             print(" ")
             print("The current shift is zero.  Do you want to continue anyways?")
-            yesNo = raw_input("-> [y/N] ")
+            yesNo = input("-> [y/N] ")
             if yesNo not in ('y', 'Y'):
                 sys.exit()
                 
@@ -309,7 +307,7 @@ def main(args):
         tShift = timedelta(seconds=0)
         
     # Shift the start times and recompute the MJD and MPM values
-    for i in xrange(nObs):
+    for i in range(nObs):
         tStart[i] += tShift
         
     #
@@ -318,7 +316,7 @@ def main(args):
     print(" ")
     if args.sid is None:
         print("Enter the new session ID or return to keep current:")
-        sid = raw_input('-> ')
+        sid = input('-> ')
         if len(sid) > 0:
             sid = int(sid)
         else:
@@ -333,7 +331,7 @@ def main(args):
     #
     print(" ")
     newPOOC = []
-    for i in xrange(nObs):
+    for i in range(nObs):
         print("Working on Observation #%i" % (i+1,))
         newPOOC.append("")
         
@@ -374,7 +372,7 @@ def main(args):
     else:
         project.project_office.sessions[0] += ';;%s' % newPOSC
         
-    for i in xrange(nObs):
+    for i in range(nObs):
         try:
             project.project_office.observations[0][i] += ';;%s' % newPOOC[i]
         except Exception as e:
@@ -394,7 +392,7 @@ def main(args):
             if beam == -1:
                 print(" ")
                 print("Enter the DRX beam to use:")
-                newBeam = raw_input('[1 through 4]-> ')
+                newBeam = input('[1 through 4]-> ')
                 try:
                     newBeam = int(newBeam)
                 except Exception as e:

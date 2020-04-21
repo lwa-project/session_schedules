@@ -1,11 +1,10 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
-# Python3 compatiability
+# Python2 compatiability
 from __future__ import print_function, division
 import sys
-if sys.version_info > (3,):
-    xrange = range
+if sys.version_info < (3,):
+    range = xrange
 
 import os
 import re
@@ -922,7 +921,7 @@ class IDFCreator(wx.Frame):
         """
         
         self.buffer = []
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             if self.listControl.IsChecked(i):
                 self.buffer.append( copy.deepcopy(self.project.runs[0].scans[i]) )
                 
@@ -937,7 +936,7 @@ class IDFCreator(wx.Frame):
     def onPasteBefore(self, event):
         firstChecked = None
         
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             if self.listControl.IsChecked(i):
                 firstChecked = i
                 break
@@ -955,14 +954,14 @@ class IDFCreator(wx.Frame):
             self.setSaveButton()
             
             # Re-number the remaining rows to keep the display clean
-            for id in xrange(self.listControl.GetItemCount()):
+            for id in range(self.listControl.GetItemCount()):
                 item = self.listControl.GetItem(id, 0)
                 item.SetText('%i' % (id+1))
                 self.listControl.SetItem(item)
                 self.listControl.RefreshItem(item.GetId())
                 
             # Fix the times on DRX scans to make thing continuous
-            for id in xrange(firstChecked+len(self.buffer)-1, -1, -1):
+            for id in range(firstChecked+len(self.buffer)-1, -1, -1):
                 dur = self.project.runs[0].scans[id].dur
                 
                 tStart, _ = idf.getScanStartStop(self.project.runs[0].scans[id+1])
@@ -974,7 +973,7 @@ class IDFCreator(wx.Frame):
     def onPasteAfter(self, event):
         lastChecked = None
         
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             if self.listControl.IsChecked(i):
                 lastChecked = i
                 
@@ -991,14 +990,14 @@ class IDFCreator(wx.Frame):
             self.setSaveButton()
             
             # Re-number the remaining rows to keep the display clean
-            for id in xrange(self.listControl.GetItemCount()):
+            for id in range(self.listControl.GetItemCount()):
                 item = self.listControl.GetItem(id, 0)
                 item.SetText('%i' % (id+1))
                 self.listControl.SetItem(item)
                 self.listControl.RefreshItem(item.GetId())
                 
             # Fix the times on DRX scans to make thing continuous
-            for id in xrange(lastChecked+1, self.listControl.GetItemCount()):
+            for id in range(lastChecked+1, self.listControl.GetItemCount()):
                 _, tStop = idf.getScanStartStop(self.project.runs[0].scans[id-1])
                 cStart = 'UTC %i %02i %02i %02i:%02i:%06.3f' % (tStop.year, tStop.month, tStop.day, tStop.hour, tStop.minute, tStop.second+tStop.microsecond/1e6)
                 self.project.runs[0].scans[id].set_start(cStart)
@@ -1024,14 +1023,14 @@ class IDFCreator(wx.Frame):
             self.setSaveButton()
             
         # Re-number the remaining rows to keep the display clean
-        for id in xrange(self.listControl.GetItemCount()):
+        for id in range(self.listControl.GetItemCount()):
             item = self.listControl.GetItem(id, 0)
             item.SetText('%i' % (id+1))
             self.listControl.SetItem(item)
             self.listControl.RefreshItem(item.GetId())
             
         # Fix the times on DRX scans to make thing continuous
-        for id in xrange(lastChecked+1, self.listControl.GetItemCount()):
+        for id in range(lastChecked+1, self.listControl.GetItemCount()):
             _, tStop = idf.getScanStartStop(self.project.runs[0].scans[id-1])
             cStart = 'UTC %i %02i %02i %02i:%02i:%06.3f' % (tStop.year, tStop.month, tStop.day, tStop.hour, tStop.minute, tStop.second+tStop.microsecond/1e6)
             self.project.runs[0].scans[id].set_start(cStart)
@@ -1143,7 +1142,7 @@ class IDFCreator(wx.Frame):
     #    
     #    nChecked = 0
     #    whichChecked = None
-    #    for i in xrange(self.listControl.GetItemCount()):
+    #    for i in range(self.listControl.GetItemCount()):
     #        if self.listControl.IsChecked(i):
     #            whichChecked = i
     #            nChecked += 1
@@ -1198,7 +1197,7 @@ class IDFCreator(wx.Frame):
         
         nChecked = 0
         whichChecked = None
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             if self.listControl.IsChecked(i):
                 whichChecked = i
                 nChecked += 1
@@ -1225,7 +1224,7 @@ class IDFCreator(wx.Frame):
             True is returned.
             """
             
-            for i in xrange(lc.GetItemCount()):
+            for i in range(lc.GetItemCount()):
                 if lc.IsChecked(i):
                     return i+1
             return 0
@@ -1247,7 +1246,7 @@ class IDFCreator(wx.Frame):
         self.listControl.setCheckDependant()
         
         # Re-number the remaining rows to keep the display clean
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             item = self.listControl.GetItem(i, 0)
             item.SetText('%i' % (i+1))
             self.listControl.SetItem(item)
@@ -1274,7 +1273,7 @@ class IDFCreator(wx.Frame):
             for station in self.project.runs[0].stations:
                 print("[%i] Validating scan %i on %s" % (os.getpid(), i+1, station.id))
                 valid = obs.validate(station, verbose=True)
-                for col in xrange(len(self.columnMap)-1):  # -1 for proper motion
+                for col in range(len(self.columnMap)-1):  # -1 for proper motion
                     item = self.listControl.GetItem(i, col)
                     
                     if not valid:
@@ -1324,7 +1323,7 @@ class IDFCreator(wx.Frame):
         """
         
         whichChecked = None
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             if self.listControl.IsChecked(i):
                 whichChecked = i
                 break
@@ -2174,7 +2173,7 @@ class AdvancedInfo(wx.Frame):
         self.Show()
         
     def initUI(self):
-        drxGain = ['%i' % i for i in xrange(13)]
+        drxGain = ['%i' % i for i in range(13)]
         drxGain.insert(0, 'MCS Decides')
         aspFilters = ['MCS Decides', 'Split', 'Full', 'Reduced', 'Off', 'Split @ 3MHz', 'Full @ 3MHz']
         
@@ -2337,16 +2336,16 @@ class AdvancedInfo(wx.Frame):
         aspFltDict = {'MCS Decides': -1, 'Split': 0, 'Full': 1, 'Reduced': 2, 'Off': 3, 
                                          'Split @ 3MHz': 4, 'Full @ 3MHz': 5}
         aspFlt = aspFltDict[self.aspFlt.GetValue()]
-        for i in xrange(len(self.parent.project.runs[0].scans)):
+        for i in range(len(self.parent.project.runs[0].scans)):
             self.parent.project.runs[0].scans[i].aspFlt= aspFlt
             
         # DRX
         self.parent.project.runs[0].drxGain = self.__parseGainCombo(self.gain)
-        for i in xrange(len(self.parent.project.runs[0].scans)):
+        for i in range(len(self.parent.project.runs[0].scans)):
             self.parent.project.runs[0].scans[i].gain = self.__parseGainCombo(self.gain)
             
         for obs in self.parent.project.runs[0].scans:
-            for i in xrange(len(self.parent.project.runs[0].scans)):
+            for i in range(len(self.parent.project.runs[0].scans)):
                 obs.gain = self.parent.project.runs[0].scans[i].gain
                 
         self.parent.edited = True

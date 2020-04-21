@@ -1,14 +1,12 @@
-# -*- coding: utf-8 -*-
-
 """
 Unit tests for the various session_schedules scripts.
 """
 
-# Python3 compatibility
+# Python2 compatibility
 from __future__ import print_function, division, absolute_import
 import sys
-if sys.version_info > (3,):
-    xrange = range
+if sys.version_info < (3,):
+    range = xrange
     
 import unittest
 import glob
@@ -39,8 +37,7 @@ __author__   = "Jayce Dowell"
 _LINT_RE = re.compile('(?P<module>.*?)\:(?P<line>\d+)\: (error )?[\[\(](?P<type>.*?)[\]\)] (?P<info>.*)')
 
 
-_SAFE_TO_IGNORE = ["Module 'numpy",
-                   "Module 'ephem",
+_SAFE_TO_IGNORE = ["Module 'ephem",
                    "Module 'wx",
                    "Unable to import 'wx",
                    "Instance of 'HDUList' has no 'header' member",
@@ -75,7 +72,7 @@ def _test_generator(script):
     """
     
     def test(self):
-        out, err = lint.py_run("%s -E" % script, return_std=True)
+        out, err = lint.py_run("%s -E --extension-pkg-whitelist=numpy" % script, return_std=True)
         out_lines = out.read().split('\n')
         err_lines = err.read().split('\n')
         out.close()

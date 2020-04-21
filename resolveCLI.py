@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 """
 Apache mod_python module for resolving a catalog name to a RA/dec. pair using
@@ -9,12 +8,11 @@ https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oxp/SNV
 Returns an XML file with the coordinates of the target or an error.
 """
 
-# Python3 compatibility
+# Python2 compatibility
 from __future__ import print_function, division
 import sys
-if sys.version_info > (3,):
-    xrange = range
-    from functools import cmp_to_key
+if sys.version_info < (3,):
+    range = xrange
     
 import os
 import sys

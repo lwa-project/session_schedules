@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
-# Python3 compatiability
+# Python2 compatibility
 from __future__ import print_function, division
 import sys
-if sys.version_info > (3,):
-    xrange = range
+if sys.version_info < (3,):
+    range = xrange
 
 import os
 import re
@@ -302,7 +302,7 @@ class CalibratorSearch(wx.Frame):
         Clear everything out of the candidates list.
         """
         
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             self.listControl.DeleteItem(0)
             
     def onResolve(self, event):

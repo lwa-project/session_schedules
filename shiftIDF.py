@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 """
 Script to shift an IDF file in time based on the first scan.  This
@@ -12,13 +11,12 @@ Options:
 None
 """
 
-# Python3 compatibility
+# Python2 compatibility
 from __future__ import print_function, division
 import sys
-if sys.version_info > (3,):
-    xrange = range
-    raw_input = input
-    from functools import cmp_to_key
+if sys.version_info < (3,):
+    range = xrange
+    input = raw_input
     
 import os
 import sys
@@ -100,7 +98,7 @@ def main(args):
     
     nObs = len(project.runs[0].scans)
     tStart = [None,]*nObs
-    for i in xrange(nObs):
+    for i in range(nObs):
         tStart[i]  = utcjd_to_unix(project.runs[0].scans[i].mjd + MJD_OFFSET)
         tStart[i] += project.runs[0].scans[i].mpm / 1000.0
         tStart[i]  = datetime.utcfromtimestamp(tStart[i])
@@ -142,7 +140,7 @@ def main(args):
         print(" ")
         print(" Number of scans: %i" % nObs)
         print(" Scan Detail:")
-        for i in xrange(nObs):
+        for i in range(nObs):
             currDur = project.runs[0].scans[i].dur
             currDur = timedelta(seconds=int(currDur/1000), microseconds=(currDur*1000) % 1000000)
             
@@ -187,7 +185,7 @@ def main(args):
             if args.date is None:
                 print(" ")
                 print("Enter the new UTC start date:")
-                tNewStart = raw_input('YYYY/MM/DD-> ')
+                tNewStart = input('YYYY/MM/DD-> ')
                 try:
                     fields = tNewStart.split('/', 2)
                     fields = [int(f) for f in fields]
@@ -230,7 +228,7 @@ def main(args):
             if args.date is None or args.time is None:
                 print(" ")
                 print("Enter the new UTC start date/time:")
-                tNewStart = raw_input('YYYY/MM/DD HH:MM:SS.SSS -> ')
+                tNewStart = input('YYYY/MM/DD HH:MM:SS.SSS -> ')
                 try:
                     tNewStart = datetime.strptime(tNewStart, '%Y/%m/%d %H:%M:%S.%f')
                 except ValueError:
@@ -259,7 +257,7 @@ def main(args):
         if tShift.days == 0 and tShift.seconds == 0 and tShift.microseconds == 0:
             print(" ")
             print("The current shift is zero.  Do you want to continue anyways?")
-            yesNo = raw_input("-> [y/N] ")
+            yesNo = input("-> [y/N] ")
             if yesNo not in ('y', 'Y'):
                 sys.exit()
                 
@@ -267,7 +265,7 @@ def main(args):
         tShift = timedelta(seconds=0)
         
     # Shift the start times and recompute the MJD and MPM values
-    for i in xrange(nObs):
+    for i in range(nObs):
         tStart[i] += tShift
         
     #
@@ -276,7 +274,7 @@ def main(args):
     print(" ")
     if args.rid is None:
         print("Enter the new run ID or return to keep current:")
-        sid = raw_input('-> ')
+        sid = input('-> ')
         if len(sid) > 0:
             sid = int(sid)
         else:
@@ -291,7 +289,7 @@ def main(args):
     #
     print(" ")
     newPOOC = []
-    for i in xrange(nObs):
+    for i in range(nObs):
         print("Working on Scan #%i" % (i+1,))
         newPOOC.append("")
         
@@ -332,7 +330,7 @@ def main(args):
     else:
         project.projectOffice.runs[0] += ';;%s' % newPOSC
         
-    for i in xrange(nObs):
+    for i in range(nObs):
         try:
             project.projectOffice.scans[0][i] += ';;%s' % newPOOC[i]
         except Exception as e:
