@@ -563,7 +563,7 @@ class IDFCreator(wx.Frame):
         
         po = idf.ProjectOffice()
         observer = idf.Observer('', 0, first='', last='')
-        project = idf.Project(observer, '', '', projectOffice=po)
+        project = idf.Project(observer, '', '', project_office=po)
         run = idf.Run('run_name', 0, scans=[])
         project.runs = [run,]
         
