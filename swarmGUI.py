@@ -5,6 +5,7 @@ from __future__ import print_function, division
 
 import os
 import re
+import sys
 import copy
 import math
 import ephem
@@ -1269,7 +1270,7 @@ class IDFCreator(wx.Frame):
         for obs in self.project.runs[0].scans:
             for station in self.project.runs[0].stations:
                 print("[%i] Validating scan %i on %s" % (os.getpid(), i+1, station.id))
-                valid = obs.validate(station, verbose=True)
+                valid = obs.validate(verbose=True)
                 for col in range(len(self.columnMap)-1):  # -1 for proper motion
                     item = self.listControl.GetItem(i, col)
                     
@@ -1617,7 +1618,7 @@ class IDFCreator(wx.Frame):
                 return '%02i:%02i:%05.2f' % (d, m, s)
                 
         if obs.mode == 'STEPPED':
-            obs.getDuration()
+            obs.duration
             SetListItem(self.listControl, index, 5, obs.duration)
             SetListItem(self.listControl, index, 8, "--")
             SetListItem(self.listControl, index, 9, "--")
@@ -1693,7 +1694,7 @@ class IDFCreator(wx.Frame):
             
     def parseFile(self, filename):
         """
-        Given a filename, parse the file using the idf.parse_idF() method and 
+        Given a filename, parse the file using the idf.parse_idf() method and 
         update all of the various aspects of the GUI (scan list, mode, 
         button, menu items, etc.).
         """
@@ -1705,7 +1706,7 @@ class IDFCreator(wx.Frame):
         self.initIDF()
         
         print("[%i] Parsing file '%s'" % (os.getpid(), filename))
-        self.project = idf.parse_idF(filename)
+        self.project = idf.parse_idf(filename)
         self.setMenuButtons(self.project.runs[0].scans[0].mode)
         if self.project.runs[0].scans[0].mode[0:3] == 'TRK':
             self.mode = 'DRX'
@@ -2083,7 +2084,7 @@ class ObserverInfo(wx.Frame):
         self.parent.project.observer.id = int(self.observerIDEntry.GetValue())
         self.parent.project.observer.first = self.observerFirstEntry.GetValue()
         self.parent.project.observer.last = self.observerLastEntry.GetValue()
-        self.parent.project.observer.joinName()
+        self.parent.project.observer.join_name()
         
         self.parent.project.id = self.projectIDEntry.GetValue()
         self.parent.project.name = self.projectTitleEntry.GetValue()
@@ -2228,15 +2229,15 @@ class AdvancedInfo(wx.Frame):
         
         aspComboFlt = wx.ComboBox(panel, -1, value='MCS Decides', choices=aspFilters, style=wx.CB_READONLY)
         try:
-            if self.parent.project.runs[0].scans[0].aspFlt == -1:
+            if self.parent.project.runs[0].scans[0].asp_filter == -1:
                 aspComboFlt.SetStringSelection('MCS Decides')
-            elif self.parent.project.runs[0].scans[0].aspFlt == 0:
+            elif self.parent.project.runs[0].scans[0].asp_filter == 0:
                 aspComboFlt.SetStringSelection('Split')
-            elif self.parent.project.runs[0].scans[0].aspFlt == 1:
+            elif self.parent.project.runs[0].scans[0].asp_filter == 1:
                 aspComboFlt.SetStringSelection('Full')
-            elif self.parent.project.runs[0].scans[0].aspFlt == 2:
+            elif self.parent.project.runs[0].scans[0].asp_filter == 2:
                 aspComboFlt.SetStringSelection('Reduced')
-            elif self.parent.project.runs[0].scans[0].aspFlt == 4:
+            elif self.parent.project.runs[0].scans[0].asp_filer == 4:
                 aspComboFlt.SetStringSelection('Split @ 3MHz')
             elif self.parent.project.runs[0].scans[0].aspFlt == 5:
                 aspComboFlt.SetStringSelection('Full @ 3MHz')
@@ -2334,7 +2335,7 @@ class AdvancedInfo(wx.Frame):
                                          'Split @ 3MHz': 4, 'Full @ 3MHz': 5}
         aspFlt = aspFltDict[self.aspFlt.GetValue()]
         for i in range(len(self.parent.project.runs[0].scans)):
-            self.parent.project.runs[0].scans[i].aspFlt= aspFlt
+            self.parent.project.runs[0].scans[i].asp_filter = aspFlt
             
         # DRX
         self.parent.project.runs[0].drxGain = self.__parseGainCombo(self.gain)
@@ -2453,7 +2454,7 @@ class RunDisplay(wx.Frame):
         i = 0
         for o in self.obs:
             ## Get the source
-            src = o.getFixedBody()
+            src = o.fixed_body
             
             stepSize = o.dur / 1000.0 / 300
             if stepSize < 30.0:
@@ -2653,7 +2654,7 @@ class RunUVCoverageDisplay(wx.Frame):
         antennas = []
         observer = stations.lwa1.get_observer()
         for station in self.parent.project.runs[0].stations:
-            stand = stations.Stand(len(antennas), *(stations.lwa1.getENZOffset(station)))
+            stand = stations.Stand(len(antennas), *(stations.lwa1.get_enz_offset(station)))
             cable = stations.Cable('%s-%s' % (station.id, 0), 0.0, vf=1.0, dd=0.0)
             antenna = stations.Antenna(len(antennas), stand=stand, cable=cable, pol=0)
             antennas.append(antenna)
@@ -2663,7 +2664,7 @@ class RunUVCoverageDisplay(wx.Frame):
         order = []
         for o in self.obs:
             ## Get the source
-            src = o.getFixedBody()
+            src = o.fixed_body
             if src.name not in order:
                 order.append( src.name )
             try:

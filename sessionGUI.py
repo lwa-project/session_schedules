@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
-# Python2 compatiability
+# Python2 compatibility
 from __future__ import print_function, division
 
 import os
 import re
+import sys
 import copy
 import math
 import ephem
@@ -1215,7 +1216,7 @@ class SDFCreator(wx.Frame):
         
         id = self.listControl.GetItemCount() + 1
         gain = self.project.sessions[0].drxGain
-        self.project.sessions[0].observations.append( self.sdf.Stepped('stps-%i' % id, 'radec-%i' % id, self._getCurrentDateString(), self._getDefaultFilter(), RADec=True, gain=gain) )
+        self.project.sessions[0].observations.append( self.sdf.Stepped('stps-%i' % id, 'radec-%i' % id, self._getCurrentDateString(), self._getDefaultFilter(), is_radec=True, gain=gain) )
         self.addObservation(self.project.sessions[0].observations[-1], id)
         
         self.edited = True
@@ -1228,7 +1229,7 @@ class SDFCreator(wx.Frame):
         
         id = self.listControl.GetItemCount() + 1
         gain = self.project.sessions[0].drxGain
-        self.project.sessions[0].observations.append( self.sdf.Stepped('stps-%i' % id, 'azalt-%i' % id, self._getCurrentDateString(), self._getDefaultFilter(), RADec=False, gain=gain) )
+        self.project.sessions[0].observations.append( self.sdf.Stepped('stps-%i' % id, 'azalt-%i' % id, self._getCurrentDateString(), self._getDefaultFilter(), is_radec=False, gain=gain) )
         self.addObservation(self.project.sessions[0].observations[-1], id)
         
         self.edited = True
@@ -1756,7 +1757,7 @@ class SDFCreator(wx.Frame):
                     return '%02i:%02i:%05.2f' % (d, m, s)
                     
             if obs.mode == 'STEPPED':
-                obs.getDuration()
+                obs.duration
                 SetListItem(self.listControl, index, 5, obs.duration)
                 SetListItem(self.listControl, index, 8, "--")
                 SetListItem(self.listControl, index, 9, "--")
@@ -1778,7 +1779,7 @@ class SDFCreator(wx.Frame):
                 SetListItem(self.listControl, index, 7, "--")
             elif obs.mode == 'STEPPED':
                 SetListItem(self.listControl, index, 6, "STEPPED")
-                SetListItem(self.listControl, index, 7, "RA/Dec" if obs.RADec else "Az/Alt")
+                SetListItem(self.listControl, index, 7, "RA/Dec" if obs.is_radec else "Az/Alt")
             else:
                 SetListItem(self.listControl, index, 6, dec2sexstr(obs.ra, signed=False))
                 SetListItem(self.listControl, index, 7, dec2sexstr(obs.dec, signed=True))
@@ -2444,7 +2445,7 @@ class ObserverInfo(wx.Frame):
         self.parent.project.observer.id = int(self.observerIDEntry.GetValue())
         self.parent.project.observer.first = self.observerFirstEntry.GetValue()
         self.parent.project.observer.last = self.observerLastEntry.GetValue()
-        self.parent.project.observer.joinName()
+        self.parent.project.observer.join_name()
         
         self.parent.project.id = self.projectIDEntry.GetValue()
         self.parent.project.name = self.projectTitleEntry.GetValue()
@@ -2692,35 +2693,35 @@ class AdvancedInfo(wx.Frame):
         aspComboAT2 = wx.ComboBox(panel, -1, value='MCS Decides', choices=aspAttn, style=wx.CB_READONLY)
         aspComboATS = wx.ComboBox(panel, -1, value='MCS Decides', choices=aspAttn, style=wx.CB_READONLY)
         try:
-            if self.parent.project.sessions[0].observations[0].aspFlt[0] == -1:
+            if self.parent.project.sessions[0].observations[0].asp_filter[0] == -1:
                 aspComboFlt.SetStringSelection('MCS Decides')
-            elif self.parent.project.sessions[0].observations[0].aspFlt[0] == 0:
+            elif self.parent.project.sessions[0].observations[0].asp_filter[0] == 0:
                 aspComboFlt.SetStringSelection('Split')
-            elif self.parent.project.sessions[0].observations[0].aspFlt[0] == 1:
+            elif self.parent.project.sessions[0].observations[0].asp_filter[0] == 1:
                 aspComboFlt.SetStringSelection('Full')
-            elif self.parent.project.sessions[0].observations[0].aspFlt[0] == 2:
+            elif self.parent.project.sessions[0].observations[0].asp_filter[0] == 2:
                 aspComboFlt.SetStringSelection('Reduced')
-            elif self.parent.project.sessions[0].observations[0].aspFlt[0] == 4:
+            elif self.parent.project.sessions[0].observations[0].asp_filter[0] == 4:
                 aspComboFlt.SetStringSelection('Split @ 3MHz')
-            elif self.parent.project.sessions[0].observations[0].aspFlt[0] == 5:
+            elif self.parent.project.sessions[0].observations[0].asp_filter[0] == 5:
                 aspComboFlt.SetStringSelection('Full @ 3MHz')
             else:
                 aspComboFlt.SetStringSelection('Off')
                 
-            if self.parent.project.sessions[0].observations[0].aspAT1[0] == -1:
+            if self.parent.project.sessions[0].observations[0].asp_atten_1[0] == -1:
                 aspComboAT1.SetStringSelection('MCS Decides')
             else:
-                aspComboAT1.SetStringSelection('%i' % self.parent.project.sessions[0].observations[0].aspAT1[0])
+                aspComboAT1.SetStringSelection('%i' % self.parent.project.sessions[0].observations[0].asp_atten_1[0])
                 
-            if self.parent.project.sessions[0].observations[0].aspAT2[0] == -1:
+            if self.parent.project.sessions[0].observations[0].asp_atten_2[0] == -1:
                 aspComboAT2.SetStringSelection('MCS Decides')
             else:
-                aspComboAT2.SetStringSelection('%i' % self.parent.project.sessions[0].observations[0].aspAT2[0])
+                aspComboAT2.SetStringSelection('%i' % self.parent.project.sessions[0].observations[0].asp_atten_2[0])
                 
-            if self.parent.project.sessions[0].observations[0].aspATS[0] == -1:
+            if self.parent.project.sessions[0].observations[0].asp_atten_split[0] == -1:
                 aspComboATS.SetStringSelection('MCS Decides')
             else:
-                aspComboATS.SetStringSelection('%i' % self.parent.project.sessions[0].observations[0].aspATS[0])
+                aspComboATS.SetStringSelection('%i' % self.parent.project.sessions[0].observations[0].asp_atten_split[0])
         except IndexError:
             aspComboFlt.SetStringSelection('MCS Decides')
             aspComboAT1.SetStringSelection('MCS Decides')
@@ -2810,10 +2811,10 @@ class AdvancedInfo(wx.Frame):
                 
             tbeam = wx.StaticText(panel, label='Beam')
             tbeamText = wx.ComboBox(panel, -1, value='MCS Decides', choices=drxBeam, style=wx.CB_READONLY)
-            if self.parent.project.sessions[0].drxBeam == -1:
+            if self.parent.project.sessions[0].drx_beam == -1:
                 tbeamText.SetStringSelection('MCS Decides')
             else:
-                tbeamText.SetStringSelection('%i' % self.parent.project.sessions[0].drxBeam)
+                tbeamText.SetStringSelection('%i' % self.parent.project.sessions[0].drx_beam)
                 
             sizer.Add(tbf, pos=(row+0,0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
             
@@ -2869,10 +2870,10 @@ class AdvancedInfo(wx.Frame):
                 
             dbeam = wx.StaticText(panel, label='Beam')
             dbeamText = wx.ComboBox(panel, -1, value='MCS Decides', choices=drxBeam, style=wx.CB_READONLY)
-            if self.parent.project.sessions[0].drxBeam == -1:
+            if self.parent.project.sessions[0].drx_beam == -1:
                 dbeamText.SetStringSelection('MCS Decides')
             else:
-                dbeamText.SetStringSelection('%i' % self.parent.project.sessions[0].drxBeam)
+                dbeamText.SetStringSelection('%i' % self.parent.project.sessions[0].drx_beam)
                 
             sizer.Add(drx, pos=(row+0,0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
             
@@ -3163,7 +3164,7 @@ class AdvancedInfo(wx.Frame):
                 
         if self.parent.mode == 'TBF':
             tbfSamp = int( self.tbfSamp.GetValue() )
-            self.parent.project.sessions[0].drxBeam = self.__parseGainCombo(self.tbfBeam)
+            self.parent.project.sessions[0].drx_beam = self.__parseGainCombo(self.tbfBeam)
             if tbfSamp < 0:
                 self.displayError('Number of TBF samples must be positive', title='TBF Sample Error')
                 return False
@@ -3201,11 +3202,11 @@ class AdvancedInfo(wx.Frame):
         aspAT2 = -1 if self.aspAT2.GetValue() == 'MCS Decides' else int(self.aspAT2.GetValue())
         aspATS = -1 if self.aspATS.GetValue() == 'MCS Decides' else int(self.aspATS.GetValue())
         for i in range(len(self.parent.project.sessions[0].observations)):
-            for j in range(len(self.parent.project.sessions[0].observations[0].aspFlt)):
-                self.parent.project.sessions[0].observations[i].aspFlt[j] = aspFlt
-                self.parent.project.sessions[0].observations[i].aspAT1[j] = aspAT1
-                self.parent.project.sessions[0].observations[i].aspAT2[j] = aspAT2
-                self.parent.project.sessions[0].observations[i].aspATS[j] = aspATS
+            for j in range(len(self.parent.project.sessions[0].observations[0].asp_filter)):
+                self.parent.project.sessions[0].observations[i].asp_filter[j] = aspFlt
+                self.parent.project.sessions[0].observations[i].asp_atten_1[j] = aspAT1
+                self.parent.project.sessions[0].observations[i].asp_atten_2[j] = aspAT2
+                self.parent.project.sessions[0].observations[i].asp_atten_split[j] = aspATS
                 
         if self.parent.mode == 'TBW' or self.parent._getTBWValid():
             self.parent.project.sessions[0].tbwGits = int( self.tbwBits.GetValue().split('-')[0] )
@@ -3217,7 +3218,7 @@ class AdvancedInfo(wx.Frame):
                 refresh_duration = True
                 
         if self.parent.mode == 'TBF':
-            self.parent.project.sessions[0].drxBeam = self.__parseGainCombo(self.tbfBeam)
+            self.parent.project.sessions[0].drx_beam = self.__parseGainCombo(self.tbfBeam)
             self.parent.project.sessions[0].tbfSamples = int( self.tbfSamp.GetValue() )
             for i in range(len(self.parent.project.sessions[0].observations)):
                 self.parent.project.sessions[0].observations[i].samples = int( self.tbfSamp.GetValue() )
@@ -3230,7 +3231,7 @@ class AdvancedInfo(wx.Frame):
                 self.parent.project.sessions[0].observations[i].gain = self.__parseGainCombo(self.gain)
                 
         if self.parent.mode == 'DRX':
-            self.parent.project.sessions[0].drxBeam = self.__parseGainCombo(self.drxBeam)
+            self.parent.project.sessions[0].drx_beam = self.__parseGainCombo(self.drxBeam)
             self.parent.project.sessions[0].drxGain = self.__parseGainCombo(self.gain)
             for i in range(len(self.parent.project.sessions[0].observations)):
                 self.parent.project.sessions[0].observations[i].gain = self.__parseGainCombo(self.gain)
@@ -3570,7 +3571,7 @@ class SessionDisplay(wx.Frame):
             
             if o.mode not in ('TBW', 'TBF', 'TBN', 'STEPPED'):
                 ## Get the source
-                src = o.getFixedBody()
+                src = o.fixed_body
                 
                 dt = 0.0
                 stepSize = o.dur / 1000.0 / 300
@@ -3609,7 +3610,7 @@ class SessionDisplay(wx.Frame):
                 
                 for s in o.steps:
                     ## Get the source
-                    src = s.getFixedBody()
+                    src = s.fixed_body
                     
                     ## Figure out if we have RA/Dec or az/alt
                     if src is not None:
@@ -3772,7 +3773,7 @@ class VolumeInfo(wx.Frame):
                 tunes = 2
                 tlen, icount = self.parent.project.sessions[0].spcSetup
                 sample_rate = obs.FILTER_CODES[obs.filter]
-                duration = obs.getDuration() / 1000.0
+                duration = obs.dur / 1000.0
                 dataVolume = (76 + tlen*tunes*products*4) / (1.0*tlen*icount/sample_rate) * duration
             else:
                 mode = obs.mode
@@ -4125,7 +4126,7 @@ class SteppedWindow(wx.Frame):
         self.parent = parent
         self.obsID = obsID
         self.obs = self.parent.project.sessions[0].observations[self.obsID]
-        self.RADec = self.obs.RADec
+        self.RADec = self.obs.is_radec
         
         title = '%s Stepped Observation #%i' % ("RA/Dec" if self.RADec else "Az/Alt", obsID+1)
         wx.Frame.__init__(self, parent, title=title, size=(375, 350))
@@ -4317,7 +4318,7 @@ class SteppedWindow(wx.Frame):
         """
         
         id = self.listControl.GetItemCount() + 1
-        self.obs.steps.append( self.parent.sdf.BeamStep(0.0, 0.0, '00:00:00.000', 42e6, 74e6, RADec=self.RADec) )
+        self.obs.steps.append( self.parent.sdf.BeamStep(0.0, 0.0, '00:00:00.000', 42e6, 74e6, is_radec=self.RADec) )
         self.addStep(self.obs.steps[-1], id)
         
     def onEdit(self, event):
