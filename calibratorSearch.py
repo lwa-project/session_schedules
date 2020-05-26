@@ -2,9 +2,6 @@
 
 # Python2 compatibility
 from __future__ import print_function, division
-import sys
-if sys.version_info < (3,):
-    range = xrange
 
 import os
 import re

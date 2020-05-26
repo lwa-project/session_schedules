@@ -10,10 +10,7 @@ to beam 0.
 
 # Python2 compatibility
 from __future__ import print_function, division
-import sys
-if sys.version_info < (3,):
-    range = xrange
-    
+ 
 from functools import cmp_to_key
 
 __version__ = '0.1'
