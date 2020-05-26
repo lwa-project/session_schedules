@@ -578,7 +578,7 @@ class SDFCreator(wx.Frame):
         
         po = self.sdf.ProjectOffice()
         observer = self.sdf.Observer('', 0, first='', last='')
-        project = self.sdf.Project(observer, '', '', projectOffice=po)
+        project = self.sdf.Project(observer, '', '', project_office=po)
         session = self.sdf.Session('session_name', 0, observations=[])
         project.sessions = [session,]
         
