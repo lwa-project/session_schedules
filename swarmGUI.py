@@ -1758,7 +1758,7 @@ class ObserverInfo(wx.Frame):
     """
     
     def __init__(self, parent):
-        wx.Frame.__init__(self, parent, title='Observer Information', size=(825,835))
+        wx.Frame.__init__(self, parent, title='Observer Information', size=(735,595))
         
         self.parent = parent
         
@@ -1883,12 +1883,12 @@ class ObserverInfo(wx.Frame):
         sizer.Add(pname, pos=(row+2, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer.Add(pnameText, pos=(row+2, 1), span=(1, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer.Add(pcoms, pos=(row+3, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(pcomsText, pos=(row+3, 1), span=(4, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(pcomsText, pos=(row+3, 1), span=(3, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         
         line = wx.StaticLine(panel)
-        sizer.Add(line, pos=(row+7, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
+        sizer.Add(line, pos=(row+6, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
         
-        row += 8
+        row += 7
         
         #
         # Run-Wide Info
@@ -1977,29 +1977,29 @@ class ObserverInfo(wx.Frame):
         sizer.Add(sname, pos=(row+2, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer.Add(snameText, pos=(row+2, 1), span=(1, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer.Add(scoms, pos=(row+3, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(scomsText, pos=(row+3, 1), span=(4, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(scomsText, pos=(row+3, 1), span=(3, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         
-        sizer.Add(cid, pos=(row+7,0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(nchn, pos=(row+7,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(nchnText, pos=(row+7,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(tint, pos=(row+7,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(tintText, pos=(row+7,5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(spid, pos=(row+8,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(linear, pos=(row+8,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(circul, pos=(row+8,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(stokes, pos=(row+8,5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(cid, pos=(row+6,0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(nchn, pos=(row+6,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(nchnText, pos=(row+6,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(tint, pos=(row+6,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(tintText, pos=(row+6,5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(spid, pos=(row+7,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(linear, pos=(row+7,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(circul, pos=(row+7,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(stokes, pos=(row+7,5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         
-        sizer.Add(did, pos=(row+9,0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(drsuRB, pos=(row+9,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(usbRB, pos=(row+10,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(ucfRB, pos=(row+11,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(unam, pos=(row+11,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(unamText, pos=(row+11,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(did, pos=(row+8,0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(drsuRB, pos=(row+8,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(usbRB, pos=(row+9,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(ucfRB, pos=(row+10,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(unam, pos=(row+10,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(unamText, pos=(row+10,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         
         line = wx.StaticLine(panel)
-        sizer.Add(line, pos=(row+12, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
+        sizer.Add(line, pos=(row+11, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
         
-        row += 13
+        row += 12
         
         #
         # Buttons
@@ -2009,9 +2009,6 @@ class ObserverInfo(wx.Frame):
         cancel = wx.Button(panel, ID_OBS_INFO_CANCEL, 'Cancel', size=(90, 28))
         sizer.Add(ok, pos=(row+0, 4))
         sizer.Add(cancel, pos=(row+0, 5), flag=wx.RIGHT|wx.BOTTOM, border=5)
-        
-        sizer.AddGrowableCol(1)
-        sizer.AddGrowableRow(8)
         
         panel.SetupScrolling(scroll_x=True, scroll_y=True) 
         panel.SetSizer(sizer)
@@ -2160,7 +2157,7 @@ ID_STATION_CHECKED = 314
 
 class AdvancedInfo(wx.Frame):
     def __init__(self, parent):
-        size = (650, 325)
+        size = (540, 310)
         
         wx.Frame.__init__(self, parent, title='Advanced Settings', size=size)
         
@@ -2272,7 +2269,8 @@ class AdvancedInfo(wx.Frame):
         
         dgain = wx.StaticText(panel, label='Gain')
         dgainText =  wx.ComboBox(panel, -1, value='MCS Decides', choices=drxGain, style=wx.CB_READONLY)
-        if self.parent.project.runs[0].scans[0].gain == -1:
+        if len(self.parent.project.runs[0].scans) == 0 \
+           or self.parent.project.runs[0].scans[0].gain == -1:
             dgainText.SetStringSelection('MCS Decides')
         else:
             dgainText.SetStringSelection('%i' % self.parent.project.runs[0].scans[0].gain)

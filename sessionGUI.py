@@ -1990,7 +1990,7 @@ class ObserverInfo(wx.Frame):
     """
     
     def __init__(self, parent):
-        wx.Frame.__init__(self, parent, title='Observer Information', size=(855,835))
+        wx.Frame.__init__(self, parent, title='Observer Information', size=(880,685))
         
         self.parent = parent
         
@@ -2106,7 +2106,7 @@ class ObserverInfo(wx.Frame):
                 pass
         if self.parent.project.comments != '' and self.parent.project.comments is not None:
             pcomsText.SetValue(self.parent.project.comments.replace(';;', '\n'))
-        
+            
         sizer.Add(prj, pos=(row+0,0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
         
         sizer.Add(pid, pos=(row+1, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
@@ -2115,12 +2115,12 @@ class ObserverInfo(wx.Frame):
         sizer.Add(pname, pos=(row+2, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer.Add(pnameText, pos=(row+2, 1), span=(1, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer.Add(pcoms, pos=(row+3, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(pcomsText, pos=(row+3, 1), span=(4, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(pcomsText, pos=(row+3, 1), span=(3, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         
         line = wx.StaticLine(panel)
-        sizer.Add(line, pos=(row+7, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
+        sizer.Add(line, pos=(row+6, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
         
-        row += 8
+        row += 7
         
         #
         # Session-Wide Info
@@ -2307,31 +2307,31 @@ class ObserverInfo(wx.Frame):
         sizer.Add(sname, pos=(row+2, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer.Add(snameText, pos=(row+2, 1), span=(1, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer.Add(scoms, pos=(row+3, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(scomsText, pos=(row+3, 1), span=(4, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(tid, pos=(row+7,0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(tbwRB, pos=(row+7,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(tbfRB, pos=(row+8,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(tbnRB, pos=(row+9,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(drxRB, pos=(row+10,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(did, pos=(row+11,0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(drsuRB, pos=(row+11,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(usbRB, pos=(row+12,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(ucfRB, pos=(row+13,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(unam, pos=(row+13,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(unamText, pos=(row+13,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(drsCB, pos=(row+14,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(nchn, pos=(row+14,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(nchnText, pos=(row+14,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(nint, pos=(row+14,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(nintText, pos=(row+14,5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(spid, pos=(row+15,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(linear, pos=(row+15,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(stokes, pos=(row+15,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(scomsText, pos=(row+3, 1), span=(3, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(tid, pos=(row+6,0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(tbwRB, pos=(row+6,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(tbfRB, pos=(row+7,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(tbnRB, pos=(row+8,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(drxRB, pos=(row+9,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(did, pos=(row+10,0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(drsuRB, pos=(row+10,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(usbRB, pos=(row+11,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(ucfRB, pos=(row+12,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(unam, pos=(row+12,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(unamText, pos=(row+12,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(drsCB, pos=(row+13,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(nchn, pos=(row+13,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(nchnText, pos=(row+13,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(nint, pos=(row+13,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(nintText, pos=(row+13,5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(spid, pos=(row+14,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(linear, pos=(row+14,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(stokes, pos=(row+14,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         
         line = wx.StaticLine(panel)
-        sizer.Add(line, pos=(row+16, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
+        sizer.Add(line, pos=(row+15, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
         
-        row += 17
+        row += 16
         
         #
         # Buttons
@@ -2341,9 +2341,6 @@ class ObserverInfo(wx.Frame):
         cancel = wx.Button(panel, ID_OBS_INFO_CANCEL, 'Cancel', size=(90, 28))
         sizer.Add(ok, pos=(row+0, 4))
         sizer.Add(cancel, pos=(row+0, 5), flag=wx.RIGHT|wx.BOTTOM, border=5)
-        
-        sizer.AddGrowableCol(1)
-        sizer.AddGrowableRow(8)
         
         panel.SetupScrolling(scroll_x=True, scroll_y=True) 
         panel.SetSizer(sizer)
@@ -2552,13 +2549,13 @@ ID_ADV_INFO_CANCEL = 313
 class AdvancedInfo(wx.Frame):
     def __init__(self, parent):
         if parent.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF:
-            size = (925, 675)
+            size = (735, 640)
         elif parent.mode in ('TBW', 'TBF'):
-            size = (925, 575)
+            size = (735, 540)
         elif parent.project.sessions[0].spcSetup[0] != 0 and parent.project.sessions[0].spcSetup[1] != 0:
-            size = (925, 775)
+            size = (735, 740)
         else:
-            size = (925, 700)
+            size = (735, 665)
             
         wx.Frame.__init__(self, parent, title='Advanced Settings', size=size)
         
@@ -2863,7 +2860,8 @@ class AdvancedInfo(wx.Frame):
             
             dgain = wx.StaticText(panel, label='Gain')
             dgainText =  wx.ComboBox(panel, -1, value='MCS Decides', choices=drxGain, style=wx.CB_READONLY)
-            if self.parent.project.sessions[0].observations[0].gain == -1:
+            if len(self.parent.project.sessions[0].observations) == 0 \
+               or self.parent.project.sessions[0].observations[0].gain == -1:
                 dgainText.SetStringSelection('MCS Decides')
             else:
                 dgainText.SetStringSelection('%i' % self.parent.project.sessions[0].observations[0].gain)
@@ -2896,14 +2894,16 @@ class AdvancedInfo(wx.Frame):
             bdm.SetFont(font)
             
             bdmEnableCheck = wx.CheckBox(panel, ID_OBS_BDM_CHECKED, label='Enabled for all observations')
-            if getattr(self.parent.project.sessions[0].observations[0], 'beamDipole', None) is not None:
+            if len(self.parent.project.sessions[0].observations) \
+               and getattr(self.parent.project.sessions[0].observations[0], 'beamDipole', None) is not None:
                 bdmEnableCheck.SetValue(True)
             else:
                 bdmEnableCheck.SetValue(False)
                 
             bdmDipole = wx.StaticText(panel, label='Stand Number')
             bdmDipoleText = wx.TextCtrl(panel)
-            if getattr(self.parent.project.sessions[0].observations[0], 'beamDipole', None) is not None:
+            if len(self.parent.project.sessions[0].observations) \
+               and getattr(self.parent.project.sessions[0].observations[0], 'beamDipole', None) is not None:
                 dpStand = self.parent.project.sessions[0].observations[0].beamDipole[0]*2 - 2
                 realStand = self.parent.station.antennas[dpStand].stand.id
                 
@@ -2914,7 +2914,8 @@ class AdvancedInfo(wx.Frame):
                 
             bdmDGain = wx.StaticText(panel, label='Stand Gain')
             bdmDGainText = wx.TextCtrl(panel)
-            if getattr(self.parent.project.sessions[0].observations[0], 'beamDipole', None) is not None:
+            if len(self.parent.project.sessions[0].observations) \
+               and getattr(self.parent.project.sessions[0].observations[0], 'beamDipole', None) is not None:
                 bdmDGainText.SetValue("%.4f" % self.parent.project.sessions[0].observations[0].beamDipole[2])
             else:
                 bdmDGainText.SetValue("1.0000")
@@ -2922,7 +2923,8 @@ class AdvancedInfo(wx.Frame):
                 
             bdmBGain = wx.StaticText(panel, label='Beam Gain')
             bdmBGainText = wx.TextCtrl(panel)
-            if getattr(self.parent.project.sessions[0].observations[0], 'beamDipole', None) is not None:
+            if len(self.parent.project.sessions[0].observations) \
+               and getattr(self.parent.project.sessions[0].observations[0], 'beamDipole', None) is not None:
                 bdmBGainText.SetValue("%.4f" % self.parent.project.sessions[0].observations[0].beamDipole[1])
             else:
                 bdmBGainText.SetValue("0.0041")
@@ -2931,7 +2933,8 @@ class AdvancedInfo(wx.Frame):
             bdmPol = wx.StaticText(panel, label='Pol.')
             bdmPolX = wx.RadioButton(panel, -1, 'X', style=wx.RB_GROUP)
             bdmPolY = wx.RadioButton(panel, -1, 'Y')
-            if getattr(self.parent.project.sessions[0].observations[0], 'beamDipole', None) is not None:
+            if len(self.parent.project.sessions[0].observations) \
+               and getattr(self.parent.project.sessions[0].observations[0], 'beamDipole', None) is not None:
                 if self.parent.project.sessions[0].observations[0].beamDipole[3] == 'X':
                     bdmPolX.SetValue(True)
                     bdmPolY.SetValue(False)
