@@ -853,8 +853,7 @@ class IDFCreator(wx.Frame):
             else:
                 return False
                 
-        dialog = wx.FileDialog(self, "Select an ID File", self.dirname, '', 'IDF Files (*.idf,*.txt)|*.idf;*.txt|All Files (*.*)|*.*', wx.FD_OPEN)
-        
+        dialog = wx.FileDialog(self, "Select an ID File", self.dirname, '', 'IDF Files (*.idf,*.txt)|*.idf;*.txt|All Files|*', wx.FD_OPEN)
         if dialog.ShowModal() == wx.ID_OK:
             self.dirname = dialog.GetDirectory()
             self.filename = dialog.GetPath()
@@ -895,7 +894,7 @@ class IDFCreator(wx.Frame):
         if not self.onValidate(1, confirmValid=False):
             self.displayError('The interferometer definition file could not be saved due to errors in the file.', title='Save Failed')
         else:
-            dialog = wx.FileDialog(self, "Select Output File", self.dirname, '', 'IDF Files (*.idf,*.txt)|*.idf;*.txt|All Files (*.*)|*.*', wx.FD_SAVE|wx.FD_OVERWRITE_PROMPT)
+            dialog = wx.FileDialog(self, "Select Output File", self.dirname, '', 'IDF Files (*.idf,*.txt)|*.idf;*.txt|All Files|*', wx.FD_SAVE|wx.FD_OVERWRITE_PROMPT)
             
             if dialog.ShowModal() == wx.ID_OK:
                 self.dirname = dialog.GetDirectory()
