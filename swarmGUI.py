@@ -34,7 +34,7 @@ try:
         raise ImportError
 except ImportError:
     import idf
-from lsl.correlator import uvutil
+from lsl.correlator import uvutils
 from lsl.misc import parser as aph
 
 import wx
@@ -2682,10 +2682,10 @@ class RunUVCoverageDisplay(wx.Frame):
                 HA = (observer.sidereal_time() - src.ra) * 12/numpy.pi
                 dec = src.dec * 180/numpy.pi
                 
-                uvw = uvutil.compute_uvw(antennas, HA=HA, dec=dec, freq=o.frequency1, site=observer, include_auto=False)
+                uvw = uvutils.compute_uvw(antennas, HA=HA, dec=dec, freq=o.frequency1, site=observer, include_auto=False)
                 uv_coverage[src.name+"@T1"].append( uvw/1e3 )
                             
-                uvw = uvutil.compute_uvw(antennas, HA=HA, dec=dec, freq=o.frequency2, site=observer, include_auto=False)
+                uvw = uvutils.compute_uvw(antennas, HA=HA, dec=dec, freq=o.frequency2, site=observer, include_auto=False)
                 uv_coverage[src.name+"@T2"].append( uvw/1e3 )
                 
                 dt += stepSize
@@ -2697,10 +2697,10 @@ class RunUVCoverageDisplay(wx.Frame):
             HA = (observer.sidereal_time() - src.ra) * 12/numpy.pi
             dec = src.dec * 180/numpy.pi
             
-            uvw = uvutil.compute_uvw(antennas, HA=HA, dec=dec, freq=o.frequency1, site=observer, include_auto=False)
+            uvw = uvutils.compute_uvw(antennas, HA=HA, dec=dec, freq=o.frequency1, site=observer, include_auto=False)
             uv_coverage[src.name+"@T1"].append( uvw/1e3 )
                         
-            uvw = uvutil.compute_uvw(antennas, HA=HA, dec=dec, freq=o.frequency2, site=observer, include_auto=False)
+            uvw = uvutils.compute_uvw(antennas, HA=HA, dec=dec, freq=o.frequency2, site=observer, include_auto=False)
             uv_coverage[src.name+"@T2"].append( uvw/1e3 )
             
             i += 1
