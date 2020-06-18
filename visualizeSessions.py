@@ -1,6 +1,8 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
+# Python2 compatibility
+from __future__ import print_function, division
+ 
 import os
 import sys
 import math
@@ -36,7 +38,6 @@ from matplotlib import pyplot as plt
 from matplotlib.collections import LineCollection
 
 __version__ = "0.2"
-__revision__ = "$Rev$"
 __author__ = "Jayce Dowell"
 
 # Date/time manipulation
@@ -55,56 +56,6 @@ if 'phoenix' in wx.PlatformInfo:
 else:
     AppendMenuItem = lambda x, y: x.AppendItem(y)
     AppendMenuMenu = lambda *args, **kwds: args[0].AppendMenu(*args[1:], **kwds)
-
-
-def usage(exitCode=None):
-    print """visualizeSessions.py - GUI for looking at the schedule on a station.
-
-Usage: visualizeSessions.py [OPTIONS] SDF [SDF [...]]
-
-Options:
--h, --help          Display this help information
--s, --lwasv         Build a SDF for LWA-SV instead of LWA1 (default = LWA1)
-"""
-    
-    if exitCode is not None:
-        sys.exit(exitCode)
-    else:
-        return True
-
-
-def parseOptions(args):
-    config = {}
-    config['station'] = 'lwa1'
-    
-    # Read in and process the command line flags
-    try:
-        opts, args = getopt.getopt(args, "hs", ["help", "lwasv"])
-    except getopt.GetoptError, err:
-        # Print help information and exit:
-        print str(err) # will print something like "option -a not recognized"
-        usage(exitCode=2)
-        
-    # Work through opts
-    for opt, value in opts:
-        if opt in ('-h', '--help'):
-            usage(exitCode=0)
-        elif opt in ('-d', '--drsu-size'):
-            config['drsuSize'] = int(value)
-        elif opt in ('-s', '--lwasv'):
-            config['station'] = 'lwasv'
-        else:
-            assert False
-            
-    # Make sure we are ready for LWA-SV
-    if config['station'] == 'lwasv' and not adpReady:
-        raise RuntimeError("LWA-SV requested but the ADP-compatible SDF module could not be loaded")
-        
-    # Add in arguments
-    config['args'] = args
-    
-    # Return configuration
-    return config
 
 
 def round15Minutes(tNow):
@@ -208,14 +159,14 @@ class Visualization_GUI(object):
         # Loop over filenames
         for filename in self.frame.filenames:
             try:
-                project = self.sdf.parseSDF(filename)
+                project = self.sdf.parse_sdf(filename)
                 dataFile = None
             except Exception as e:
                 try:
-                    project = metabundle.getSessionDefinition(filename)
-                    dataFile = metabundle.getSessionMetaData(filename)
+                    project = metabundle.get_sdf(filename)
+                    dataFile = metabundle.get_session_metadata(filename)
                 except Exception as e:
-                    print "Warning: Cannot parse '%s'" % os.path.basename(filename)
+                    print("Warning: Cannot parse '%s'" % os.path.basename(filename))
                     continue
                     
             pID = project.id
@@ -484,7 +435,7 @@ class Visualization_GUI(object):
         
         nObs = len(project.sessions[0].observations)
         tStart = [None,]*nObs
-        for i in xrange(nObs):
+        for i in range(nObs):
             tStart[i]  = utcjd_to_unix(project.sessions[0].observations[i].mjd + MJD_OFFSET)
             tStart[i] += project.sessions[0].observations[i].mpm / 1000.0
             tStart[i]  = datetime.utcfromtimestamp(tStart[i])
@@ -527,7 +478,7 @@ class Visualization_GUI(object):
         out += "\n"
         out += " Number of observations: %i\n" % nObs
         out += " Observation Detail:\n"
-        for i in xrange(nObs):
+        for i in range(nObs):
             currDur = project.sessions[0].observations[i].dur
             currDur = timedelta(seconds=int(currDur/1000), microseconds=(currDur*1000) % 1000000)
             
@@ -598,13 +549,13 @@ class Visualization_GUI(object):
             clickTime = matplotlib.dates.num2date(event.xdata)
             
             if clickBeam == 0:
-                for i in xrange(len(self.freePeriods)):
+                for i in range(len(self.freePeriods)):
                     if clickTime >= self.freePeriods[i][0] and clickTime <= self.freePeriods[i][1]:
                         self.frame.info.SetValue(self.describeFree(i))
                         self.draw(selected=-(i+1))
             else:
                 project = None
-                for i in xrange(len(self.sessionSDFs)):
+                for i in range(len(self.sessionSDFs)):
                     if clickTime >= self.sessionStarts[i] and clickTime <= self.sessionStarts[i] + self.sessionDurations[i] and clickBeam == self.sessionBeams[i]:
                         self.frame.info.SetValue(self.describeSDF(i))
                         self.draw(selected=i)
@@ -889,7 +840,7 @@ class RemoveFilesDialog(wx.Frame):
         
         # Build a list of filenames to remove
         toRemove = []
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             if self.listControl.IsChecked(i):
                 toRemove.append( self.parent.filenames[i] )
         

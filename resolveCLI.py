@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 """
 Apache mod_python module for resolving a catalog name to a RA/dec. pair using
@@ -9,17 +8,24 @@ https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oxp/SNV
 Returns an XML file with the coordinates of the target or an error.
 """
 
+# Python2 compatibility
+from __future__ import print_function, division
+ 
 import os
 import sys
 import math
 import ephem
-import urllib
+try:
+    from urllib2 import urlopen
+    from urllib import urlencode, quote_plus
+except ImportError:
+    from urllib.request import urlopen
+    from urllib.parse import urlencode, quote_plus
 import argparse
 from xml.etree import ElementTree
 
 
 __version__ = "0.2"
-__revision__ = "$Rev$"
 __author__ = "Jayce Dowell"
 
 
@@ -29,7 +35,7 @@ def _resolveSource(name):
     """
     
     try:
-        result = urllib.urlopen('https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oxp/SNV?%s' % urllib.quote_plus(name))
+        result = urlopen('https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oxp/SNV?%s' % quote_plus(name))
         tree = ElementTree.fromstring(result.read())
         target = tree.find('Target')
         service = target.find('Resolver')
@@ -57,9 +63,8 @@ def _resolveSource(name):
         coordsys = 'NA'
         ra = -99.99
         dec = -99.99
-        if include_pm:
-            pmRA = ''
-            pmDec = ''
+        pmRA = ''
+        pmDec = ''
             
     return ra, dec, coordsys, service, pmRA, pmDec
 
@@ -72,12 +77,12 @@ def main(args):
     if pmDec != '':
         pmDec = " (+%.1f mas/yr proper motion)" % pmDec
         
-    print "Target: %s" % target
-    print "  RA:   %.4f hours%s" % (ra/15.0, pmRA)
-    print "  Dec: %+.4f degrees%s" % (dec, pmDec)
-    print "  Coord. System: %s" % coordsys
-    print "==="
-    print "Source: %s" % service
+    print("Target: %s" % target)
+    print("  RA:   %.4f hours%s" % (ra/15.0, pmRA))
+    print("  Dec: %+.4f degrees%s" % (dec, pmDec))
+    print("  Coord. System: %s" % coordsys)
+    print("===")
+    print("Source: %s" % service)
 
 
 if __name__ == "__main__":

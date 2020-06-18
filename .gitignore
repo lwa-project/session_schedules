@@ -1,0 +1,6 @@
+# Schedules
+*.sdf
+*.idf
+
+# Python stuff
+*.pyc

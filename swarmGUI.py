@@ -1,14 +1,11 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
-# Python3 compatiability
+# Python2 compatiability
 from __future__ import print_function, division
-import sys
-if sys.version_info > (3,):
-    xrange = range
 
 import os
 import re
+import sys
 import copy
 import math
 import ephem
@@ -27,7 +24,7 @@ import lsl
 from lsl.common.dp import fS
 from lsl.common import stations
 from lsl.astro import deg_to_dms, deg_to_hms, MJD_OFFSET, DJD_OFFSET
-from lsl.reader.drx import filterCodes as DRXFilters
+from lsl.reader.drx import FILTER_CODES as DRXFilters
 try:
     # HACK to deal with missing PM support in the idf.py module that
     # ships with LSL v1.2.4.
@@ -37,7 +34,7 @@ try:
         raise ImportError
 except ImportError:
     import idf
-from lsl.correlator import uvUtils
+from lsl.correlator import uvutils
 from lsl.misc import parser as aph
 
 import wx
@@ -56,7 +53,6 @@ from matplotlib.ticker import NullFormatter, NullLocator
 from calibratorSearch import CalibratorSearch as OCS
 
 __version__ = "0.2"
-__revision__ = "$Rev$"
 __author__ = "Jayce Dowell"
 
 
@@ -242,14 +238,14 @@ class ScanListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrlMixin):
             try:
                 self.parent.editmenu['cut'].Enable(False)
                 self.parent.editmenu['copy'].Enable(False)
-            except KeyError, AttributeError:
+            except (KeyError, AttributeError):
                 pass
                 
             # Stepped scan edits - disabled
             try:
                 self.parent.obsmenu['steppedEdit'].Enable(False)
                 self.parent.toolbar.EnableTool(ID_EDIT_STEPPED, False)
-            except KeyError, AttributeError:
+            except (KeyError, AttributeError):
                 pass
                 
             # Remove and resolve - disabled
@@ -264,7 +260,7 @@ class ScanListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrlMixin):
             try:
                 self.parent.editmenu['cut'].Enable(True)
                 self.parent.editmenu['copy'].Enable(True)
-            except KeyError, AttributeError:
+            except (KeyError, AttributeError):
                 pass
                 
             # Stepped scan edits - enbled if there is an index and it is STEPPED, 
@@ -274,20 +270,20 @@ class ScanListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrlMixin):
                     try:
                         self.parent.obsmenu['steppedEdit'].Enable(True)
                         self.parent.toolbar.EnableTool(ID_EDIT_STEPPED, True)
-                    except KeyError, AttributeError:
+                    except (KeyError, AttributeError):
                         pass
                 else:
                     try:
                         self.parent.obsmenu['steppedEdit'].Enable(False)
                         self.parent.toolbar.EnableTool(ID_EDIT_STEPPED, False)
-                    except KeyError, AttributeError:
+                    except (KeyError, AttributeError):
                         pass
             else:
                 # Stepped scan edits - disabled
                 try:
                     self.parent.obsmenu['steppedEdit'].Enable(False)
                     self.parent.toolbar.EnableTool(ID_EDIT_STEPPED, False)
-                except KeyError, AttributeError:
+                except (KeyError, AttributeError):
                     pass
                     
             # Remove and resolve - enabled
@@ -302,14 +298,14 @@ class ScanListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrlMixin):
             try:
                 self.parent.editmenu['cut'].Enable(True)
                 self.parent.editmenu['copy'].Enable(True)
-            except KeyError, AttributeError:
+            except (KeyError, AttributeError):
                 pass
                 
             # Stepped scan edits - disabled
             try:
                 self.parent.obsmenu['steppedEdit'].Enable(False)
                 self.parent.toolbar.EnableTool(ID_EDIT_STEPPED, False)
-            except KeyError, AttributeError:
+            except (KeyError, AttributeError):
                 pass
                 
             # Motion, remove, and resolve - enabled and disabled
@@ -374,7 +370,7 @@ class SteppedListCtrl(wx.ListCtrl, TextEditMixin, CheckListCtrlMixin):
             try:
                 self.parent.editmenu['cut'].Enable(False)
                 self.parent.editmenu['copy'].Enable(False)
-            except KeyError, AttributeError:
+            except (KeyError, AttributeError):
                 pass
                 
         elif self.nSelected == 1:
@@ -382,7 +378,7 @@ class SteppedListCtrl(wx.ListCtrl, TextEditMixin, CheckListCtrlMixin):
             try:
                 self.parent.editmenu['cut'].Enable(True)
                 self.parent.editmenu['copy'].Enable(True)
-            except KeyError, AttributeError:
+            except (KeyError, AttributeError):
                 pass
                 
         else:
@@ -390,7 +386,7 @@ class SteppedListCtrl(wx.ListCtrl, TextEditMixin, CheckListCtrlMixin):
             try:
                 self.parent.editmenu['cut'].Enable(True)
                 self.parent.editmenu['copy'].Enable(True)
-            except KeyError, AttributeError:
+            except (KeyError, AttributeError):
                 pass
                 
     def OnCheckItem(self, index, flag):
@@ -565,7 +561,7 @@ class IDFCreator(wx.Frame):
         
         po = idf.ProjectOffice()
         observer = idf.Observer('', 0, first='', last='')
-        project = idf.Project(observer, '', '', projectOffice=po)
+        project = idf.Project(observer, '', '', project_office=po)
         run = idf.Run('run_name', 0, scans=[])
         project.runs = [run,]
         
@@ -807,16 +803,16 @@ class IDFCreator(wx.Frame):
         # Window manager close
         self.Bind(wx.EVT_CLOSE, self.onQuit)
         
-    def onLogger(self, event):
-        """
-        Create a new logger window, if needed
-        """
-        
-        if self.logger is None:
-            self.logger = wx.LogWindow(self, 'IDF Logger', True, False)
-        elif not self.logger.Frame.IsShown():
-            self.logger.Destroy()
-            self.logger = wx.LogWindow(self, 'IDF Logger', True, False)
+    #def onLogger(self, event):
+    #    """
+    #    Create a new logger window, if needed
+    #    """
+    #    
+    #    if self.logger is None:
+    #        self.logger = wx.LogWindow(self, 'IDF Logger', True, False)
+    #    elif not self.logger.Frame.IsShown():
+    #        self.logger.Destroy()
+    #        self.logger = wx.LogWindow(self, 'IDF Logger', True, False)
             
     def onNew(self, event):
         """
@@ -857,8 +853,7 @@ class IDFCreator(wx.Frame):
             else:
                 return False
                 
-        dialog = wx.FileDialog(self, "Select an ID File", self.dirname, '', 'IDF Files (*.idf,*.txt)|*.idf;*.txt|All Files (*.*)|*.*', wx.FD_OPEN)
-        
+        dialog = wx.FileDialog(self, "Select an ID File", self.dirname, '', 'IDF Files (*.idf,*.txt)|*.idf;*.txt|All Files|*', wx.FD_OPEN)
         if dialog.ShowModal() == wx.ID_OK:
             self.dirname = dialog.GetDirectory()
             self.filename = dialog.GetPath()
@@ -899,7 +894,7 @@ class IDFCreator(wx.Frame):
         if not self.onValidate(1, confirmValid=False):
             self.displayError('The interferometer definition file could not be saved due to errors in the file.', title='Save Failed')
         else:
-            dialog = wx.FileDialog(self, "Select Output File", self.dirname, '', 'IDF Files (*.idf,*.txt)|*.idf;*.txt|All Files (*.*)|*.*', wx.FD_SAVE|wx.FD_OVERWRITE_PROMPT)
+            dialog = wx.FileDialog(self, "Select Output File", self.dirname, '', 'IDF Files (*.idf,*.txt)|*.idf;*.txt|All Files|*', wx.FD_SAVE|wx.FD_OVERWRITE_PROMPT)
             
             if dialog.ShowModal() == wx.ID_OK:
                 self.dirname = dialog.GetDirectory()
@@ -923,7 +918,7 @@ class IDFCreator(wx.Frame):
         """
         
         self.buffer = []
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             if self.listControl.IsChecked(i):
                 self.buffer.append( copy.deepcopy(self.project.runs[0].scans[i]) )
                 
@@ -938,7 +933,7 @@ class IDFCreator(wx.Frame):
     def onPasteBefore(self, event):
         firstChecked = None
         
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             if self.listControl.IsChecked(i):
                 firstChecked = i
                 break
@@ -956,26 +951,26 @@ class IDFCreator(wx.Frame):
             self.setSaveButton()
             
             # Re-number the remaining rows to keep the display clean
-            for id in xrange(self.listControl.GetItemCount()):
+            for id in range(self.listControl.GetItemCount()):
                 item = self.listControl.GetItem(id, 0)
                 item.SetText('%i' % (id+1))
                 self.listControl.SetItem(item)
                 self.listControl.RefreshItem(item.GetId())
                 
             # Fix the times on DRX scans to make thing continuous
-            for id in xrange(firstChecked+len(self.buffer)-1, -1, -1):
+            for id in range(firstChecked+len(self.buffer)-1, -1, -1):
                 dur = self.project.runs[0].scans[id].dur
                 
                 tStart, _ = idf.getScanStartStop(self.project.runs[0].scans[id+1])
                 tStart -= timedelta(seconds=dur//1000, microseconds=(dur%1000)*1000)
                 cStart = 'UTC %i %02i %02i %02i:%02i:%06.3f' % (tStart.year, tStart.month, tStart.day, tStart.hour, tStart.minute, tStart.second+tStart.microsecond/1e6)
-                self.project.runs[0].scans[id].setStart(cStart)
+                self.project.runs[0].scans[id].set_start(cStart)
                 self.addScan(self.project.runs[0].scans[id], id, update=True)
                 
     def onPasteAfter(self, event):
         lastChecked = None
         
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             if self.listControl.IsChecked(i):
                 lastChecked = i
                 
@@ -992,17 +987,17 @@ class IDFCreator(wx.Frame):
             self.setSaveButton()
             
             # Re-number the remaining rows to keep the display clean
-            for id in xrange(self.listControl.GetItemCount()):
+            for id in range(self.listControl.GetItemCount()):
                 item = self.listControl.GetItem(id, 0)
                 item.SetText('%i' % (id+1))
                 self.listControl.SetItem(item)
                 self.listControl.RefreshItem(item.GetId())
                 
             # Fix the times on DRX scans to make thing continuous
-            for id in xrange(lastChecked+1, self.listControl.GetItemCount()):
+            for id in range(lastChecked+1, self.listControl.GetItemCount()):
                 _, tStop = idf.getScanStartStop(self.project.runs[0].scans[id-1])
                 cStart = 'UTC %i %02i %02i %02i:%02i:%06.3f' % (tStop.year, tStop.month, tStop.day, tStop.hour, tStop.minute, tStop.second+tStop.microsecond/1e6)
-                self.project.runs[0].scans[id].setStart(cStart)
+                self.project.runs[0].scans[id].set_start(cStart)
                 self.addScan(self.project.runs[0].scans[id], id, update=True)
                 
     def onPasteEnd(self, event):
@@ -1025,17 +1020,17 @@ class IDFCreator(wx.Frame):
             self.setSaveButton()
             
         # Re-number the remaining rows to keep the display clean
-        for id in xrange(self.listControl.GetItemCount()):
+        for id in range(self.listControl.GetItemCount()):
             item = self.listControl.GetItem(id, 0)
             item.SetText('%i' % (id+1))
             self.listControl.SetItem(item)
             self.listControl.RefreshItem(item.GetId())
             
         # Fix the times on DRX scans to make thing continuous
-        for id in xrange(lastChecked+1, self.listControl.GetItemCount()):
+        for id in range(lastChecked+1, self.listControl.GetItemCount()):
             _, tStop = idf.getScanStartStop(self.project.runs[0].scans[id-1])
             cStart = 'UTC %i %02i %02i %02i:%02i:%06.3f' % (tStop.year, tStop.month, tStop.day, tStop.hour, tStop.minute, tStop.second+tStop.microsecond/1e6)
-            self.project.runs[0].scans[id].setStart(cStart)
+            self.project.runs[0].scans[id].set_start(cStart)
             self.addScan(self.project.runs[0].scans[id], id, update=True)
             
     def onInfo(self, event):
@@ -1144,7 +1139,7 @@ class IDFCreator(wx.Frame):
     #    
     #    nChecked = 0
     #    whichChecked = None
-    #    for i in xrange(self.listControl.GetItemCount()):
+    #    for i in range(self.listControl.GetItemCount()):
     #        if self.listControl.IsChecked(i):
     #            whichChecked = i
     #            nChecked += 1
@@ -1199,7 +1194,7 @@ class IDFCreator(wx.Frame):
         
         nChecked = 0
         whichChecked = None
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             if self.listControl.IsChecked(i):
                 whichChecked = i
                 nChecked += 1
@@ -1226,7 +1221,7 @@ class IDFCreator(wx.Frame):
             True is returned.
             """
             
-            for i in xrange(lc.GetItemCount()):
+            for i in range(lc.GetItemCount()):
                 if lc.IsChecked(i):
                     return i+1
             return 0
@@ -1248,7 +1243,7 @@ class IDFCreator(wx.Frame):
         self.listControl.setCheckDependant()
         
         # Re-number the remaining rows to keep the display clean
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             item = self.listControl.GetItem(i, 0)
             item.SetText('%i' % (i+1))
             self.listControl.SetItem(item)
@@ -1274,8 +1269,8 @@ class IDFCreator(wx.Frame):
         for obs in self.project.runs[0].scans:
             for station in self.project.runs[0].stations:
                 print("[%i] Validating scan %i on %s" % (os.getpid(), i+1, station.id))
-                valid = obs.validate(station, verbose=True)
-                for col in xrange(len(self.columnMap)-1):  # -1 for proper motion
+                valid = obs.validate(verbose=True)
+                for col in range(len(self.columnMap)-1):  # -1 for proper motion
                     item = self.listControl.GetItem(i, col)
                     
                     if not valid:
@@ -1325,7 +1320,7 @@ class IDFCreator(wx.Frame):
         """
         
         whichChecked = None
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             if self.listControl.IsChecked(i):
                 whichChecked = i
                 break
@@ -1384,7 +1379,8 @@ class IDFCreator(wx.Frame):
                 return float(value), 'Hz'
                 
         filterInfo = "DRX"
-        for dk,dv in DRXFilters.iteritems():
+        for dk in DRXFilters.keys():
+            dv = DRXFilters[dk]
             if dk > 7:
                 continue
             dv, du = units(dv)
@@ -1621,7 +1617,7 @@ class IDFCreator(wx.Frame):
                 return '%02i:%02i:%05.2f' % (d, m, s)
                 
         if obs.mode == 'STEPPED':
-            obs.getDuration()
+            obs.duration
             SetListItem(self.listControl, index, 5, obs.duration)
             SetListItem(self.listControl, index, 8, "--")
             SetListItem(self.listControl, index, 9, "--")
@@ -1697,7 +1693,7 @@ class IDFCreator(wx.Frame):
             
     def parseFile(self, filename):
         """
-        Given a filename, parse the file using the idf.parseIDF() method and 
+        Given a filename, parse the file using the idf.parse_idf() method and 
         update all of the various aspects of the GUI (scan list, mode, 
         button, menu items, etc.).
         """
@@ -1709,7 +1705,7 @@ class IDFCreator(wx.Frame):
         self.initIDF()
         
         print("[%i] Parsing file '%s'" % (os.getpid(), filename))
-        self.project = idf.parseIDF(filename)
+        self.project = idf.parse_idf(filename)
         self.setMenuButtons(self.project.runs[0].scans[0].mode)
         if self.project.runs[0].scans[0].mode[0:3] == 'TRK':
             self.mode = 'DRX'
@@ -1761,7 +1757,7 @@ class ObserverInfo(wx.Frame):
     """
     
     def __init__(self, parent):
-        wx.Frame.__init__(self, parent, title='Observer Information', size=(825,835))
+        wx.Frame.__init__(self, parent, title='Observer Information', size=(735,595))
         
         self.parent = parent
         
@@ -1886,12 +1882,12 @@ class ObserverInfo(wx.Frame):
         sizer.Add(pname, pos=(row+2, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer.Add(pnameText, pos=(row+2, 1), span=(1, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer.Add(pcoms, pos=(row+3, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(pcomsText, pos=(row+3, 1), span=(4, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(pcomsText, pos=(row+3, 1), span=(3, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         
         line = wx.StaticLine(panel)
-        sizer.Add(line, pos=(row+7, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
+        sizer.Add(line, pos=(row+6, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
         
-        row += 8
+        row += 7
         
         #
         # Run-Wide Info
@@ -1952,12 +1948,12 @@ class ObserverInfo(wx.Frame):
         unamText = wx.TextCtrl(panel)
         unamText.Disable()
         
-        if self.parent.project.runs[0].dataReturnMethod == 'DRSU':
+        if self.parent.project.runs[0].data_return_method == 'DRSU':
             drsuRB.SetValue(True)
             usbRB.SetValue(False)
             ucfRB.SetValue(False)
             
-        elif self.parent.project.runs[0].dataReturnMethod == 'USB Harddrives':
+        elif self.parent.project.runs[0].data_return_method == 'USB Harddrives':
             drsuRB.SetValue(False)
             usbRB.SetValue(True)
             ucfRB.SetValue(False)
@@ -1980,29 +1976,29 @@ class ObserverInfo(wx.Frame):
         sizer.Add(sname, pos=(row+2, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer.Add(snameText, pos=(row+2, 1), span=(1, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer.Add(scoms, pos=(row+3, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(scomsText, pos=(row+3, 1), span=(4, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(scomsText, pos=(row+3, 1), span=(3, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         
-        sizer.Add(cid, pos=(row+7,0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(nchn, pos=(row+7,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(nchnText, pos=(row+7,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(tint, pos=(row+7,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(tintText, pos=(row+7,5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(spid, pos=(row+8,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(linear, pos=(row+8,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(circul, pos=(row+8,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(stokes, pos=(row+8,5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(cid, pos=(row+6,0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(nchn, pos=(row+6,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(nchnText, pos=(row+6,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(tint, pos=(row+6,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(tintText, pos=(row+6,5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(spid, pos=(row+7,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(linear, pos=(row+7,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(circul, pos=(row+7,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(stokes, pos=(row+7,5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         
-        sizer.Add(did, pos=(row+9,0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(drsuRB, pos=(row+9,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(usbRB, pos=(row+10,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(ucfRB, pos=(row+11,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(unam, pos=(row+11,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(unamText, pos=(row+11,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(did, pos=(row+8,0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(drsuRB, pos=(row+8,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(usbRB, pos=(row+9,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(ucfRB, pos=(row+10,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(unam, pos=(row+10,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(unamText, pos=(row+10,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         
         line = wx.StaticLine(panel)
-        sizer.Add(line, pos=(row+12, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
+        sizer.Add(line, pos=(row+11, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
         
-        row += 13
+        row += 12
         
         #
         # Buttons
@@ -2012,9 +2008,6 @@ class ObserverInfo(wx.Frame):
         cancel = wx.Button(panel, ID_OBS_INFO_CANCEL, 'Cancel', size=(90, 28))
         sizer.Add(ok, pos=(row+0, 4))
         sizer.Add(cancel, pos=(row+0, 5), flag=wx.RIGHT|wx.BOTTOM, border=5)
-        
-        sizer.AddGrowableCol(1)
-        sizer.AddGrowableRow(8)
         
         panel.SetupScrolling(scroll_x=True, scroll_y=True) 
         panel.SetSizer(sizer)
@@ -2087,7 +2080,7 @@ class ObserverInfo(wx.Frame):
         self.parent.project.observer.id = int(self.observerIDEntry.GetValue())
         self.parent.project.observer.first = self.observerFirstEntry.GetValue()
         self.parent.project.observer.last = self.observerLastEntry.GetValue()
-        self.parent.project.observer.joinName()
+        self.parent.project.observer.join_name()
         
         self.parent.project.id = self.projectIDEntry.GetValue()
         self.parent.project.name = self.projectTitleEntry.GetValue()
@@ -2107,11 +2100,11 @@ class ObserverInfo(wx.Frame):
             self.parent.project.runs[0].corr_basis = 'stokes'
             
         if self.drsuButton.GetValue():
-            self.parent.project.runs[0].dataReturnMethod = 'DRSU'
+            self.parent.project.runs[0].data_return_method = 'DRSU'
         elif self.usbButton.GetValue():
-            self.parent.project.runs[0].dataReturnMethod = 'USB Harddrives'
+            self.parent.project.runs[0].data_return_method = 'USB Harddrives'
         else:
-            self.parent.project.runs[0].dataReturnMethod = 'UCF'
+            self.parent.project.runs[0].data_return_method = 'UCF'
             tempc = _usernameRE.sub('', self.parent.project.runs[0].comments)
             self.parent.project.runs[0].comments = tempc + ';;ucfuser:%s' % self.unamText.GetValue()
             
@@ -2163,7 +2156,7 @@ ID_STATION_CHECKED = 314
 
 class AdvancedInfo(wx.Frame):
     def __init__(self, parent):
-        size = (650, 325)
+        size = (540, 310)
         
         wx.Frame.__init__(self, parent, title='Advanced Settings', size=size)
         
@@ -2174,7 +2167,7 @@ class AdvancedInfo(wx.Frame):
         self.Show()
         
     def initUI(self):
-        drxGain = ['%i' % i for i in xrange(13)]
+        drxGain = ['%i' % i for i in range(13)]
         drxGain.insert(0, 'MCS Decides')
         aspFilters = ['MCS Decides', 'Split', 'Full', 'Reduced', 'Off', 'Split @ 3MHz', 'Full @ 3MHz']
         
@@ -2199,7 +2192,7 @@ class AdvancedInfo(wx.Frame):
         i = 0
         j = 2
         staChecks = []
-        for station in stations.getFullStations():
+        for station in stations.get_full_stations():
             staCheck = wx.CheckBox(panel, ID_STATION_CHECKED, label=station.name)
             if station in self.parent.project.runs[0].stations:
                 staCheck.SetValue(True)
@@ -2232,15 +2225,15 @@ class AdvancedInfo(wx.Frame):
         
         aspComboFlt = wx.ComboBox(panel, -1, value='MCS Decides', choices=aspFilters, style=wx.CB_READONLY)
         try:
-            if self.parent.project.runs[0].scans[0].aspFlt == -1:
+            if self.parent.project.runs[0].scans[0].asp_filter == -1:
                 aspComboFlt.SetStringSelection('MCS Decides')
-            elif self.parent.project.runs[0].scans[0].aspFlt == 0:
+            elif self.parent.project.runs[0].scans[0].asp_filter == 0:
                 aspComboFlt.SetStringSelection('Split')
-            elif self.parent.project.runs[0].scans[0].aspFlt == 1:
+            elif self.parent.project.runs[0].scans[0].asp_filter == 1:
                 aspComboFlt.SetStringSelection('Full')
-            elif self.parent.project.runs[0].scans[0].aspFlt == 2:
+            elif self.parent.project.runs[0].scans[0].asp_filter == 2:
                 aspComboFlt.SetStringSelection('Reduced')
-            elif self.parent.project.runs[0].scans[0].aspFlt == 4:
+            elif self.parent.project.runs[0].scans[0].asp_filer == 4:
                 aspComboFlt.SetStringSelection('Split @ 3MHz')
             elif self.parent.project.runs[0].scans[0].aspFlt == 5:
                 aspComboFlt.SetStringSelection('Full @ 3MHz')
@@ -2275,7 +2268,8 @@ class AdvancedInfo(wx.Frame):
         
         dgain = wx.StaticText(panel, label='Gain')
         dgainText =  wx.ComboBox(panel, -1, value='MCS Decides', choices=drxGain, style=wx.CB_READONLY)
-        if self.parent.project.runs[0].scans[0].gain == -1:
+        if len(self.parent.project.runs[0].scans) == 0 \
+           or self.parent.project.runs[0].scans[0].gain == -1:
             dgainText.SetStringSelection('MCS Decides')
         else:
             dgainText.SetStringSelection('%i' % self.parent.project.runs[0].scans[0].gain)
@@ -2322,7 +2316,7 @@ class AdvancedInfo(wx.Frame):
         
         # Stations
         new_stations = []
-        for station in stations.getFullStations():
+        for station in stations.get_full_stations():
             for name,staCheck in self.staChecks:
                 if station.name == name:
                     if staCheck.GetValue():
@@ -2337,16 +2331,16 @@ class AdvancedInfo(wx.Frame):
         aspFltDict = {'MCS Decides': -1, 'Split': 0, 'Full': 1, 'Reduced': 2, 'Off': 3, 
                                          'Split @ 3MHz': 4, 'Full @ 3MHz': 5}
         aspFlt = aspFltDict[self.aspFlt.GetValue()]
-        for i in xrange(len(self.parent.project.runs[0].scans)):
-            self.parent.project.runs[0].scans[i].aspFlt= aspFlt
+        for i in range(len(self.parent.project.runs[0].scans)):
+            self.parent.project.runs[0].scans[i].asp_filter = aspFlt
             
         # DRX
         self.parent.project.runs[0].drxGain = self.__parseGainCombo(self.gain)
-        for i in xrange(len(self.parent.project.runs[0].scans)):
+        for i in range(len(self.parent.project.runs[0].scans)):
             self.parent.project.runs[0].scans[i].gain = self.__parseGainCombo(self.gain)
             
         for obs in self.parent.project.runs[0].scans:
-            for i in xrange(len(self.parent.project.runs[0].scans)):
+            for i in range(len(self.parent.project.runs[0].scans)):
                 obs.gain = self.parent.project.runs[0].scans[i].gain
                 
         self.parent.edited = True
@@ -2457,7 +2451,7 @@ class RunDisplay(wx.Frame):
         i = 0
         for o in self.obs:
             ## Get the source
-            src = o.getFixedBody()
+            src = o.fixed_body
             
             stepSize = o.dur / 1000.0 / 300
             if stepSize < 30.0:
@@ -2471,7 +2465,7 @@ class RunDisplay(wx.Frame):
                 dt = 0.0
                 
                 ## The actual scans
-                observer = station.getObserver()
+                observer = station.get_observer()
                 
                 while dt < o.dur/1000.0:
                     observer.date = o.mjd + (o.mpm/1000.0 + dt)/3600/24.0 + MJD_OFFSET - DJD_OFFSET
@@ -2655,9 +2649,9 @@ class RunUVCoverageDisplay(wx.Frame):
         
         ## Build up the list of antennas to use for the UV coverage calculation
         antennas = []
-        observer = stations.lwa1.getObserver()
+        observer = stations.lwa1.get_observer()
         for station in self.parent.project.runs[0].stations:
-            stand = stations.Stand(len(antennas), *(stations.lwa1.getENZOffset(station)))
+            stand = stations.Stand(len(antennas), *(stations.lwa1.get_enz_offset(station)))
             cable = stations.Cable('%s-%s' % (station.id, 0), 0.0, vf=1.0, dd=0.0)
             antenna = stations.Antenna(len(antennas), stand=stand, cable=cable, pol=0)
             antennas.append(antenna)
@@ -2667,7 +2661,7 @@ class RunUVCoverageDisplay(wx.Frame):
         order = []
         for o in self.obs:
             ## Get the source
-            src = o.getFixedBody()
+            src = o.fixed_body
             if src.name not in order:
                 order.append( src.name )
             try:
@@ -2688,10 +2682,10 @@ class RunUVCoverageDisplay(wx.Frame):
                 HA = (observer.sidereal_time() - src.ra) * 12/numpy.pi
                 dec = src.dec * 180/numpy.pi
                 
-                uvw = uvUtils.computeUVW(antennas, HA=HA, dec=dec, freq=o.frequency1, site=observer, IncludeAuto=False)
+                uvw = uvutils.compute_uvw(antennas, HA=HA, dec=dec, freq=o.frequency1, site=observer, include_auto=False)
                 uv_coverage[src.name+"@T1"].append( uvw/1e3 )
                             
-                uvw = uvUtils.computeUVW(antennas, HA=HA, dec=dec, freq=o.frequency2, site=observer, IncludeAuto=False)
+                uvw = uvutils.compute_uvw(antennas, HA=HA, dec=dec, freq=o.frequency2, site=observer, include_auto=False)
                 uv_coverage[src.name+"@T2"].append( uvw/1e3 )
                 
                 dt += stepSize
@@ -2703,10 +2697,10 @@ class RunUVCoverageDisplay(wx.Frame):
             HA = (observer.sidereal_time() - src.ra) * 12/numpy.pi
             dec = src.dec * 180/numpy.pi
             
-            uvw = uvUtils.computeUVW(antennas, HA=HA, dec=dec, freq=o.frequency1, site=observer, IncludeAuto=False)
+            uvw = uvutils.compute_uvw(antennas, HA=HA, dec=dec, freq=o.frequency1, site=observer, include_auto=False)
             uv_coverage[src.name+"@T1"].append( uvw/1e3 )
                         
-            uvw = uvUtils.computeUVW(antennas, HA=HA, dec=dec, freq=o.frequency2, site=observer, IncludeAuto=False)
+            uvw = uvutils.compute_uvw(antennas, HA=HA, dec=dec, freq=o.frequency2, site=observer, include_auto=False)
             uv_coverage[src.name+"@T2"].append( uvw/1e3 )
             
             i += 1
@@ -2965,11 +2959,16 @@ class ResolveTarget(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.onCancel, id=ID_RESOLVE_CANCEL)
         
     def onResolve(self, event):
-        import urllib
+        try:
+            from urllib2 import urlopen
+            from urllib import urlencode, quote_plus
+        except ImportError:
+            from urllib.request import urlopen
+            from urllib.parse import urlencode, quote_plus
         
         self.source = self.srcText.GetValue()
         try:
-            result = urllib.urlopen('https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oxp/SNV?%s' % urllib.quote_plus(self.source))
+            result = urlopen('https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oxp/SNV?%s' % quote_plus(self.source))
             tree = ElementTree.fromstring(result.read())
             target = tree.find('Target')
             service = target.find('Resolver')

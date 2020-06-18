@@ -1,14 +1,11 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
-# Python3 compatiability
+# Python2 compatibility
 from __future__ import print_function, division
-import sys
-if sys.version_info > (3,):
-    xrange = range
 
 import os
 import re
+import sys
 import copy
 import math
 import ephem
@@ -26,8 +23,8 @@ import lsl
 from lsl.common.dp import fS
 from lsl.common import stations
 from lsl.astro import deg_to_dms, deg_to_hms, MJD_OFFSET, DJD_OFFSET
-from lsl.reader.tbn import filterCodes as TBNFilters
-from lsl.reader.drx import filterCodes as DRXFilters
+from lsl.reader.tbn import FILTER_CODES as TBNFilters
+from lsl.reader.drx import FILTER_CODES as DRXFilters
 from lsl.common import sdf
 try:
     from lsl.common import sdfADP
@@ -51,7 +48,6 @@ from matplotlib.figure import Figure
 from matplotlib.ticker import NullFormatter, NullLocator
 
 __version__ = "0.6"
-__revision__ = "$Rev$"
 __author__ = "Jayce Dowell"
 
 
@@ -249,14 +245,14 @@ class ObservationListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrl
             try:
                 self.parent.editmenu['cut'].Enable(False)
                 self.parent.editmenu['copy'].Enable(False)
-            except KeyError, AttributeError:
+            except (KeyError, AttributeError):
                 pass
                 
             # Stepped observation edits - disabled
             try:
                 self.parent.obsmenu['steppedEdit'].Enable(False)
                 self.parent.toolbar.EnableTool(ID_EDIT_STEPPED, False)
-            except KeyError, AttributeError:
+            except (KeyError, AttributeError):
                 pass
                 
             # Remove and resolve - disabled
@@ -269,7 +265,7 @@ class ObservationListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrl
             try:
                 self.parent.editmenu['cut'].Enable(True)
                 self.parent.editmenu['copy'].Enable(True)
-            except KeyError, AttributeError:
+            except (KeyError, AttributeError):
                 pass
                 
             # Stepped observation edits - enbled if there is an index and it is STEPPED, 
@@ -279,20 +275,20 @@ class ObservationListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrl
                     try:
                         self.parent.obsmenu['steppedEdit'].Enable(True)
                         self.parent.toolbar.EnableTool(ID_EDIT_STEPPED, True)
-                    except KeyError, AttributeError:
+                    except (KeyError, AttributeError):
                         pass
                 else:
                     try:
                         self.parent.obsmenu['steppedEdit'].Enable(False)
                         self.parent.toolbar.EnableTool(ID_EDIT_STEPPED, False)
-                    except KeyError, AttributeError:
+                    except (KeyError, AttributeError):
                         pass
             else:
                 # Stepped observation edits - disabled
                 try:
                     self.parent.obsmenu['steppedEdit'].Enable(False)
                     self.parent.toolbar.EnableTool(ID_EDIT_STEPPED, False)
-                except KeyError, AttributeError:
+                except (KeyError, AttributeError):
                     pass
                     
             # Remove and resolve - enabled
@@ -305,14 +301,14 @@ class ObservationListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrl
             try:
                 self.parent.editmenu['cut'].Enable(True)
                 self.parent.editmenu['copy'].Enable(True)
-            except KeyError, AttributeError:
+            except (KeyError, AttributeError):
                 pass
                 
             # Stepped observation edits - disabled
             try:
                 self.parent.obsmenu['steppedEdit'].Enable(False)
                 self.parent.toolbar.EnableTool(ID_EDIT_STEPPED, False)
-            except KeyError, AttributeError:
+            except (KeyError, AttributeError):
                 pass
                 
             # Remove and resolve - enabled and disabled, respectively
@@ -378,7 +374,7 @@ class SteppedListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrlMixi
             try:
                 self.parent.editmenu['cut'].Enable(False)
                 self.parent.editmenu['copy'].Enable(False)
-            except KeyError, AttributeError:
+            except (KeyError, AttributeError):
                 pass
                 
         elif self.nSelected == 1:
@@ -386,7 +382,7 @@ class SteppedListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrlMixi
             try:
                 self.parent.editmenu['cut'].Enable(True)
                 self.parent.editmenu['copy'].Enable(True)
-            except KeyError, AttributeError:
+            except (KeyError, AttributeError):
                 pass
                 
         else:
@@ -394,7 +390,7 @@ class SteppedListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrlMixi
             try:
                 self.parent.editmenu['cut'].Enable(True)
                 self.parent.editmenu['copy'].Enable(True)
-            except KeyError, AttributeError:
+            except (KeyError, AttributeError):
                 pass
                 
     def OnCheckItem(self, index, flag):
@@ -583,7 +579,7 @@ class SDFCreator(wx.Frame):
         
         po = self.sdf.ProjectOffice()
         observer = self.sdf.Observer('', 0, first='', last='')
-        project = self.sdf.Project(observer, '', '', projectOffice=po)
+        project = self.sdf.Project(observer, '', '', project_office=po)
         session = self.sdf.Session('session_name', 0, observations=[])
         project.sessions = [session,]
         
@@ -833,16 +829,16 @@ class SDFCreator(wx.Frame):
         # Window manager close
         self.Bind(wx.EVT_CLOSE, self.onQuit)
         
-    def onLogger(self, event):
-        """
-        Create a new logger window, if needed
-        """
-        
-        if self.logger is None:
-            self.logger = wx.LogWindow(self, 'SDF Logger', True, False)
-        elif not self.logger.Frame.IsShown():
-            self.logger.Destroy()
-            self.logger = wx.LogWindow(self, 'SDF Logger', True, False)
+    #def onLogger(self, event):
+    #    """
+    #    Create a new logger window, if needed
+    #    """
+    #    
+    #    if self.logger is None:
+    #        self.logger = wx.LogWindow(self, 'SDF Logger', True, False)
+    #    elif not self.logger.Frame.IsShown():
+    #        self.logger.Destroy()
+    #        self.logger = wx.LogWindow(self, 'SDF Logger', True, False)
             
     def onNew(self, event):
         """
@@ -888,8 +884,7 @@ class SDFCreator(wx.Frame):
             else:
                 return False
                 
-        dialog = wx.FileDialog(self, "Select a SD File", self.dirname, '', 'SDF Files (*.sdf,*.txt)|*.sdf;*.txt|All Files (*.*)|*.*', wx.FD_OPEN)
-        
+        dialog = wx.FileDialog(self, "Select a SD File", self.dirname, '', 'SDF Files (*.sdf,*.txt)|*.sdf;*.txt|All Files|*', wx.FD_OPEN)
         if dialog.ShowModal() == wx.ID_OK:
             self.dirname = dialog.GetDirectory()
             self.filename = dialog.GetPath()
@@ -935,7 +930,7 @@ class SDFCreator(wx.Frame):
         if not self.onValidate(1, confirmValid=False):
             self.displayError('The session definition file could not be saved due to errors in the file.', title='Save Failed')
         else:
-            dialog = wx.FileDialog(self, "Select Output File", self.dirname, '', 'SDF Files (*.sdf,*.txt)|*.sdf;*.txt|All Files (*.*)|*.*', wx.FD_SAVE|wx.FD_OVERWRITE_PROMPT)
+            dialog = wx.FileDialog(self, "Select Output File", self.dirname, '', 'SDF Files (*.sdf,*.txt)|*.sdf;*.txt|All Files|*', wx.FD_SAVE|wx.FD_OVERWRITE_PROMPT)
             
             if dialog.ShowModal() == wx.ID_OK:
                 self.dirname = dialog.GetDirectory()
@@ -959,7 +954,7 @@ class SDFCreator(wx.Frame):
         """
         
         self.buffer = []
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             if self.listControl.IsChecked(i):
                 self.buffer.append( copy.deepcopy(self.project.sessions[0].observations[i]) )
                 
@@ -974,7 +969,7 @@ class SDFCreator(wx.Frame):
     def onPasteBefore(self, event):
         firstChecked = None
         
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             if self.listControl.IsChecked(i):
                 firstChecked = i
                 break
@@ -992,7 +987,7 @@ class SDFCreator(wx.Frame):
             self.setSaveButton()
             
             # Re-number the remaining rows to keep the display clean
-            for id in xrange(self.listControl.GetItemCount()):
+            for id in range(self.listControl.GetItemCount()):
                 item = self.listControl.GetItem(id, 0)
                 item.SetText('%i' % (id+1))
                 self.listControl.SetItem(item)
@@ -1000,19 +995,19 @@ class SDFCreator(wx.Frame):
                 
             # Fix the times on DRX observations to make thing continuous
             if self.mode == 'DRX':
-                for id in xrange(firstChecked+len(self.buffer)-1, -1, -1):
+                for id in range(firstChecked+len(self.buffer)-1, -1, -1):
                     dur = self.project.sessions[0].observations[id].dur
                     
-                    tStart, _ = self.sdf.getObservationStartStop(self.project.sessions[0].observations[id+1])
+                    tStart, _ = self.sdf.get_observation_start_stop(self.project.sessions[0].observations[id+1])
                     tStart -= timedelta(seconds=dur//1000, microseconds=(dur%1000)*1000)
                     cStart = 'UTC %i %02i %02i %02i:%02i:%06.3f' % (tStart.year, tStart.month, tStart.day, tStart.hour, tStart.minute, tStart.second+tStart.microsecond/1e6)
-                    self.project.sessions[0].observations[id].setStart(cStart)
+                    self.project.sessions[0].observations[id].set_start(cStart)
                     self.addObservation(self.project.sessions[0].observations[id], id, update=True)
                     
     def onPasteAfter(self, event):
         lastChecked = None
         
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             if self.listControl.IsChecked(i):
                 lastChecked = i
                 
@@ -1029,7 +1024,7 @@ class SDFCreator(wx.Frame):
             self.setSaveButton()
             
             # Re-number the remaining rows to keep the display clean
-            for id in xrange(self.listControl.GetItemCount()):
+            for id in range(self.listControl.GetItemCount()):
                 item = self.listControl.GetItem(id, 0)
                 item.SetText('%i' % (id+1))
                 self.listControl.SetItem(item)
@@ -1037,10 +1032,10 @@ class SDFCreator(wx.Frame):
                 
             # Fix the times on DRX observations to make thing continuous
             if self.mode == 'DRX':
-                for id in xrange(lastChecked+1, self.listControl.GetItemCount()):
-                    _, tStop = self.sdf.getObservationStartStop(self.project.sessions[0].observations[id-1])
+                for id in range(lastChecked+1, self.listControl.GetItemCount()):
+                    _, tStop = self.sdf.get_observation_start_stop(self.project.sessions[0].observations[id-1])
                     cStart = 'UTC %i %02i %02i %02i:%02i:%06.3f' % (tStop.year, tStop.month, tStop.day, tStop.hour, tStop.minute, tStop.second+tStop.microsecond/1e6)
-                    self.project.sessions[0].observations[id].setStart(cStart)
+                    self.project.sessions[0].observations[id].set_start(cStart)
                     self.addObservation(self.project.sessions[0].observations[id], id, update=True)
                     
     def onPasteEnd(self, event):
@@ -1063,7 +1058,7 @@ class SDFCreator(wx.Frame):
             self.setSaveButton()
             
         # Re-number the remaining rows to keep the display clean
-        for id in xrange(self.listControl.GetItemCount()):
+        for id in range(self.listControl.GetItemCount()):
             item = self.listControl.GetItem(id, 0)
             item.SetText('%i' % (id+1))
             self.listControl.SetItem(item)
@@ -1071,10 +1066,10 @@ class SDFCreator(wx.Frame):
             
         # Fix the times on DRX observations to make thing continuous
         if self.mode == 'DRX':
-            for id in xrange(lastChecked+1, self.listControl.GetItemCount()):
-                _, tStop = self.sdf.getObservationStartStop(self.project.sessions[0].observations[id-1])
+            for id in range(lastChecked+1, self.listControl.GetItemCount()):
+                _, tStop = self.sdf.get_observation_start_stop(self.project.sessions[0].observations[id-1])
                 cStart = 'UTC %i %02i %02i %02i:%02i:%06.3f' % (tStop.year, tStop.month, tStop.day, tStop.hour, tStop.minute, tStop.second+tStop.microsecond/1e6)
-                self.project.sessions[0].observations[id].setStart(cStart)
+                self.project.sessions[0].observations[id].set_start(cStart)
                 self.addObservation(self.project.sessions[0].observations[id], id, update=True)
                 
     def onInfo(self, event):
@@ -1118,9 +1113,9 @@ class SDFCreator(wx.Frame):
         tStop = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
         if self.listControl.GetItemCount() > 0:
             if self.mode == 'DRX':
-                _, tStop = self.sdf.getObservationStartStop(self.project.sessions[0].observations[-1])
+                _, tStop = self.sdf.get_observation_start_stop(self.project.sessions[0].observations[-1])
             elif self.mode == 'TBN':
-                _, tStop = self.sdf.getObservationStartStop(self.project.sessions[0].observations[-1])
+                _, tStop = self.sdf.get_observation_start_stop(self.project.sessions[0].observations[-1])
                 tStop += timedelta(seconds=20)
                 
         return 'UTC %i %02i %02i %02i:%02i:%06.3f' % (tStop.year, tStop.month, tStop.day, tStop.hour, tStop.minute, tStop.second+tStop.microsecond/1e6)
@@ -1220,7 +1215,7 @@ class SDFCreator(wx.Frame):
         
         id = self.listControl.GetItemCount() + 1
         gain = self.project.sessions[0].drxGain
-        self.project.sessions[0].observations.append( self.sdf.Stepped('stps-%i' % id, 'radec-%i' % id, self._getCurrentDateString(), self._getDefaultFilter(), RADec=True, gain=gain) )
+        self.project.sessions[0].observations.append( self.sdf.Stepped('stps-%i' % id, 'radec-%i' % id, self._getCurrentDateString(), self._getDefaultFilter(), is_radec=True, gain=gain) )
         self.addObservation(self.project.sessions[0].observations[-1], id)
         
         self.edited = True
@@ -1233,7 +1228,7 @@ class SDFCreator(wx.Frame):
         
         id = self.listControl.GetItemCount() + 1
         gain = self.project.sessions[0].drxGain
-        self.project.sessions[0].observations.append( self.sdf.Stepped('stps-%i' % id, 'azalt-%i' % id, self._getCurrentDateString(), self._getDefaultFilter(), RADec=False, gain=gain) )
+        self.project.sessions[0].observations.append( self.sdf.Stepped('stps-%i' % id, 'azalt-%i' % id, self._getCurrentDateString(), self._getDefaultFilter(), is_radec=False, gain=gain) )
         self.addObservation(self.project.sessions[0].observations[-1], id)
         
         self.edited = True
@@ -1246,7 +1241,7 @@ class SDFCreator(wx.Frame):
         
         nChecked = 0
         whichChecked = None
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             if self.listControl.IsChecked(i):
                 whichChecked = i
                 nChecked += 1
@@ -1268,9 +1263,9 @@ class SDFCreator(wx.Frame):
         self.SetStatusText('')
         try:
             # Catch for deaing with the new TBN tuning range of 5 to 93 MHz
-            isTBN = (self.project.sessions[0].observations[obsIndex].mode == 'TBN')
+            is_tbn = (self.project.sessions[0].observations[obsIndex].mode == 'TBN')
             if self.coerceMap[obsAttr].__name__ == "freqConv":
-                newData = self.coerceMap[obsAttr](event.GetText(), tbn=isTBN)
+                newData = self.coerceMap[obsAttr](event.GetText(), tbn=is_tbn)
             else:
                 newData = self.coerceMap[obsAttr](event.GetText())
                 
@@ -1316,7 +1311,7 @@ class SDFCreator(wx.Frame):
             True is returned.
             """
             
-            for i in xrange(lc.GetItemCount()):
+            for i in range(lc.GetItemCount()):
                 if lc.IsChecked(i):
                     return i+1
             return 0
@@ -1338,7 +1333,7 @@ class SDFCreator(wx.Frame):
         self.listControl.setCheckDependant()
         
         # Re-number the remaining rows to keep the display clean
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             item = self.listControl.GetItem(i, 0)
             item.SetText('%i' % (i+1))
             self.listControl.SetItem(item)
@@ -1364,7 +1359,7 @@ class SDFCreator(wx.Frame):
         for obs in self.project.sessions[0].observations:
             print("[%i] Validating observation %i" % (os.getpid(), i+1))
             valid = obs.validate(verbose=True)
-            for col in xrange(len(self.columnMap)):
+            for col in range(len(self.columnMap)):
                 item = self.listControl.GetItem(i, col)
                 
                 if not valid:
@@ -1454,14 +1449,16 @@ class SDFCreator(wx.Frame):
                 
         if self.mode == 'TBN':
             filterInfo = "TBN"
-            for tk,tv in TBNFilters.iteritems():
+            for tk in TBNFilters.keys():
+                tv = TBNFilters[tk]
                 if tk > 7:
                     continue
                 tv, tu = units(tv)
                 filterInfo = "%s\n%i  %.3f %-3s" % (filterInfo, tk, tv, tu)
         elif self.mode == 'DRX' or self.mode == 'TBF':
             filterInfo = "DRX"
-            for dk,dv in DRXFilters.iteritems():
+            for dk in DRXFilters.keys():
+                dv= DRXFilters[dk]
                 if dk > 7:
                     continue
                 dv, du = units(dv)
@@ -1599,7 +1596,7 @@ class SDFCreator(wx.Frame):
                 
         def snrConv(text):
             """
-            Special conversion function for dealing with the MaxSNR keyword input.
+            Special conversion function for dealing with the max_snr keyword input.
             """
             
             text = text.lower().capitalize()
@@ -1624,7 +1621,7 @@ class SDFCreator(wx.Frame):
         self.columnMap.append('target')
         self.columnMap.append('comments')
         self.columnMap.append('start')
-        for i in xrange(5):
+        for i in range(5):
             self.coerceMap.append(str)
             
         if self.mode == 'TBW' and self._getTBWValid():
@@ -1678,7 +1675,7 @@ class SDFCreator(wx.Frame):
             self.columnMap.append('frequency1')
             self.columnMap.append('frequency2')
             self.columnMap.append('filter')
-            self.columnMap.append('MaxSNR')
+            self.columnMap.append('max_snr')
             self.coerceMap.append(str)
             self.coerceMap.append(raConv)
             self.coerceMap.append(decConv)
@@ -1759,7 +1756,7 @@ class SDFCreator(wx.Frame):
                     return '%02i:%02i:%05.2f' % (d, m, s)
                     
             if obs.mode == 'STEPPED':
-                obs.getDuration()
+                obs.duration
                 SetListItem(self.listControl, index, 5, obs.duration)
                 SetListItem(self.listControl, index, 8, "--")
                 SetListItem(self.listControl, index, 9, "--")
@@ -1768,7 +1765,7 @@ class SDFCreator(wx.Frame):
                 SetListItem(self.listControl, index, 5, obs.duration)
                 SetListItem(self.listControl, index, 8, "%.6f" % (obs.freq1*fS/2**32 / 1e6))
                 SetListItem(self.listControl, index, 9, "%.6f" % (obs.freq2*fS/2**32 / 1e6))
-                if obs.MaxSNR:
+                if obs.max_snr:
                     SetListItem(self.listControl, index, 11, "Yes")
                 else:
                     SetListItem(self.listControl, index, 11, "No")
@@ -1781,7 +1778,7 @@ class SDFCreator(wx.Frame):
                 SetListItem(self.listControl, index, 7, "--")
             elif obs.mode == 'STEPPED':
                 SetListItem(self.listControl, index, 6, "STEPPED")
-                SetListItem(self.listControl, index, 7, "RA/Dec" if obs.RADec else "Az/Alt")
+                SetListItem(self.listControl, index, 7, "RA/Dec" if obs.is_radec else "Az/Alt")
             else:
                 SetListItem(self.listControl, index, 6, dec2sexstr(obs.ra, signed=False))
                 SetListItem(self.listControl, index, 7, dec2sexstr(obs.dec, signed=True))
@@ -1911,7 +1908,7 @@ class SDFCreator(wx.Frame):
             
     def parseFile(self, filename):
         """
-        Given a filename, parse the file using the sdf.parseSDF() method and 
+        Given a filename, parse the file using the sdf.parse_sdf() method and 
         update all of the various aspects of the GUI (observation list, mode, 
         button, menu items, etc.).
         """
@@ -1923,7 +1920,7 @@ class SDFCreator(wx.Frame):
         self.initSDF()
         
         print("[%i] Parsing file '%s'" % (os.getpid(), filename))
-        self.project = self.sdf.parseSDF(filename)
+        self.project = self.sdf.parse_sdf(filename)
         self.setMenuButtons(self.project.sessions[0].observations[0].mode)
         if self.project.sessions[0].observations[0].mode == 'TBW':
             self.mode = 'TBW'
@@ -1992,7 +1989,7 @@ class ObserverInfo(wx.Frame):
     """
     
     def __init__(self, parent):
-        wx.Frame.__init__(self, parent, title='Observer Information', size=(855,835))
+        wx.Frame.__init__(self, parent, title='Observer Information', size=(880,685))
         
         self.parent = parent
         
@@ -2108,7 +2105,7 @@ class ObserverInfo(wx.Frame):
                 pass
         if self.parent.project.comments != '' and self.parent.project.comments is not None:
             pcomsText.SetValue(self.parent.project.comments.replace(';;', '\n'))
-        
+            
         sizer.Add(prj, pos=(row+0,0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
         
         sizer.Add(pid, pos=(row+1, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
@@ -2117,12 +2114,12 @@ class ObserverInfo(wx.Frame):
         sizer.Add(pname, pos=(row+2, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer.Add(pnameText, pos=(row+2, 1), span=(1, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer.Add(pcoms, pos=(row+3, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(pcomsText, pos=(row+3, 1), span=(4, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(pcomsText, pos=(row+3, 1), span=(3, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         
         line = wx.StaticLine(panel)
-        sizer.Add(line, pos=(row+7, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
+        sizer.Add(line, pos=(row+6, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
         
-        row += 8
+        row += 7
         
         #
         # Session-Wide Info
@@ -2211,14 +2208,14 @@ class ObserverInfo(wx.Frame):
         linear.Disable()
         stokes.Disable()
         
-        if self.parent.project.sessions[0].dataReturnMethod == 'DRSU':
+        if self.parent.project.sessions[0].data_return_method == 'DRSU':
             drsuRB.SetValue(True)
             usbRB.SetValue(False)
             ucfRB.SetValue(False)
             
             nchnText.SetValue("1024")
             nintText.SetValue("6144")
-        elif self.parent.project.sessions[0].dataReturnMethod == 'USB Harddrives':
+        elif self.parent.project.sessions[0].data_return_method == 'USB Harddrives':
             drsuRB.SetValue(False)
             usbRB.SetValue(True)
             ucfRB.SetValue(False)
@@ -2309,31 +2306,31 @@ class ObserverInfo(wx.Frame):
         sizer.Add(sname, pos=(row+2, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer.Add(snameText, pos=(row+2, 1), span=(1, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer.Add(scoms, pos=(row+3, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(scomsText, pos=(row+3, 1), span=(4, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(tid, pos=(row+7,0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(tbwRB, pos=(row+7,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(tbfRB, pos=(row+8,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(tbnRB, pos=(row+9,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(drxRB, pos=(row+10,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(did, pos=(row+11,0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(drsuRB, pos=(row+11,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(usbRB, pos=(row+12,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(ucfRB, pos=(row+13,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(unam, pos=(row+13,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(unamText, pos=(row+13,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(drsCB, pos=(row+14,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(nchn, pos=(row+14,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(nchnText, pos=(row+14,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(nint, pos=(row+14,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(nintText, pos=(row+14,5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(spid, pos=(row+15,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(linear, pos=(row+15,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(stokes, pos=(row+15,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(scomsText, pos=(row+3, 1), span=(3, 5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(tid, pos=(row+6,0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(tbwRB, pos=(row+6,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(tbfRB, pos=(row+7,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(tbnRB, pos=(row+8,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(drxRB, pos=(row+9,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(did, pos=(row+10,0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(drsuRB, pos=(row+10,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(usbRB, pos=(row+11,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(ucfRB, pos=(row+12,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(unam, pos=(row+12,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(unamText, pos=(row+12,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(drsCB, pos=(row+13,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(nchn, pos=(row+13,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(nchnText, pos=(row+13,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(nint, pos=(row+13,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(nintText, pos=(row+13,5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(spid, pos=(row+14,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(linear, pos=(row+14,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(stokes, pos=(row+14,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         
         line = wx.StaticLine(panel)
-        sizer.Add(line, pos=(row+16, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
+        sizer.Add(line, pos=(row+15, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
         
-        row += 17
+        row += 16
         
         #
         # Buttons
@@ -2343,9 +2340,6 @@ class ObserverInfo(wx.Frame):
         cancel = wx.Button(panel, ID_OBS_INFO_CANCEL, 'Cancel', size=(90, 28))
         sizer.Add(ok, pos=(row+0, 4))
         sizer.Add(cancel, pos=(row+0, 5), flag=wx.RIGHT|wx.BOTTOM, border=5)
-        
-        sizer.AddGrowableCol(1)
-        sizer.AddGrowableRow(8)
         
         panel.SetupScrolling(scroll_x=True, scroll_y=True) 
         panel.SetSizer(sizer)
@@ -2447,7 +2441,7 @@ class ObserverInfo(wx.Frame):
         self.parent.project.observer.id = int(self.observerIDEntry.GetValue())
         self.parent.project.observer.first = self.observerFirstEntry.GetValue()
         self.parent.project.observer.last = self.observerLastEntry.GetValue()
-        self.parent.project.observer.joinName()
+        self.parent.project.observer.join_name()
         
         self.parent.project.id = self.projectIDEntry.GetValue()
         self.parent.project.name = self.projectTitleEntry.GetValue()
@@ -2458,15 +2452,15 @@ class ObserverInfo(wx.Frame):
         self.parent.project.sessions[0].comments = self.sessionCommentsEntry.GetValue().replace('\n', ';;')
         
         if self.drsuButton.GetValue():
-            self.parent.project.sessions[0].dataReturnMethod = 'DRSU'
+            self.parent.project.sessions[0].data_return_method = 'DRSU'
             self.parent.project.sessions[0].spcSetup = [0, 0]
             self.parent.project.sessions[0].spcMetatag = None
         elif self.usbButton.GetValue():
-            self.parent.project.sessions[0].dataReturnMethod = 'USB Harddrives'
+            self.parent.project.sessions[0].data_return_method = 'USB Harddrives'
             self.parent.project.sessions[0].spcSetup = [0, 0]
             self.parent.project.sessions[0].spcMetatag = None
         else:
-            self.parent.project.sessions[0].dataReturnMethod = 'UCF'
+            self.parent.project.sessions[0].data_return_method = 'UCF'
             tempc = _usernameRE.sub('', self.parent.project.sessions[0].comments)
             self.parent.project.sessions[0].comments = tempc + ';;ucfuser:%s' % self.unamText.GetValue()
             
@@ -2554,13 +2548,13 @@ ID_ADV_INFO_CANCEL = 313
 class AdvancedInfo(wx.Frame):
     def __init__(self, parent):
         if parent.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF:
-            size = (925, 675)
+            size = (735, 640)
         elif parent.mode in ('TBW', 'TBF'):
-            size = (925, 575)
+            size = (735, 540)
         elif parent.project.sessions[0].spcSetup[0] != 0 and parent.project.sessions[0].spcSetup[1] != 0:
-            size = (925, 775)
+            size = (735, 740)
         else:
-            size = (925, 700)
+            size = (735, 665)
             
         wx.Frame.__init__(self, parent, title='Advanced Settings', size=size)
         
@@ -2578,18 +2572,18 @@ class AdvancedInfo(wx.Frame):
         
     def initUI(self):
         bits = ['12-bit', '4-bit']
-        tbnGain = ['%i' % i for i in xrange(31)]
+        tbnGain = ['%i' % i for i in range(31)]
         tbnGain.insert(0, 'MCS Decides')
-        drxGain = ['%i' % i for i in xrange(13)]
+        drxGain = ['%i' % i for i in range(13)]
         drxGain.insert(0, 'MCS Decides')
         if self.parent.adp:
-            drxBeam = ['%i' %i for i in xrange(1, 4)]
+            drxBeam = ['%i' %i for i in range(1, 4)]
         else:
-            drxBeam = ['%i' %i for i in xrange(1, 5)]
+            drxBeam = ['%i' %i for i in range(1, 5)]
         drxBeam.insert(0, 'MCS Decides')
         intervals = ['MCS Decides', 'Never', '1 minute', '5 minutes', '15 minutes', '30 minutes', '1 hour']
         aspFilters = ['MCS Decides', 'Split', 'Full', 'Reduced', 'Off', 'Split @ 3MHz', 'Full @ 3MHz']
-        aspAttn = ['%i' % i for i in xrange(16)]
+        aspAttn = ['%i' % i for i in range(16)]
         aspAttn.insert(0, 'MCS Decides')
         
         row = 0
@@ -2695,35 +2689,35 @@ class AdvancedInfo(wx.Frame):
         aspComboAT2 = wx.ComboBox(panel, -1, value='MCS Decides', choices=aspAttn, style=wx.CB_READONLY)
         aspComboATS = wx.ComboBox(panel, -1, value='MCS Decides', choices=aspAttn, style=wx.CB_READONLY)
         try:
-            if self.parent.project.sessions[0].observations[0].aspFlt[0] == -1:
+            if self.parent.project.sessions[0].observations[0].asp_filter[0] == -1:
                 aspComboFlt.SetStringSelection('MCS Decides')
-            elif self.parent.project.sessions[0].observations[0].aspFlt[0] == 0:
+            elif self.parent.project.sessions[0].observations[0].asp_filter[0] == 0:
                 aspComboFlt.SetStringSelection('Split')
-            elif self.parent.project.sessions[0].observations[0].aspFlt[0] == 1:
+            elif self.parent.project.sessions[0].observations[0].asp_filter[0] == 1:
                 aspComboFlt.SetStringSelection('Full')
-            elif self.parent.project.sessions[0].observations[0].aspFlt[0] == 2:
+            elif self.parent.project.sessions[0].observations[0].asp_filter[0] == 2:
                 aspComboFlt.SetStringSelection('Reduced')
-            elif self.parent.project.sessions[0].observations[0].aspFlt[0] == 4:
+            elif self.parent.project.sessions[0].observations[0].asp_filter[0] == 4:
                 aspComboFlt.SetStringSelection('Split @ 3MHz')
-            elif self.parent.project.sessions[0].observations[0].aspFlt[0] == 5:
+            elif self.parent.project.sessions[0].observations[0].asp_filter[0] == 5:
                 aspComboFlt.SetStringSelection('Full @ 3MHz')
             else:
                 aspComboFlt.SetStringSelection('Off')
                 
-            if self.parent.project.sessions[0].observations[0].aspAT1[0] == -1:
+            if self.parent.project.sessions[0].observations[0].asp_atten_1[0] == -1:
                 aspComboAT1.SetStringSelection('MCS Decides')
             else:
-                aspComboAT1.SetStringSelection('%i' % self.parent.project.sessions[0].observations[0].aspAT1[0])
+                aspComboAT1.SetStringSelection('%i' % self.parent.project.sessions[0].observations[0].asp_atten_1[0])
                 
-            if self.parent.project.sessions[0].observations[0].aspAT2[0] == -1:
+            if self.parent.project.sessions[0].observations[0].asp_atten_2[0] == -1:
                 aspComboAT2.SetStringSelection('MCS Decides')
             else:
-                aspComboAT2.SetStringSelection('%i' % self.parent.project.sessions[0].observations[0].aspAT2[0])
+                aspComboAT2.SetStringSelection('%i' % self.parent.project.sessions[0].observations[0].asp_atten_2[0])
                 
-            if self.parent.project.sessions[0].observations[0].aspATS[0] == -1:
+            if self.parent.project.sessions[0].observations[0].asp_atten_split[0] == -1:
                 aspComboATS.SetStringSelection('MCS Decides')
             else:
-                aspComboATS.SetStringSelection('%i' % self.parent.project.sessions[0].observations[0].aspATS[0])
+                aspComboATS.SetStringSelection('%i' % self.parent.project.sessions[0].observations[0].asp_atten_split[0])
         except IndexError:
             aspComboFlt.SetStringSelection('MCS Decides')
             aspComboAT1.SetStringSelection('MCS Decides')
@@ -2813,10 +2807,10 @@ class AdvancedInfo(wx.Frame):
                 
             tbeam = wx.StaticText(panel, label='Beam')
             tbeamText = wx.ComboBox(panel, -1, value='MCS Decides', choices=drxBeam, style=wx.CB_READONLY)
-            if self.parent.project.sessions[0].drxBeam == -1:
+            if self.parent.project.sessions[0].drx_beam == -1:
                 tbeamText.SetStringSelection('MCS Decides')
             else:
-                tbeamText.SetStringSelection('%i' % self.parent.project.sessions[0].drxBeam)
+                tbeamText.SetStringSelection('%i' % self.parent.project.sessions[0].drx_beam)
                 
             sizer.Add(tbf, pos=(row+0,0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
             
@@ -2865,17 +2859,18 @@ class AdvancedInfo(wx.Frame):
             
             dgain = wx.StaticText(panel, label='Gain')
             dgainText =  wx.ComboBox(panel, -1, value='MCS Decides', choices=drxGain, style=wx.CB_READONLY)
-            if self.parent.project.sessions[0].observations[0].gain == -1:
+            if len(self.parent.project.sessions[0].observations) == 0 \
+               or self.parent.project.sessions[0].observations[0].gain == -1:
                 dgainText.SetStringSelection('MCS Decides')
             else:
                 dgainText.SetStringSelection('%i' % self.parent.project.sessions[0].observations[0].gain)
                 
             dbeam = wx.StaticText(panel, label='Beam')
             dbeamText = wx.ComboBox(panel, -1, value='MCS Decides', choices=drxBeam, style=wx.CB_READONLY)
-            if self.parent.project.sessions[0].drxBeam == -1:
+            if self.parent.project.sessions[0].drx_beam == -1:
                 dbeamText.SetStringSelection('MCS Decides')
             else:
-                dbeamText.SetStringSelection('%i' % self.parent.project.sessions[0].drxBeam)
+                dbeamText.SetStringSelection('%i' % self.parent.project.sessions[0].drx_beam)
                 
             sizer.Add(drx, pos=(row+0,0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
             
@@ -2898,16 +2893,18 @@ class AdvancedInfo(wx.Frame):
             bdm.SetFont(font)
             
             bdmEnableCheck = wx.CheckBox(panel, ID_OBS_BDM_CHECKED, label='Enabled for all observations')
-            if getattr(self.parent.project.sessions[0].observations[0], 'beamDipole', None) is not None:
+            if len(self.parent.project.sessions[0].observations) \
+               and getattr(self.parent.project.sessions[0].observations[0], 'beamDipole', None) is not None:
                 bdmEnableCheck.SetValue(True)
             else:
                 bdmEnableCheck.SetValue(False)
                 
             bdmDipole = wx.StaticText(panel, label='Stand Number')
             bdmDipoleText = wx.TextCtrl(panel)
-            if getattr(self.parent.project.sessions[0].observations[0], 'beamDipole', None) is not None:
+            if len(self.parent.project.sessions[0].observations) \
+               and getattr(self.parent.project.sessions[0].observations[0], 'beamDipole', None) is not None:
                 dpStand = self.parent.project.sessions[0].observations[0].beamDipole[0]*2 - 2
-                realStand = self.parent.station.getAntennas()[dpStand].stand.id
+                realStand = self.parent.station.antennas[dpStand].stand.id
                 
                 bdmDipoleText.SetValue("%i" % realStand)
             else:
@@ -2916,7 +2913,8 @@ class AdvancedInfo(wx.Frame):
                 
             bdmDGain = wx.StaticText(panel, label='Stand Gain')
             bdmDGainText = wx.TextCtrl(panel)
-            if getattr(self.parent.project.sessions[0].observations[0], 'beamDipole', None) is not None:
+            if len(self.parent.project.sessions[0].observations) \
+               and getattr(self.parent.project.sessions[0].observations[0], 'beamDipole', None) is not None:
                 bdmDGainText.SetValue("%.4f" % self.parent.project.sessions[0].observations[0].beamDipole[2])
             else:
                 bdmDGainText.SetValue("1.0000")
@@ -2924,7 +2922,8 @@ class AdvancedInfo(wx.Frame):
                 
             bdmBGain = wx.StaticText(panel, label='Beam Gain')
             bdmBGainText = wx.TextCtrl(panel)
-            if getattr(self.parent.project.sessions[0].observations[0], 'beamDipole', None) is not None:
+            if len(self.parent.project.sessions[0].observations) \
+               and getattr(self.parent.project.sessions[0].observations[0], 'beamDipole', None) is not None:
                 bdmBGainText.SetValue("%.4f" % self.parent.project.sessions[0].observations[0].beamDipole[1])
             else:
                 bdmBGainText.SetValue("0.0041")
@@ -2933,7 +2932,8 @@ class AdvancedInfo(wx.Frame):
             bdmPol = wx.StaticText(panel, label='Pol.')
             bdmPolX = wx.RadioButton(panel, -1, 'X', style=wx.RB_GROUP)
             bdmPolY = wx.RadioButton(panel, -1, 'Y')
-            if getattr(self.parent.project.sessions[0].observations[0], 'beamDipole', None) is not None:
+            if len(self.parent.project.sessions[0].observations) \
+               and getattr(self.parent.project.sessions[0].observations[0], 'beamDipole', None) is not None:
                 if self.parent.project.sessions[0].observations[0].beamDipole[3] == 'X':
                     bdmPolX.SetValue(True)
                     bdmPolY.SetValue(False)
@@ -2968,7 +2968,7 @@ class AdvancedInfo(wx.Frame):
         # DROS
         #
         
-        if self.parent.project.sessions[0].dataReturnMethod == 'DR Spectrometer' or (self.parent.project.sessions[0].spcSetup[0] != 0 and self.parent.project.sessions[0].spcSetup[1] != 0):
+        if self.parent.project.sessions[0].data_return_method == 'DR Spectrometer' or (self.parent.project.sessions[0].spcSetup[0] != 0 and self.parent.project.sessions[0].spcSetup[1] != 0):
             dros = wx.StaticText(panel, label='DR Spectrometer Information')
             dros.SetFont(font)
             
@@ -3108,7 +3108,7 @@ class AdvancedInfo(wx.Frame):
         self.aspAT2 = aspComboAT2
         self.aspATS = aspComboATS
         
-        if self.parent.project.sessions[0].dataReturnMethod == 'DR Spectrometer' or (self.parent.project.sessions[0].spcSetup[0] != 0 and self.parent.project.sessions[0].spcSetup[1] != 0):
+        if self.parent.project.sessions[0].data_return_method == 'DR Spectrometer' or (self.parent.project.sessions[0].spcSetup[0] != 0 and self.parent.project.sessions[0].spcSetup[1] != 0):
             self.opt1 = opt1
             self.opt2 = opt2
             self.opt3 = opt3
@@ -3166,7 +3166,7 @@ class AdvancedInfo(wx.Frame):
                 
         if self.parent.mode == 'TBF':
             tbfSamp = int( self.tbfSamp.GetValue() )
-            self.parent.project.sessions[0].drxBeam = self.__parseGainCombo(self.tbfBeam)
+            self.parent.project.sessions[0].drx_beam = self.__parseGainCombo(self.tbfBeam)
             if tbfSamp < 0:
                 self.displayError('Number of TBF samples must be positive', title='TBF Sample Error')
                 return False
@@ -3176,19 +3176,19 @@ class AdvancedInfo(wx.Frame):
                             details='%i > 3 sec' % tbfSamp, title='TBF Sample Error')
                 return False
                 
-        self.parent.project.sessions[0].recordMIB['ASP'] = self.__parseTimeCombo(self.mrpASP)
-        self.parent.project.sessions[0].recordMIB['DP_'] = self.__parseTimeCombo(self.mrpDP)
+        self.parent.project.sessions[0].recordMIB['ASP'] = self.__parse_timeCombo(self.mrpASP)
+        self.parent.project.sessions[0].recordMIB['DP_'] = self.__parse_timeCombo(self.mrpDP)
         for i in range(1,6):
-            self.parent.project.sessions[0].recordMIB['DR%i' % i] = self.__parseTimeCombo(self.mrpDR)
-        self.parent.project.sessions[0].recordMIB['SHL'] = self.__parseTimeCombo(self.mrpSHL)
-        self.parent.project.sessions[0].recordMIB['MCS'] = self.__parseTimeCombo(self.mrpMCS)
+            self.parent.project.sessions[0].recordMIB['DR%i' % i] = self.__parse_timeCombo(self.mrpDR)
+        self.parent.project.sessions[0].recordMIB['SHL'] = self.__parse_timeCombo(self.mrpSHL)
+        self.parent.project.sessions[0].recordMIB['MCS'] = self.__parse_timeCombo(self.mrpMCS)
             
-        self.parent.project.sessions[0].updateMIB['ASP'] = self.__parseTimeCombo(self.mupASP)
-        self.parent.project.sessions[0].updateMIB['DP_'] = self.__parseTimeCombo(self.mupDP)
+        self.parent.project.sessions[0].updateMIB['ASP'] = self.__parse_timeCombo(self.mupASP)
+        self.parent.project.sessions[0].updateMIB['DP_'] = self.__parse_timeCombo(self.mupDP)
         for i in range(1,6):
-            self.parent.project.sessions[0].recordMIB['DR%i' % i] = self.__parseTimeCombo(self.mupDR)
-        self.parent.project.sessions[0].updateMIB['SHL'] = self.__parseTimeCombo(self.mupSHL)
-        self.parent.project.sessions[0].updateMIB['MCS'] = self.__parseTimeCombo(self.mupMCS)
+            self.parent.project.sessions[0].recordMIB['DR%i' % i] = self.__parse_timeCombo(self.mupDR)
+        self.parent.project.sessions[0].updateMIB['SHL'] = self.__parse_timeCombo(self.mupSHL)
+        self.parent.project.sessions[0].updateMIB['MCS'] = self.__parse_timeCombo(self.mupMCS)
         
         self.parent.project.sessions[0].logScheduler = self.schLog.GetValue()
         self.parent.project.sessions[0].logExecutive = self.exeLog.GetValue()
@@ -3203,43 +3203,43 @@ class AdvancedInfo(wx.Frame):
         aspAT1 = -1 if self.aspAT1.GetValue() == 'MCS Decides' else int(self.aspAT1.GetValue())
         aspAT2 = -1 if self.aspAT2.GetValue() == 'MCS Decides' else int(self.aspAT2.GetValue())
         aspATS = -1 if self.aspATS.GetValue() == 'MCS Decides' else int(self.aspATS.GetValue())
-        for i in xrange(len(self.parent.project.sessions[0].observations)):
-            for j in xrange(len(self.parent.project.sessions[0].observations[0].aspFlt)):
-                self.parent.project.sessions[0].observations[i].aspFlt[j] = aspFlt
-                self.parent.project.sessions[0].observations[i].aspAT1[j] = aspAT1
-                self.parent.project.sessions[0].observations[i].aspAT2[j] = aspAT2
-                self.parent.project.sessions[0].observations[i].aspATS[j] = aspATS
+        for i in range(len(self.parent.project.sessions[0].observations)):
+            for j in range(len(self.parent.project.sessions[0].observations[0].asp_filter)):
+                self.parent.project.sessions[0].observations[i].asp_filter[j] = aspFlt
+                self.parent.project.sessions[0].observations[i].asp_atten_1[j] = aspAT1
+                self.parent.project.sessions[0].observations[i].asp_atten_2[j] = aspAT2
+                self.parent.project.sessions[0].observations[i].asp_atten_split[j] = aspATS
                 
         if self.parent.mode == 'TBW' or self.parent._getTBWValid():
             self.parent.project.sessions[0].tbwGits = int( self.tbwBits.GetValue().split('-')[0] )
             self.parent.project.sessions[0].tbwSamples = int( self.tbwSamp.GetValue() )
-            for i in xrange(len(self.parent.project.sessions[0].observations)):
+            for i in range(len(self.parent.project.sessions[0].observations)):
                 self.parent.project.sessions[0].observations[i].bits = int( self.tbwBits.GetValue().split('-')[0] )
                 self.parent.project.sessions[0].observations[i].samples = int( self.tbwSamp.GetValue() )
                 self.parent.project.sessions[0].observations[i].update()
                 refresh_duration = True
                 
         if self.parent.mode == 'TBF':
-            self.parent.project.sessions[0].drxBeam = self.__parseGainCombo(self.tbfBeam)
+            self.parent.project.sessions[0].drx_beam = self.__parseGainCombo(self.tbfBeam)
             self.parent.project.sessions[0].tbfSamples = int( self.tbfSamp.GetValue() )
-            for i in xrange(len(self.parent.project.sessions[0].observations)):
+            for i in range(len(self.parent.project.sessions[0].observations)):
                 self.parent.project.sessions[0].observations[i].samples = int( self.tbfSamp.GetValue() )
                 self.parent.project.sessions[0].observations[i].update()
                 refresh_duration = True
                 
         if self.parent.mode == 'TBN' or (self.parent.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF):
             self.parent.project.sessions[0].tbnGain = self.__parseGainCombo(self.gain)
-            for i in xrange(len(self.parent.project.sessions[0].observations)):
+            for i in range(len(self.parent.project.sessions[0].observations)):
                 self.parent.project.sessions[0].observations[i].gain = self.__parseGainCombo(self.gain)
                 
         if self.parent.mode == 'DRX':
-            self.parent.project.sessions[0].drxBeam = self.__parseGainCombo(self.drxBeam)
+            self.parent.project.sessions[0].drx_beam = self.__parseGainCombo(self.drxBeam)
             self.parent.project.sessions[0].drxGain = self.__parseGainCombo(self.gain)
-            for i in xrange(len(self.parent.project.sessions[0].observations)):
+            for i in range(len(self.parent.project.sessions[0].observations)):
                 self.parent.project.sessions[0].observations[i].gain = self.__parseGainCombo(self.gain)
                 
         for obs in self.parent.project.sessions[0].observations:
-            for i in xrange(len(self.parent.project.sessions[0].observations)):
+            for i in range(len(self.parent.project.sessions[0].observations)):
                 if obs.mode == 'TBW' or self.parent._getTBWValid():
                     obs.bits = self.parent.project.sessions[0].observations[i].bits
                     obs.samples = self.parent.project.sessions[0].observations[i].samples
@@ -3253,7 +3253,7 @@ class AdvancedInfo(wx.Frame):
                 try:
                     ## Extract the stand number
                     realStand = int(self.bdmDipoleText.GetValue())
-                    maxStand = max([ant.stand.id for ant in self.parent.station.getAntennas()])
+                    maxStand = max([ant.stand.id for ant in self.parent.station.antennas])
                     if realStand < 0 or realStand > maxStand:
                         self.displayError('Invalid stand number: %i' % realStand, details='0 < stand <= %i' % (maxStand), 
                                         title='Beam-Dipole Setup Error')
@@ -3262,7 +3262,7 @@ class AdvancedInfo(wx.Frame):
                     ## Make sure the stand is working according to the SSMIF
                     realStandX = None
                     realStandY = None
-                    for ant in self.parent.station.getAntennas():
+                    for ant in self.parent.station.antennas:
                         if ant.stand.id == realStand:
                             if ant.pol == 0:
                                 realStandX = ant
@@ -3270,9 +3270,9 @@ class AdvancedInfo(wx.Frame):
                                 realStandY = ant
                         if realStandX is not None and realStandY is not None:
                             break
-                    if realStandX.getStatus() != 33 or realStandY.getStatus() != 33:
+                    if realStandX.combined_status != 33 or realStandY.combined_status != 33:
                         self.displayError('Stand #%i is not fully functional' % realStand, 
-                                        details='X pol. status: %i\nY pol. status: %i' % (realStandX.getStatus(), realStandY.getStatus()), 
+                                        details='X pol. status: %i\nY pol. status: %i' % (realStandX.combined_status, realStandY.combined_status), 
                                         title='Beam-Dipole Setup Error')
                         return False
                         
@@ -3307,10 +3307,10 @@ class AdvancedInfo(wx.Frame):
                 
                 beamDipole = (realStand, beamGain, dipoleGain, outputPol)
                 
-                for i in xrange(len(self.parent.project.sessions[0].observations)):
+                for i in range(len(self.parent.project.sessions[0].observations)):
                     self.parent.project.sessions[0].observations[i].setBeamDipoleMode(*beamDipole)
                     
-        if self.parent.project.sessions[0].dataReturnMethod == 'DR Spectrometer' or (self.parent.project.sessions[0].spcSetup[0] != 0 and self.parent.project.sessions[0].spcSetup[1] != 0):
+        if self.parent.project.sessions[0].data_return_method == 'DR Spectrometer' or (self.parent.project.sessions[0].spcSetup[0] != 0 and self.parent.project.sessions[0].spcSetup[1] != 0):
             mt = self.parent.project.sessions[0].spcMetatag
             if mt is None:
                 isLinear = True
@@ -3352,7 +3352,7 @@ class AdvancedInfo(wx.Frame):
                     
         if refresh_duration:
             col = self.parent.columnMap.index('duration')
-            for idx in xrange(self.parent.listControl.GetItemCount()):
+            for idx in range(self.parent.listControl.GetItemCount()):
                 obs_mode = self.parent.project.sessions[0].observations[idx].mode
                 obs_dur = self.parent.project.sessions[0].observations[idx].duration
                 if obs_mode in ('TBW', 'TBF'):
@@ -3368,7 +3368,7 @@ class AdvancedInfo(wx.Frame):
     def onCancel(self, event):
         self.Close()
         
-    def __parseTimeCombo(self, cb):
+    def __parse_timeCombo(self, cb):
         """
         Given a combo box that represents some times, parse it and return
         the time in minutes.
@@ -3564,7 +3564,7 @@ class SessionDisplay(wx.Frame):
         self.ax1 = self.figure.gca()
         
         ## The actual observations
-        observer = self.parent.station.getObserver()
+        observer = self.parent.station.get_observer()
         
         i = 0
         for o in self.obs:
@@ -3573,7 +3573,7 @@ class SessionDisplay(wx.Frame):
             
             if o.mode not in ('TBW', 'TBF', 'TBN', 'STEPPED'):
                 ## Get the source
-                src = o.getFixedBody()
+                src = o.fixed_body
                 
                 dt = 0.0
                 stepSize = o.dur / 1000.0 / 300
@@ -3612,7 +3612,7 @@ class SessionDisplay(wx.Frame):
                 
                 for s in o.steps:
                     ## Get the source
-                    src = s.getFixedBody()
+                    src = s.fixed_body
                     
                     ## Figure out if we have RA/Dec or az/alt
                     if src is not None:
@@ -3774,9 +3774,9 @@ class VolumeInfo(wx.Frame):
                 
                 tunes = 2
                 tlen, icount = self.parent.project.sessions[0].spcSetup
-                sampleRate = obs.filterCodes[obs.filter]
-                duration = obs.getDuration() / 1000.0
-                dataVolume = (76 + tlen*tunes*products*4) / (1.0*tlen*icount/sampleRate) * duration
+                sample_rate = obs.FILTER_CODES[obs.filter]
+                duration = obs.dur / 1000.0
+                dataVolume = (76 + tlen*tunes*products*4) / (1.0*tlen*icount/sample_rate) * duration
             else:
                 mode = obs.mode
                 
@@ -3917,11 +3917,16 @@ class ResolveTarget(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.onCancel, id=ID_RESOLVE_CANCEL)
         
     def onResolve(self, event):
-        import urllib
+        try:
+            from urllib2 import urlopen
+            from urllib import urlencode, quote_plus
+        except ImportError:
+            from urllib.request import urlopen
+            from urllib.parse import urlencode, quote_plus
         
         self.source = self.srcText.GetValue()
         try:
-            result = urllib.urlopen('https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oxp/SNV?%s' % urllib.quote_plus(self.source))
+            result = urlopen('https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oxp/SNV?%s' % quote_plus(self.source))
             tree = ElementTree.fromstring(result.read())
             target = tree.find('Target')
             service = target.find('Resolver')
@@ -4123,7 +4128,7 @@ class SteppedWindow(wx.Frame):
         self.parent = parent
         self.obsID = obsID
         self.obs = self.parent.project.sessions[0].observations[self.obsID]
-        self.RADec = self.obs.RADec
+        self.RADec = self.obs.is_radec
         
         title = '%s Stepped Observation #%i' % ("RA/Dec" if self.RADec else "Az/Alt", obsID+1)
         wx.Frame.__init__(self, parent, title=title, size=(375, 350))
@@ -4227,7 +4232,7 @@ class SteppedWindow(wx.Frame):
         """
         
         self.buffer = []
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             if self.listControl.IsChecked(i):
                 self.buffer.append( copy.deepcopy(self.obs.steps[i]) )
                 
@@ -4242,7 +4247,7 @@ class SteppedWindow(wx.Frame):
     def onPasteBefore(self, event):
         firstChecked = None
         
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             if self.listControl.IsChecked(i):
                 firstChecked = i
                 break
@@ -4260,7 +4265,7 @@ class SteppedWindow(wx.Frame):
             self.parent.setSaveButton()
             
         # Re-number the remaining rows to keep the display clean
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             item = self.listControl.GetItem(i, 0)
             item.SetText('%i' % (i+1))
             self.listControl.SetItem(item)
@@ -4269,7 +4274,7 @@ class SteppedWindow(wx.Frame):
     def onPasteAfter(self, event):
         lastChecked = None
         
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             if self.listControl.IsChecked(i):
                 lastChecked = i
                 
@@ -4286,7 +4291,7 @@ class SteppedWindow(wx.Frame):
             self.parent.setSaveButton()
             
         # Re-number the remaining rows to keep the display clean
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             item = self.listControl.GetItem(i, 0)
             item.SetText('%i' % (i+1))
             self.listControl.SetItem(item)
@@ -4315,7 +4320,7 @@ class SteppedWindow(wx.Frame):
         """
         
         id = self.listControl.GetItemCount() + 1
-        self.obs.steps.append( self.parent.sdf.BeamStep(0.0, 0.0, '00:00:00.000', 42e6, 74e6, RADec=self.RADec) )
+        self.obs.steps.append( self.parent.sdf.BeamStep(0.0, 0.0, '00:00:00.000', 42e6, 74e6, is_radec=self.RADec) )
         self.addStep(self.obs.steps[-1], id)
         
     def onEdit(self, event):
@@ -4378,7 +4383,7 @@ class SteppedWindow(wx.Frame):
             True is returned.
             """
             
-            for i in xrange(lc.GetItemCount()):
+            for i in range(lc.GetItemCount()):
                 if lc.IsChecked(i):
                     return i+1
             return 0
@@ -4394,7 +4399,7 @@ class SteppedWindow(wx.Frame):
         self.listControl.setCheckDependant()
         
         # Re-number the remaining rows to keep the display clean
-        for i in xrange(self.listControl.GetItemCount()):
+        for i in range(self.listControl.GetItemCount()):
             item = self.listControl.GetItem(i, 0)
             item.SetText('%i' % (i+1))
             self.listControl.SetItem(item)
@@ -4526,7 +4531,7 @@ class SteppedWindow(wx.Frame):
                 
         def snrConv(text):
             """
-            Special conversion function for dealing with the MaxSNR keyword input.
+            Special conversion function for dealing with the max_snr keyword input.
             """
             
             text = text.lower().capitalize()
@@ -4568,7 +4573,7 @@ class SteppedWindow(wx.Frame):
         self.listControl.InsertColumn(6, 'Max S/N Beam?', width=125)
         self.columnMap.append('frequency1')
         self.columnMap.append('frequency2')
-        self.columnMap.append('MaxSNR')
+        self.columnMap.append('max_snr')
         self.coerceMap.append(freqConv)
         self.coerceMap.append(freqOptConv)
         self.coerceMap.append(snrConv)
@@ -4612,7 +4617,7 @@ class SteppedWindow(wx.Frame):
         SetListItem(self.listControl, index, 1, step.duration)
         SetListItem(self.listControl, index, 4, "%.6f" % (step.freq1*fS/2**32 / 1e6))
         SetListItem(self.listControl, index, 5, "%.6f" % (step.freq2*fS/2**32 / 1e6))
-        if step.MaxSNR:
+        if step.max_snr:
             SetListItem(self.listControl, index, 6, "Yes")
         else:
             SetListItem(self.listControl, index, 6, "No")

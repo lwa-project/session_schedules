@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 """
 Script to shift an IDF file in time based on the first scan.  This
@@ -10,12 +9,15 @@ shiftIDF.py <input_IDF> <output_IDF>
 
 Options:
 None
-
-$Revision$
-$LastChangedBy: jdowell $
-$LastChangedDate: 2012-03-21 17:14:20 -0600 (Wed, 21 Mar 2012) $
 """
 
+# Python2 compatibility
+from __future__ import print_function, division
+try:
+    input = raw_input
+except NameError:
+    pass
+    
 import os
 import sys
 import pytz
@@ -38,7 +40,6 @@ from lsl.misc import parser as aph
 
 
 __version__ = "0.1"
-__revision__ = "$Rev$"
 
 # Date/time manipulation
 _UTC = pytz.utc
@@ -88,16 +89,16 @@ def main(args):
         
     # Parse the input file and get the dates of the scans
     station = stations.lwa1
-    project = idf.parseIDF(inputIDF)
+    project = idf.parse_idF(inputIDF)
     
     # Load the station and objects to find the Sun and Jupiter
-    observer = station.getObserver()
+    observer = station.get_observer()
     Sun = ephem.Sun()
     Jupiter = ephem.Jupiter()
     
     nObs = len(project.runs[0].scans)
     tStart = [None,]*nObs
-    for i in xrange(nObs):
+    for i in range(nObs):
         tStart[i]  = utcjd_to_unix(project.runs[0].scans[i].mjd + MJD_OFFSET)
         tStart[i] += project.runs[0].scans[i].mpm / 1000.0
         tStart[i]  = datetime.utcfromtimestamp(tStart[i])
@@ -108,11 +109,11 @@ def main(args):
     lst = observer.sidereal_time()
     
     # Report on the file
-    print "Filename: %s" % inputIDF
-    print " Project ID: %s" % project.id
-    print " Run ID: %i" % project.runs[0].id
-    print " Scans appear to start at %s" % (min(tStart)).strftime(formatString)
-    print " -> LST at %s for this date/time is %s" % (station.name, lst)
+    print("Filename: %s" % inputIDF)
+    print(" Project ID: %s" % project.id)
+    print(" Run ID: %i" % project.runs[0].id)
+    print(" Scans appear to start at %s" % (min(tStart)).strftime(formatString))
+    print(" -> LST at %s for this date/time is %s" % (station.name, lst))
     
     # Filenames in an easier format - output
     if not args.query:
@@ -127,50 +128,50 @@ def main(args):
         lastDur = timedelta(seconds=int(lastDur/1000), microseconds=(lastDur*1000) % 1000000)
         runDur = max(tStart) - min(tStart) + lastDur
         
-        print " "
-        print " Total Run Duration: %s" % runDur
-        print " -> First scan starts at %s" % min(tStart).strftime(formatString)
-        print " -> Last scan ends at %s" % (max(tStart) + lastDur).strftime(formatString)
-        print " Correlator Setup:"
-        print " -> %i channels" % project.runs[0].corr_channels
-        print " -> %.3f s integration time" % project.runs[0].corr_inttime
-        print " -> %s output polarization basis" % project.runs[0].corr_basis
+        print(" ")
+        print(" Total Run Duration: %s" % runDur)
+        print(" -> First scan starts at %s" % min(tStart).strftime(formatString))
+        print(" -> Last scan ends at %s" % (max(tStart) + lastDur).strftime(formatString))
+        print(" Correlator Setup:")
+        print(" -> %i channels" % project.runs[0].corr_channels)
+        print(" -> %.3f s integration time" % project.runs[0].corr_inttime)
+        print(" -> %s output polarization basis" % project.runs[0].corr_basis)
         
-        print " "
-        print " Number of scans: %i" % nObs
-        print " Scan Detail:"
-        for i in xrange(nObs):
+        print(" ")
+        print(" Number of scans: %i" % nObs)
+        print(" Scan Detail:")
+        for i in range(nObs):
             currDur = project.runs[0].scans[i].dur
             currDur = timedelta(seconds=int(currDur/1000), microseconds=(currDur*1000) % 1000000)
             
-            print "  Scan #%i" % (i+1,)
+            print("  Scan #%i" % (i+1,))
             
             ## Basic setup
-            print "   Target: %s" % project.runs[0].scans[i].target
-            print "   Intent: %s" % project.runs[0].scans[i].intent
-            print "   Start:"
-            print "    MJD: %i" % project.runs[0].scans[i].mjd
-            print "    MPM: %i" % project.runs[0].scans[i].mpm
-            print "    -> %s" % getScanStartStop(project.runs[0].scans[i])[0].strftime(formatString)
-            print "   Duration: %s" % currDur
+            print("   Target: %s" % project.runs[0].scans[i].target)
+            print("   Intent: %s" % project.runs[0].scans[i].intent)
+            print("   Start:")
+            print("    MJD: %i" % project.runs[0].scans[i].mjd)
+            print("    MPM: %i" % project.runs[0].scans[i].mpm)
+            print("    -> %s" % getScanStartStop(project.runs[0].scans[i])[0].strftime(formatString))
+            print("   Duration: %s" % currDur)
             
             ## DP setup
-            print "   Tuning 1: %.3f MHz" % (project.runs[0].scans[i].frequency1/1e6,)
-            print "   Tuning 2: %.3f MHz" % (project.runs[0].scans[i].frequency2/1e6,)
-            print "   Filter code: %i" % project.runs[0].scans[i].filter
+            print("   Tuning 1: %.3f MHz" % (project.runs[0].scans[i].frequency1/1e6,))
+            print("   Tuning 2: %.3f MHz" % (project.runs[0].scans[i].frequency2/1e6,))
+            print("   Filter code: %i" % project.runs[0].scans[i].filter)
             
             ## Comments/notes
-            print "   Observer Comments: %s" % project.runs[0].scans[i].comments
+            print("   Observer Comments: %s" % project.runs[0].scans[i].comments)
             
         # Valid?
-        print " "
+        print(" ")
         try:
             if project.validate():
-                print " Valid?  Yes"
+                print(" Valid?  Yes")
             else:
-                print " Valid?  No"
+                print(" Valid?  No")
         except:
-            print " Valid?  No"
+            print(" Valid?  No")
             
         # And then exits
         sys.exit()
@@ -182,16 +183,16 @@ def main(args):
         # Get the new start date/time in UTC and report on the difference
         if args.lst:
             if args.date is None:
-                print " "
-                print "Enter the new UTC start date:"
-                tNewStart = raw_input('YYYY/MM/DD-> ')
+                print(" ")
+                print("Enter the new UTC start date:")
+                tNewStart = input('YYYY/MM/DD-> ')
                 try:
                     fields = tNewStart.split('/', 2)
                     fields = [int(f) for f in fields]
                     tNewStart = date(fields[0], fields[1], fields[2])
                     tNewStart = datetime.combine(tNewStart, min(tStart).time())
-                except Exception, e:
-                    print "Error: %s" % str(e)
+                except Exception as e:
+                    print("Error: %s" % str(e))
                     sys.exit(1)
                     
             else:
@@ -225,16 +226,16 @@ def main(args):
             
         else:
             if args.date is None or args.time is None:
-                print " "
-                print "Enter the new UTC start date/time:"
-                tNewStart = raw_input('YYYY/MM/DD HH:MM:SS.SSS -> ')
+                print(" ")
+                print("Enter the new UTC start date/time:")
+                tNewStart = input('YYYY/MM/DD HH:MM:SS.SSS -> ')
                 try:
                     tNewStart = datetime.strptime(tNewStart, '%Y/%m/%d %H:%M:%S.%f')
                 except ValueError:
                     try:
                         tNewStart = datetime.strptime(tNewStart, '%Y/%m/%d %H:%M:%S')
-                    except Exception, e:
-                        print "Error: %s" % str(e)
+                    except Exception as e:
+                        print("Error: %s" % str(e))
                         sys.exit(1)
                         
             else:
@@ -249,14 +250,14 @@ def main(args):
         observer.date = (tNewStart).strftime('%Y/%m/%d %H:%M:%S')
         lst = observer.sidereal_time()
         
-        print " "
-        print "Shifting scans to start at %s" % tNewStart.strftime(formatString)
-        print "-> Difference of %i days, %.3f seconds" % (tShift.days, (tShift.seconds + tShift.microseconds/1000000.0),)
-        print "-> LST at %s for this date/time is %s" % (station.name, lst)
+        print(" ")
+        print("Shifting scans to start at %s" % tNewStart.strftime(formatString))
+        print("-> Difference of %i days, %.3f seconds" % (tShift.days, (tShift.seconds + tShift.microseconds/1000000.0),))
+        print("-> LST at %s for this date/time is %s" % (station.name, lst))
         if tShift.days == 0 and tShift.seconds == 0 and tShift.microseconds == 0:
-            print " "
-            print "The current shift is zero.  Do you want to continue anyways?"
-            yesNo = raw_input("-> [y/N] ")
+            print(" ")
+            print("The current shift is zero.  Do you want to continue anyways?")
+            yesNo = input("-> [y/N] ")
             if yesNo not in ('y', 'Y'):
                 sys.exit()
                 
@@ -264,32 +265,32 @@ def main(args):
         tShift = timedelta(seconds=0)
         
     # Shift the start times and recompute the MJD and MPM values
-    for i in xrange(nObs):
+    for i in range(nObs):
         tStart[i] += tShift
         
     #
     # Query and set the new run ID
     #
-    print " "
+    print(" ")
     if args.rid is None:
-        print "Enter the new run ID or return to keep current:"
-        sid = raw_input('-> ')
+        print("Enter the new run ID or return to keep current:")
+        sid = input('-> ')
         if len(sid) > 0:
             sid = int(sid)
         else:
             sid = project.runs[0].id
     else:
         sid = args.rid
-    print "Shifting run ID from %i to %i" % (project.runs[0].id, sid)
+    print("Shifting run ID from %i to %i" % (project.runs[0].id, sid))
     project.runs[0].id = sid
     
     #
     # Go! (apply the changes to the scans)
     #
-    print " "
+    print(" ")
     newPOOC = []
-    for i in xrange(nObs):
-        print "Working on Scan #%i" % (i+1,)
+    for i in range(nObs):
+        print("Working on Scan #%i" % (i+1,))
         newPOOC.append("")
         
         #
@@ -310,9 +311,9 @@ def main(args):
             diff = tStart[i] - utcMidnight
             mpm = int(round((diff.seconds + diff.microseconds/1000000.0)*1000.0))
             
-            print " Time shifting"
-            print "  MJD: %8i -> %8i" % (project.runs[0].scans[i].mjd, mjd)
-            print "  MPM: %8i -> %8i" % (project.runs[0].scans[i].mpm, mpm)
+            print(" Time shifting")
+            print("  MJD: %8i -> %8i" % (project.runs[0].scans[i].mjd, mjd))
+            print("  MPM: %8i -> %8i" % (project.runs[0].scans[i].mpm, mpm))
             
             project.runs[0].scans[i].mjd = mjd
             project.runs[0].scans[i].mpm = mpm
@@ -322,18 +323,18 @@ def main(args):
     # Project office comments
     #
     # Update the project office comments with this change
-    newPOSC = "Shifted IDF with shiftIDF.py (v%s, %s);;Time Shift? %s" % (__version__, __revision__, 'Yes' if (not args.no_update) else 'No')
+    newPOSC = "Shifted IDF with shiftIDF.py (v%s);;Time Shift? %s" % (__version__, 'Yes' if (not args.no_update) else 'No')
     
     if project.projectOffice.runs[0] is None:
         project.projectOffice.runs[0] = newPOSC
     else:
         project.projectOffice.runs[0] += ';;%s' % newPOSC
         
-    for i in xrange(nObs):
+    for i in range(nObs):
         try:
             project.projectOffice.scans[0][i] += ';;%s' % newPOOC[i]
-        except Exception, e:
-            print e
+        except Exception as e:
+            print(e)
             project.projectOffice.scans[0][i] = '%s' % newPOOC[i]
             
     #
@@ -345,8 +346,8 @@ def main(args):
         foStart = min(tStart)
         outputIDF = '%s_%s_%s_%04i.idf' % (pID, foStart.strftime('%y%m%d'), foStart.strftime('%H%M'), rID)
         
-    print " "
-    print "Saving to: %s" % outputIDF
+    print(" ")
+    print("Saving to: %s" % outputIDF)
     fh = open(outputIDF, 'w')
     if not project.validate():
         # Make sure we are about to be valid

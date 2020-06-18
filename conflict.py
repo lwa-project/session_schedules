@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 """
 Assign beams for plotting based on start and stop times of a set of observations.  
 
@@ -10,9 +8,13 @@ a list of beam ID (zero indexed) and deals with conflicts by mapping all conflic
 to beam 0.
 """
 
+# Python2 compatibility
+from __future__ import print_function, division
+ 
+from functools import cmp_to_key
+
 __version__ = '0.1'
-__revision__ = '$Rev$'
-__all__ = ['lowestIdleBeam', 'unravelObs', 'assignBeams', '__version__', '__revision__', '__all__']
+__all__ = ['lowestIdleBeam', 'unravelObs', 'assignBeams']
 
 
 def lowestIdleBeam(beams):
@@ -21,7 +23,7 @@ def lowestIdleBeam(beams):
     a value of -1.  If all beams are active, return -1.
     """
     
-    for i in xrange(len(beams)):
+    for i in range(len(beams)):
         if beams[i] == -1:
             return i
     return -1
@@ -37,7 +39,7 @@ def unravelObs(obs):
     # Loop over the observations.  We will worry about the time order 
     # later
     rObs = []
-    for i in xrange(len(obs)):
+    for i in range(len(obs)):
         iStart =  obs[i].mjd + obs[i].mpm/1000.0/3600.0/24.0
         iStop = iStart + obs[i].dur/1000.0/3600.0/24.0
         
@@ -69,7 +71,7 @@ def unravelObs(obs):
                 return 0
     
     # Sort and return
-    return sorted(rObs, cmp=cmpObs)
+    return sorted(rObs, key=cmp_to_key(cmpObs))
 
 
 def assignBeams(obs, nBeams=4):
