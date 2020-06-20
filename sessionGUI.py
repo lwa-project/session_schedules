@@ -3766,7 +3766,7 @@ class VolumeInfo(wx.Frame):
                 mt = mt.replace('}', '')
                 
                 if mt in ('XX', 'YY', 'XY', 'YX', 'XXYY', 'XXXYYXYY'):
-                    products = len(mt)/2
+                    products = len(mt)//2
                 else:
                     products = len(mt)
                     
