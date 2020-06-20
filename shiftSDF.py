@@ -150,7 +150,7 @@ def main(args):
             drspec = 'No'
             if project.sessions[0].spcSetup[0] != 0 and project.sessions[0].spcSetup[1] != 0:
                 drspec = 'Yes'
-            drxBeam = project.sessions[0].drxBeam
+            drxBeam = project.sessions[0].drx_beam
             if drxBeam < 1:
                 drxBeam = "MCS decides"
             else:
@@ -385,7 +385,7 @@ def main(args):
     if outputSDF is None:
         pID = project.id
         sID = project.sessions[0].id
-        beam = project.sessions[0].drxBeam
+        beam = project.sessions[0].drx_beam
         foStart = min(tStart)
         
         if project.sessions[0].observations[0].mode not in ('TBW', 'TBN'):
@@ -410,7 +410,7 @@ def main(args):
                         
                 print("Shifting DRX beam from %i to %i" % (beam, newBeam))
                 beam = newBeam
-                project.sessions[0].drxBeam = beam
+                project.sessions[0].drx_beam = beam
                 
             outputSDF = '%s_%s_%s_%04i_B%i.sdf' % (pID, foStart.strftime('%y%m%d'), foStart.strftime('%H%M'), sID, beam)
         else:

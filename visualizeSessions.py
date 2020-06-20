@@ -178,7 +178,7 @@ class Visualization_GUI(object):
                 else:
                     beam = 5
             else:
-                beam = project.sessions[0].drxBeam
+                beam = project.sessions[0].drx_beam
             sessionStart = getObsStartStop(project.sessions[0].observations[ 0])[0] - sessionLag
             sessionStop  = getObsStartStop(project.sessions[0].observations[-1])[1] + sessionLag
             duration = sessionStop-sessionStart
@@ -463,7 +463,7 @@ class Visualization_GUI(object):
             drspec = 'No'
             if project.sessions[0].spcSetup[0] != 0 and project.sessions[0].spcSetup[1] != 0:
                 drspec = 'Yes'
-            drxBeam = project.sessions[0].drxBeam
+            drxBeam = project.sessions[0].drx_beam
             if drxBeam < 1:
                 drxBeam = "MCS decides"
             else:

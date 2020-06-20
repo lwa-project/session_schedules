@@ -308,7 +308,7 @@ def describeSDF(observer, project):
         drspec = 'No'
         if project.sessions[0].spcSetup[0] != 0 and project.sessions[0].spcSetup[1] != 0:
             drspec = 'Yes'
-        drxBeam = project.sessions[0].drxBeam
+        drxBeam = project.sessions[0].drx_beam
         if drxBeam < 1:
             drxBeam = "MCS decides"
         else:
@@ -937,7 +937,7 @@ class gas(object):
                 if len(checked) == 5:
                     raise RuntimeError("Cannot find a free beam to assign session to")
                     
-                output[i].sessions[0].drxBeam = beam
+                output[i].sessions[0].drx_beam = beam
                 avaliable[beam] = sessionStop
             else:
                 # TBW and TBN observations
@@ -1158,7 +1158,7 @@ def main(args):
         if project.sessions[0].observations[0].mode in ('TBW', 'TBN'):
             mode = 'TB'
         else:
-            mode = 'B%i' % project.sessions[0].drxBeam
+            mode = 'B%i' % project.sessions[0].drx_beam
         
         ## Save
         filename = "%s_%04i_%s_%s.sdf" % (pID, project.sessions[0].id, sessionStart.strftime("%y%m%d_%H%M"), mode)
@@ -1193,7 +1193,7 @@ def main(args):
         if project.sessions[0].observations[0].mode in ('TBW', 'TBN'):
             beam = 5
         else:
-            beam = project.sessions[0].drxBeam
+            beam = project.sessions[0].drx_beam
         sessionStart = getObsStartStop(project.sessions[0].observations[ 0])[0] - sessionLag
         sessionStop  = getObsStartStop(project.sessions[0].observations[-1])[1] + sessionLag
         duration = sessionStop-sessionStart
