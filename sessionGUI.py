@@ -3942,7 +3942,7 @@ class ResolveTarget(wx.Frame):
             if self.observationID != -1:
                 self.appli.Enable(True)
                 
-        except (IOError, ValueError, RuntimeError):
+        except (IOError, ValueError, AttributeError, RuntimeError):
             self.raText.SetValue("---")
             self.decText.SetValue("---")
             self.srvText.SetValue("Error resolving target")
