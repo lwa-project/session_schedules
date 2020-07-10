@@ -1964,11 +1964,11 @@ class SDFCreator(wx.Frame):
             
         if details is None:
             print("[%i] Error: %s" % (os.getpid(), str(error)))
-            self.statusbar.SetStatusText('Error: %s' % str(error), 1)
+            self.statusbar.SetStatusText('Error: %s' % str(error))
             dialog = wx.MessageDialog(self, '%s' % str(error), title, style=wx.OK|wx.ICON_ERROR)
         else:
             print("[%i] Error: %s" % (os.getpid(), str(details)))
-            self.statusbar.SetStatusText('Error: %s' % str(details), 1)
+            self.statusbar.SetStatusText('Error: %s' % str(details))
             dialog = wx.MessageDialog(self, '%s\n\nDetails:\n%s' % (str(error), str(details)), title, style=wx.OK|wx.ICON_ERROR)
             
         dialog.ShowModal()
@@ -3774,7 +3774,7 @@ class VolumeInfo(wx.Frame):
                 
                 tunes = 2
                 tlen, icount = self.parent.project.sessions[0].spcSetup
-                sample_rate = obs.FILTER_CODES[obs.filter]
+                sample_rate = obs.filter_codes[obs.filter]
                 duration = obs.dur / 1000.0
                 dataVolume = (76 + tlen*tunes*products*4) / (1.0*tlen*icount/sample_rate) * duration
             else:
