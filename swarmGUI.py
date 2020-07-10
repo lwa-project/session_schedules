@@ -2410,12 +2410,12 @@ class RunDisplay(wx.Frame):
         # Add plots to panel 1
         panel1 = wx.Panel(self, -1)
         vbox1 = wx.BoxSizer(wx.VERTICAL)
-        self.figure = Figure()
+        self.figure = Figure(figsize=(8,4))
         self.canvas = FigureCanvasWxAgg(panel1, -1, self.figure)
         self.toolbar = NavigationToolbar2WxAgg(self.canvas)
         self.toolbar.Realize()
         vbox1.Add(self.canvas,  1, wx.EXPAND)
-        vbox1.Add(self.toolbar, 0, wx.LEFT | wx.FIXED_MINSIZE)
+        vbox1.Add(self.toolbar, 0, wx.ALIGN_LEFT | wx.EXPAND)
         panel1.SetSizer(vbox1)
         hbox.Add(panel1, 1, wx.EXPAND)
         
@@ -2610,12 +2610,12 @@ class RunUVCoverageDisplay(wx.Frame):
         # Add plots to panel 1
         panel1 = wx.Panel(self, -1)
         vbox1 = wx.BoxSizer(wx.VERTICAL)
-        self.figure = Figure()
+        self.figure = Figure(figsize=(8,4))
         self.canvas = FigureCanvasWxAgg(panel1, -1, self.figure)
         self.toolbar = NavigationToolbar2WxAgg(self.canvas)
         self.toolbar.Realize()
         vbox1.Add(self.canvas,  1, wx.EXPAND)
-        vbox1.Add(self.toolbar, 0, wx.LEFT | wx.FIXED_MINSIZE)
+        vbox1.Add(self.toolbar, 0, wx.ALIGN_LEFT | wx.EXPAND)
         panel1.SetSizer(vbox1)
         hbox.Add(panel1, 1, wx.EXPAND)
         
