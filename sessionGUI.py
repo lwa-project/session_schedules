@@ -3470,18 +3470,18 @@ class SessionDisplay(wx.Frame):
         # Add plots to panel 1
         panel1 = wx.Panel(self, -1)
         vbox1 = wx.BoxSizer(wx.VERTICAL)
-        self.figure = Figure(figsize=(8,4))
+        self.figure = Figure()
         self.canvas = FigureCanvasWxAgg(panel1, -1, self.figure)
         self.toolbar = NavigationToolbar2WxAgg(self.canvas)
         self.toolbar.Realize()
-        vbox1.Add(self.canvas,  1, wx.EXPAND)
-        vbox1.Add(self.toolbar, 0, wx.ALIGN_LEFT | wx.EXPAND)
+        vbox1.Add(self.canvas,  1, wx.ALIGN_TOP | wx.EXPAND)
+        vbox1.Add(self.toolbar, 0, wx.ALIGN_BOTTOM)
         panel1.SetSizer(vbox1)
         hbox.Add(panel1, 1, wx.EXPAND)
         
         # Use some sizers to see layout options
         self.SetSizer(hbox)
-        self.SetAutoLayout(1)
+        self.SetAutoLayout(0)
         hbox.Fit(self)
         
     def initEvents(self):
@@ -3513,6 +3513,7 @@ class SessionDisplay(wx.Frame):
         
         self.figure.clf()
         self.ax1 = self.figure.gca()
+        self.ax2 = self.ax1.twiny()
         
         ## The actual observations
         i = 0
@@ -3527,7 +3528,6 @@ class SessionDisplay(wx.Frame):
             
         ## Second set of x axes
         self.ax1.xaxis.tick_bottom()
-        self.ax2 = self.figure.add_axes(self.ax1.get_position(), sharey=self.ax1, frameon=False)
         self.ax2.xaxis.tick_top()
         self.ax2.set_xlim([self.ax1.get_xlim()[0]*24.0, self.ax1.get_xlim()[1]*24.0])
         
@@ -3562,6 +3562,7 @@ class SessionDisplay(wx.Frame):
         
         self.figure.clf()
         self.ax1 = self.figure.gca()
+        self.ax2 = self.ax1.twiny()
         
         ## The actual observations
         observer = self.parent.station.get_observer()
@@ -3640,6 +3641,12 @@ class SessionDisplay(wx.Frame):
             else:
                 pass
                 
+        ### The 50% and 25% effective area limits
+        #xlim = self.ax1.get_xlim()
+        #self.ax1.hlines(math.asin(0.50**(1/1.6))*180/math.pi, *xlim, linestyle='-.', label='50% A$_e$(90$^{\circ}$)')
+        #self.ax1.hlines(math.asin(0.25**(1/1.6))*180/math.pi, *xlim, linestyle='-.', label='25% A$_e$(90$^{\circ}$)')
+        #self.ax1.set_xlim(xlim)
+        
         ## Add a legend
         handles, labels = self.ax1.get_legend_handles_labels()
         self.ax1.legend(handles[:i], labels[:i], loc=0)
@@ -3647,7 +3654,6 @@ class SessionDisplay(wx.Frame):
         ## Second set of x axes
         self.ax1.xaxis.tick_bottom()
         self.ax1.set_ylim([0, 90])
-        self.ax2 = self.figure.add_axes(self.ax1.get_position(), sharey=self.ax1, frameon=False)
         self.ax2.xaxis.tick_top()
         self.ax2.set_xlim([self.ax1.get_xlim()[0]*24.0, self.ax1.get_xlim()[1]*24.0])
         
@@ -3712,9 +3718,9 @@ class SessionDisplay(wx.Frame):
         w, h = self.GetSize()
         dpi = self.figure.get_dpi()
         newW = 1.0*w/dpi
-        newH1 = 1.0*(h/2-100)/dpi
-        newH2 = 1.0*(h/2-75)/dpi
-        self.figure.set_size_inches((newW, newH1))
+        newH = 1.0*(h-70)/dpi
+        self.figure.set_size_inches((newW, newH))
+        self.figure.tight_layout()
         self.figure.canvas.draw()
         
     def GetToolBar(self):

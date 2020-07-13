@@ -657,8 +657,8 @@ class ImageViewer(wx.Frame):
         self.canvas = FigureCanvasWxAgg(panel, -1, self.figure)
         self.toolbar = NavigationToolbar2WxAgg(self.canvas)
         self.toolbar.Realize()
-        vbox1.Add(self.canvas,  1, wx.EXPAND)
-        vbox1.Add(self.toolbar, 0, wx.LEFT | wx.FIXED_MINSIZE)
+        vbox1.Add(self.canvas,  1, wx.ALIGN_TOP | wx.EXPAND)
+        vbox1.Add(self.toolbar, 0, wx.ALIGN_BOTTOM)
         panel.SetSizer(vbox1)
         hbox.Add(panel, 1, wx.EXPAND)
         
