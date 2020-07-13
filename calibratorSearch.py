@@ -672,7 +672,8 @@ class ImageViewer(wx.Frame):
         Bind the various events needed to make the GUI run.
         """
         
-        pass
+        # Make the images resizable
+        self.Bind(wx.EVT_PAINT, self.resizePlots)
         
     def _sin_px_to_sky(self, x, y):
         """
@@ -817,6 +818,18 @@ class ImageViewer(wx.Frame):
         """
         
         self.figure.canvas.mpl_disconnect(self.cidmotion)
+        
+    def resizePlots(self, event):
+        # Get the current size of the window and the navigation toolbar
+        w, h = self.GetClientSize()
+        wt, ht = self.toolbar.GetSize()
+        
+        dpi = self.figure.get_dpi()
+        newW = 1.0*w/dpi
+        newH = 1.0*(h-ht)/dpi
+        self.figure.set_size_inches((newW, newH))
+        self.figure.tight_layout()
+        self.figure.canvas.draw()
         
     def GetToolBar(self):
         # You will need to override GetToolBar if you are using an 
