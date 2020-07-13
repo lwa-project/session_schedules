@@ -642,8 +642,8 @@ class MainWindow(wx.Frame):
         self.canvas = FigureCanvasWxAgg(panel1, -1, self.figure)
         self.toolbar = NavigationToolbar2WxAgg(self.canvas)
         self.toolbar.Realize()
-        hbox1.Add(self.canvas, 1, wx.EXPAND)
-        hbox1.Add(self.toolbar, 0, wx.LEFT | wx.FIXED_MINSIZE)
+        hbox1.Add(self.canvas,  1, wx.ALIGN_LEFT | wx.EXPAND)
+        hbox1.Add(self.toolbar, 0, wx.ALIGN_LEFT)
         panel1.SetSizer(hbox1)
         vbox.Add(panel1, 1, wx.EXPAND)
         

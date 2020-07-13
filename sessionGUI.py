@@ -3474,8 +3474,8 @@ class SessionDisplay(wx.Frame):
         self.canvas = FigureCanvasWxAgg(panel1, -1, self.figure)
         self.toolbar = NavigationToolbar2WxAgg(self.canvas)
         self.toolbar.Realize()
-        vbox1.Add(self.canvas,  1, wx.ALIGN_TOP | wx.EXPAND)
-        vbox1.Add(self.toolbar, 0, wx.ALIGN_BOTTOM)
+        vbox1.Add(self.canvas,  1, wx.ALIGN_LEFT | wx.EXPAND)
+        vbox1.Add(self.toolbar, 0, wx.ALIGN_LEFT)
         panel1.SetSizer(vbox1)
         hbox.Add(panel1, 1, wx.EXPAND)
         
@@ -3715,10 +3715,13 @@ class SessionDisplay(wx.Frame):
         self.Close()
         
     def resizePlots(self, event):
-        w, h = self.GetSize()
+        # Get the current size of the window and the navigation toolbar
+        w, h = self.GetClientSize()
+        wt, ht = self.toolbar.GetSize()
+        
         dpi = self.figure.get_dpi()
         newW = 1.0*w/dpi
-        newH = 1.0*(h-70)/dpi
+        newH = 1.0*(h-ht)/dpi
         self.figure.set_size_inches((newW, newH))
         self.figure.tight_layout()
         self.figure.canvas.draw()
