@@ -108,6 +108,14 @@ class FilesListCtrl(wx.ListCtrl, CheckListCtrlMixin):
     def __init__(self, parent, **kwargs):
         wx.ListCtrl.__init__(self, parent, style=wx.LC_REPORT, **kwargs)
         CheckListCtrlMixin.__init__(self)
+        
+    def CheckItem(self, index, check=True):
+        """
+        Catch for wxPython 4.1 which has a wx.ListCtrl.CheckItem() method 
+        that interferes with CheckListCtrlMixin.CheckItem().
+        """
+        
+        CheckListCtrlMixin.CheckItem(self, index, check=check)
 
 
 class Visualization_GUI(object):

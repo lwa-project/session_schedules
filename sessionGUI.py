@@ -316,6 +316,14 @@ class ObservationListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrl
             self.parent.toolbar.EnableTool(ID_REMOVE, True)
             self.parent.obsmenu['resolve'].Enable(False)
             
+    def CheckItem(self, index, check=True):
+        """
+        Catch for wxPython 4.1 which has a wx.ListCtrl.CheckItem() method 
+        that interferes with CheckListCtrlMixin.CheckItem().
+        """
+        
+        CheckListCtrlMixin.CheckItem(self, index, check=check)
+        
     def OnCheckItem(self, index, flag):
         """
         Overwrite the default OnCheckItem function so that we can control the enabling
@@ -393,6 +401,14 @@ class SteppedListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrlMixi
             except (KeyError, AttributeError):
                 pass
                 
+    def CheckItem(self, index, check=True):
+        """
+        Catch for wxPython 4.1 which has a wx.ListCtrl.CheckItem() method 
+        that interferes with CheckListCtrlMixin.CheckItem().
+        """
+        
+        CheckListCtrlMixin.CheckItem(self, index, check=check)
+        
     def OnCheckItem(self, index, flag):
         """
         Overwrite the default OnCheckItem function so that we can control the enabling

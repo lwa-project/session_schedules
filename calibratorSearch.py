@@ -22,7 +22,7 @@ import astropy.io.fits as astrofits
 import wx
 import wx.html as html
 from wx.lib.scrolledpanel import ScrolledPanel
-from wx.lib.mixins.listctrl import TextEditMixin, CheckListCtrlMixin
+from wx.lib.mixins.listctrl import TextEditMixin
 
 import matplotlib
 matplotlib.use('WXAgg')
