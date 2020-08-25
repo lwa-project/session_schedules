@@ -1,21 +1,5 @@
 #!/usr/bin/env python
 
-"""
-efficianado.py - Script to pack a collection of SDFs into the shortest observing time 
-using an adaptive genetic algorithm.
-
-Usage:
-efficianado.py [OPTIONS] SDF1 [SDF2 [...]]
-
-Options:
--h, --help             Display this help message
--m, --maintenance      Add a maintenance day (YYYY/MM/DD; 9 to 17 MT)
--l, --limits           Schedule search limit in days (default 14 days)
--p, --population-size  GA population size (default 1,000)
--g, --generations      Number of generations to use (default 250)
--v, --verbose          Be verbose about shifting operations
-"""
-
 # Python2 compatibility
 from __future__ import print_function, division
  
@@ -26,11 +10,10 @@ import math
 import pytz
 import ephem
 import numpy
-import getopt
 import random
+import argparse
 from datetime import datetime, timedelta
 from functools import cmp_to_key
-
 
 from multiprocessing import Pool, cpu_count
 
@@ -40,6 +23,7 @@ from lsl.common import sdf
 from lsl.transform import Time
 from lsl.common.stations import lwa1
 from lsl.astro import utcjd_to_unix, MJD_OFFSET
+from lsl.misc import parser as aph
 
 import matplotlib.dates
 from matplotlib import pyplot as plt
@@ -59,86 +43,6 @@ sessionLag = timedelta(seconds=5)
 solarDay    = timedelta(seconds=24*3600, microseconds=0)
 siderealDay = timedelta(seconds=23*3600+56*60+4, microseconds=91000)
 siderealRegression = solarDay - siderealDay
-
-
-def getPointingCorrection():
-    """
-    Return a two-element tuple (RA in hours, Dec in degrees) of the pointing 
-    correction used by shiftLST.py.  Always returns (0.0, 0.0) since the
-    pointing should be correct now.
-    """
-    
-    return (0.0 / 3600.0, 0.0 / 3600.0)
-
-
-def usage(exitCode=None):
-    print("""efficianado.py - Script to schedule observations.)
-    
-Usage: efficianado.py [OPTIONS] YYYY/MM/DD SDF1 [SDF2 [...]]
-
-Options:
--h, --help             Display this help message
--m, --maintenance      Add a maintenance day (YYYY/MM/DD; 9 to 17 MT)
--l, --limits           Schedule search limit in days (default 14 days)
--p, --population-size  GA population size (default 1,000)
--g, --generations      Number of generations to use (default 200)
--v, --verbose          Be verbose about shifting operations
-""")
-    
-    if exitCode is not None:
-        sys.exit(exitCode)
-    else:
-        return True
-
-
-def parseOptions(args):
-    # Get the pointing correction
-    pc = getPointingCorrection()
-    
-    config = {}
-    config['start'] = None
-    config['limit'] = 14
-    config['maintenance'] = []
-    config['popSize'] = 1000
-    config['generations'] = 200
-    config['verbose'] = False
-    config['makeRADec'] = True
-    config['updatePointing'] = True
-    config['pointingErrorRA'] = pc[0]
-    config['pointingErrorDec'] = pc[1]
-    config['args'] = []
-    
-    # Read in and process the command line flags
-    try:
-        opts, args = getopt.getopt(args, "hm:l:p:g:v", ["help", "maintenance=", "limits=", "population-size=", "generations=", "verbose"])
-    except getopt.GetoptError as err:
-        # Print help information and exit:
-        print(str(err)) # will print something like "option -a not recognized"
-        usage(exitCode=2)
-        
-    # Work through opts
-    for opt, value in opts:
-        if opt in ('-h', '--help'):
-            usage(exitCode=0)
-        elif opt in ('-m', '--maintenance'):
-            config['maintenance'].append(value)
-        elif opt in ('-l', '--limits'):
-            config['limit'] = int(value)
-        elif opt in ('-p', '--population-size'):
-            config['popSize'] = int(value)
-        elif opt in ('-g', '--generations'):
-            config['generations'] = int(value)
-        elif opt in ('-v', '--verbose'):
-            config['verbose'] = True
-        else:
-            assert False
-        
-    # Add in arguments
-    config['start'] = args[0]
-    config['args'] = args[1:]
-
-    # Return configuration
-    return config
 
 
 def round15Minutes(tNow):
@@ -1057,15 +961,13 @@ class gas(object):
 
 
 def main(args):
-    config = parseOptions(args)
-
-    y,m,d = config['start'].split('/', 2)
+    y,m,d = args.date.split('/', 2)
     startWeek = datetime(int(y), int(m), int(d), 0, 0, 0)
     startWeek = _UTC.localize(startWeek)
     woy = 1 + int(startWeek.strftime("%U"))
     
     maintenance = []
-    for value in config['maintenance']:
+    for value in args.maintenance:
         y,m,d = value.split('/', 2)
         maintenance.append( datetime(int(y), int(m), int(d), 9, 0, 0) )
         maintenance[-1] = _MST.localize(maintenance[-1])
@@ -1076,7 +978,7 @@ def main(args):
     observer = lwa1.get_observer()
     
     sessionSDFs = []
-    for filename in config['args']:
+    for filename in args.filename:
         project = sdf.parse_sdf(filename)
         sessionSDFs.append(project)
     
@@ -1088,7 +990,7 @@ def main(args):
     print("Schedule Setup:")
     print("  Start day: %s" % startWeek.strftime("%A, %Y/%m/%d"))
     print("  Week of year: %i" % woy)
-    print("  Search period: %i days" % config['limit'])
+    print("  Search period: %i days" % args.limits)
     print("  Maintenance Days:")
     if len(maintenance) == 0:
         print("    None")
@@ -1101,11 +1003,11 @@ def main(args):
     print(" ")
     
     ## Actually run the schedule
-    g = gas(startWeek, nOffsets=config['popSize'], searchLimits=config['limit'], verbose=config['verbose'])
+    g = gas(startWeek, nOffsets=args.population_size, searchLimits=args.limits, verbose=args.verbose)
     g.defineProjects(sessionSDFs)
     g.setMaintenance(maintenance)
     g.validateParameters()
-    fMax, fMin, fMean, fStd = g.run(max_iterations=config['generations'])
+    fMax, fMin, fMean, fStd = g.run(max_iterations=args.generations)
     
     ## Plot population evolution
     fig = plt.figure()
@@ -1135,10 +1037,10 @@ def main(args):
     sidCounter = {}
     for project in g.getBest():
         ## Convert TRK_SOL and TRK_JOV to TRK_RADEC
-        project = makeRADec(project, verbose=config['verbose'])
+        project = makeRADec(project, verbose=args.verbose)
         
         ## Apply the pointing correction
-        project = makePointingCorrection(project, corrRA=config['pointingErrorRA'], corrDec=config['pointingErrorDec'], verbose=config['verbose'])
+        project = makePointingCorrection(project, corrRA=0, corrDec=0, verbose=args.verbose)
         
         ## Get project and session IDs (one of these will need to be remapped...)
         pID = project.id
@@ -1347,5 +1249,24 @@ def main(args):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    parser = argparse.ArgumentParser(
+        description="script to schedule observations",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        )
+    parser.add_argument('date', type=aph.date,
+                        help='UTC date to schedule in YYYY/MM/DD')
+    parser.add_argument('filename', type=str, nargs='+',
+                        help='filename to schedule')
+    parser.add_argument('-m', '--maintenance', type=aph.date,
+                        help='sdd a maintenance day in YYYY/MM/DD; 9 to 17 MT')
+    parser.add_argument('-l', '--limits', type=aph.positive_int, default=14,
+                        help='schedule search limit in days')
+    parser.add_argument('-p', '--population-size', type=aph.positive_int, default=1000,
+                        help='population size for the genetic pool')
+    parser.add_argument('-g', '--generations', type=aph.positive_int, default=200,
+                        help='number of generations to use')
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help='be verbose about shifting operations')
+    args = parser.parse_args()
+    main(args)
     
