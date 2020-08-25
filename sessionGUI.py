@@ -1017,7 +1017,7 @@ class SDFCreator(wx.Frame):
                     tStart, _ = self.sdf.get_observation_start_stop(self.project.sessions[0].observations[id+1])
                     tStart -= timedelta(seconds=dur//1000, microseconds=(dur%1000)*1000)
                     cStart = 'UTC %i %02i %02i %02i:%02i:%06.3f' % (tStart.year, tStart.month, tStart.day, tStart.hour, tStart.minute, tStart.second+tStart.microsecond/1e6)
-                    self.project.sessions[0].observations[id].set_start(cStart)
+                    self.project.sessions[0].observations[id].start = cStart
                     self.addObservation(self.project.sessions[0].observations[id], id, update=True)
                     
     def onPasteAfter(self, event):
@@ -1051,7 +1051,7 @@ class SDFCreator(wx.Frame):
                 for id in range(lastChecked+1, self.listControl.GetItemCount()):
                     _, tStop = self.sdf.get_observation_start_stop(self.project.sessions[0].observations[id-1])
                     cStart = 'UTC %i %02i %02i %02i:%02i:%06.3f' % (tStop.year, tStop.month, tStop.day, tStop.hour, tStop.minute, tStop.second+tStop.microsecond/1e6)
-                    self.project.sessions[0].observations[id].set_start(cStart)
+                    self.project.sessions[0].observations[id].start = cStart
                     self.addObservation(self.project.sessions[0].observations[id], id, update=True)
                     
     def onPasteEnd(self, event):
@@ -1085,7 +1085,7 @@ class SDFCreator(wx.Frame):
             for id in range(lastChecked+1, self.listControl.GetItemCount()):
                 _, tStop = self.sdf.get_observation_start_stop(self.project.sessions[0].observations[id-1])
                 cStart = 'UTC %i %02i %02i %02i:%02i:%06.3f' % (tStop.year, tStop.month, tStop.day, tStop.hour, tStop.minute, tStop.second+tStop.microsecond/1e6)
-                self.project.sessions[0].observations[id].set_start(cStart)
+                self.project.sessions[0].observations[id].start = cStart
                 self.addObservation(self.project.sessions[0].observations[id], id, update=True)
                 
     def onInfo(self, event):

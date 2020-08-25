@@ -22,18 +22,9 @@ import conflict
 
 import lsl
 from lsl.common.dp import fS
-from lsl.common import stations
+from lsl.common import stations, idf
 from lsl.astro import deg_to_dms, deg_to_hms, MJD_OFFSET, DJD_OFFSET
 from lsl.reader.drx import FILTER_CODES as DRXFilters
-try:
-    # HACK to deal with missing PM support in the idf.py module that
-    # ships with LSL v1.2.4.
-    if lsl.version.version != '1.2.4':
-        from lsl.common import idf
-    else:
-        raise ImportError
-except ImportError:
-    import idf
 from lsl.correlator import uvutils
 from lsl.misc import parser as aph
 
@@ -977,10 +968,10 @@ class IDFCreator(wx.Frame):
             for id in range(firstChecked+len(self.buffer)-1, -1, -1):
                 dur = self.project.runs[0].scans[id].dur
                 
-                tStart, _ = idf.getScanStartStop(self.project.runs[0].scans[id+1])
+                tStart, _ = idf.get_scan_start_stop(self.project.runs[0].scans[id+1])
                 tStart -= timedelta(seconds=dur//1000, microseconds=(dur%1000)*1000)
                 cStart = 'UTC %i %02i %02i %02i:%02i:%06.3f' % (tStart.year, tStart.month, tStart.day, tStart.hour, tStart.minute, tStart.second+tStart.microsecond/1e6)
-                self.project.runs[0].scans[id].set_start(cStart)
+                self.project.runs[0].scans[id].start = cStart
                 self.addScan(self.project.runs[0].scans[id], id, update=True)
                 
     def onPasteAfter(self, event):
@@ -1011,9 +1002,9 @@ class IDFCreator(wx.Frame):
                 
             # Fix the times on DRX scans to make thing continuous
             for id in range(lastChecked+1, self.listControl.GetItemCount()):
-                _, tStop = idf.getScanStartStop(self.project.runs[0].scans[id-1])
+                _, tStop = idf.get_scan_start_stop(self.project.runs[0].scans[id-1])
                 cStart = 'UTC %i %02i %02i %02i:%02i:%06.3f' % (tStop.year, tStop.month, tStop.day, tStop.hour, tStop.minute, tStop.second+tStop.microsecond/1e6)
-                self.project.runs[0].scans[id].set_start(cStart)
+                self.project.runs[0].scans[id].start = cStart
                 self.addScan(self.project.runs[0].scans[id], id, update=True)
                 
     def onPasteEnd(self, event):
@@ -1044,9 +1035,9 @@ class IDFCreator(wx.Frame):
             
         # Fix the times on DRX scans to make thing continuous
         for id in range(lastChecked+1, self.listControl.GetItemCount()):
-            _, tStop = idf.getScanStartStop(self.project.runs[0].scans[id-1])
+            _, tStop = idf.get_scan_start_stop(self.project.runs[0].scans[id-1])
             cStart = 'UTC %i %02i %02i %02i:%02i:%06.3f' % (tStop.year, tStop.month, tStop.day, tStop.hour, tStop.minute, tStop.second+tStop.microsecond/1e6)
-            self.project.runs[0].scans[id].set_start(cStart)
+            self.project.runs[0].scans[id].start = cStart
             self.addScan(self.project.runs[0].scans[id], id, update=True)
             
     def onInfo(self, event):
@@ -1070,7 +1061,7 @@ class IDFCreator(wx.Frame):
         
         tStop = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
         if self.listControl.GetItemCount() > 0:
-            _, tStop = idf.getScanStartStop(self.project.runs[0].scans[-1])
+            _, tStop = idf.get_scan_start_stop(self.project.runs[0].scans[-1])
             
         return 'UTC %i %02i %02i %02i:%02i:%06.3f' % (tStop.year, tStop.month, tStop.day, tStop.hour, tStop.minute, tStop.second+tStop.microsecond/1e6)
         

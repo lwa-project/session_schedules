@@ -51,7 +51,7 @@ siderealDay = timedelta(seconds=23*3600+56*60+4, microseconds=91000)
 siderealRegression = solarDay - siderealDay
 
 
-def getScanStartStop(scn):
+def get_scan_start_stop(scn):
     """
     Given an scan, get the start and stop times (returned as a two-
     element tuple).
@@ -152,7 +152,7 @@ def main(args):
             print("   Start:")
             print("    MJD: %i" % project.runs[0].scans[i].mjd)
             print("    MPM: %i" % project.runs[0].scans[i].mpm)
-            print("    -> %s" % getScanStartStop(project.runs[0].scans[i])[0].strftime(formatString))
+            print("    -> %s" % get_scan_start_stop(project.runs[0].scans[i])[0].strftime(formatString))
             print("   Duration: %s" % currDur)
             
             ## DP setup
