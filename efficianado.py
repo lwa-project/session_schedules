@@ -318,9 +318,9 @@ def makeRADec(project, observer=lwa1.get_observer(), verbose=False):
     # Set the project office comments for each observation
     for i in range(nObs):
         try:
-            project.projectOffice.observations[0][i] += ';;%s' % newPOOC[i]
+            project.project_office.observations[0][i] += ';;%s' % newPOOC[i]
         except:
-            project.projectOffice.observations[0][i] = '%s' % newPOOC[i]
+            project.project_office.observations[0][i] = '%s' % newPOOC[i]
             
     return project
 
@@ -333,11 +333,11 @@ def makePointingCorrection(project, corrRA=0.000, corrDec=0.000, verbose=False):
     """
     
     try:
-        if project.projectOffice.sessions[0] is not None:
-            if project.projectOffice.sessions[0].find('Position Shift? Yes') != -1:
+        if project.project_office.sessions[0] is not None:
+            if project.project_office.sessions[0].find('Position Shift? Yes') != -1:
                 return project
     except:
-        project.projectOffice.sessions = [None,]
+        project.project_office.sessions = [None,]
     
     nObs = len(project.sessions[0].observations)
     newPOOC = []
@@ -376,16 +376,16 @@ def makePointingCorrection(project, corrRA=0.000, corrDec=0.000, verbose=False):
     # Update the project office comments with this change
     newPOSC = "Shifted SDF with efficianado.py (v%s);;Position Shift? Yes" % __version__
     
-    if project.projectOffice.sessions[0] is None:
-        project.projectOffice.sessions[0] = newPOSC
+    if project.project_office.sessions[0] is None:
+        project.project_office.sessions[0] = newPOSC
     else:
-        project.projectOffice.sessions[0] += ';;%s' % newPOSC
+        project.project_office.sessions[0] += ';;%s' % newPOSC
     for i in range(nObs):
         try:
-            project.projectOffice.observations[0][i] += ';;%s' % newPOOC[i]
+            project.project_office.observations[0][i] += ';;%s' % newPOOC[i]
         except Exception as e:
             print(e)
-            project.projectOffice.observations[0][i] = '%s' % newPOOC[i]
+            project.project_office.observations[0][i] = '%s' % newPOOC[i]
             
     return project
 
