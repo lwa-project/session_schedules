@@ -89,7 +89,7 @@ def main(args):
         
     # Parse the input file and get the dates of the scans
     station = stations.lwa1
-    project = idf.parse_idF(inputIDF)
+    project = idf.parse_idf(inputIDF)
     
     # Load the station and objects to find the Sun and Jupiter
     observer = station.get_observer()
