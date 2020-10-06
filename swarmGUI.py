@@ -1386,8 +1386,7 @@ class IDFCreator(wx.Frame):
                 return float(value), 'Hz'
                 
         filterInfo = "DRX"
-        for dk in DRXFilters.keys():
-            dv = DRXFilters[dk]
+        for dk,dv in DRXFilters.items()):
             if dk > 7:
                 continue
             dv, du = units(dv)

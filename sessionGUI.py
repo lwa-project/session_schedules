@@ -1465,16 +1465,14 @@ class SDFCreator(wx.Frame):
                 
         if self.mode == 'TBN':
             filterInfo = "TBN"
-            for tk in TBNFilters.keys():
-                tv = TBNFilters[tk]
+            for tk,tv in TBNFilters.items():
                 if tk > 7:
                     continue
                 tv, tu = units(tv)
                 filterInfo = "%s\n%i  %.3f %-3s" % (filterInfo, tk, tv, tu)
         elif self.mode == 'DRX' or self.mode == 'TBF':
             filterInfo = "DRX"
-            for dk in DRXFilters.keys():
-                dv= DRXFilters[dk]
+            for dk,dv in DRXFilters.items():
                 if dk > 7:
                     continue
                 dv, du = units(dv)
