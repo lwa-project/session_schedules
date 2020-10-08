@@ -1763,7 +1763,7 @@ class ObserverInfo(wx.Frame):
     """
     
     def __init__(self, parent):
-        wx.Frame.__init__(self, parent, title='Observer Information', size=(735,595))
+        wx.Frame.__init__(self, parent, title='Observer Information', size=(735,575))
         
         self.parent = parent
         
@@ -1946,30 +1946,24 @@ class ObserverInfo(wx.Frame):
         stokes.Disable()
         
         did = wx.StaticText(panel, label='Data Return Method')
-        drsuRB = wx.RadioButton(panel, -1, 'DRSU', style=wx.RB_GROUP)
-        usbRB  = wx.RadioButton(panel, -1, 'Bare Drive (4 max)')
+        usbRB  = wx.RadioButton(panel, -1, 'Bare Drive(s)', style=wx.RB_GROUP)
         ucfRB  = wx.RadioButton(panel, -1, 'Copy to UCF')
         
         unam = wx.StaticText(panel, label='UCF Username:')
         unamText = wx.TextCtrl(panel)
         unamText.Disable()
         
-        if self.parent.project.runs[0].data_return_method == 'DRSU':
-            drsuRB.SetValue(True)
-            usbRB.SetValue(False)
-            ucfRB.SetValue(False)
-            
-        elif self.parent.project.runs[0].data_return_method == 'USB Harddrives':
-            drsuRB.SetValue(False)
+        if self.parent.project.runs[0].data_return_method == 'USB Harddrives':
             usbRB.SetValue(True)
             ucfRB.SetValue(False)
             
         else:
-            drsuRB.SetValue(False)
             usbRB.SetValue(False)
             ucfRB.SetValue(True)
             
-            mtch = _usernameRE.search(self.parent.project.runs[0].comments)
+            mtch = None
+            if self.parent.project.runs[0].comments is not None:
+                mtch = _usernameRE.search(self.parent.project.runs[0].comments)
             if mtch is not None:
                 unamText.SetValue(mtch.group('username'))
             unamText.Enable()
@@ -1995,11 +1989,10 @@ class ObserverInfo(wx.Frame):
         sizer.Add(stokes, pos=(row+7,5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         
         sizer.Add(did, pos=(row+8,0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(drsuRB, pos=(row+8,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(usbRB, pos=(row+9,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(ucfRB, pos=(row+10,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(unam, pos=(row+10,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(unamText, pos=(row+10,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(usbRB, pos=(row+8,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(ucfRB, pos=(row+9,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(unam, pos=(row+9,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(unamText, pos=(row+9,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         
         line = wx.StaticLine(panel)
         sizer.Add(line, pos=(row+11, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
@@ -2034,7 +2027,6 @@ class ObserverInfo(wx.Frame):
         self.runIDEntry = sidText
         self.runTitleEntry = snameText
         self.runCommentsEntry = scomsText
-        self.drsuButton = drsuRB
         self.usbButton = usbRB
         self.ucfButton = ucfRB
         self.unamText = unamText
@@ -2105,9 +2097,7 @@ class ObserverInfo(wx.Frame):
         else:
             self.parent.project.runs[0].corr_basis = 'stokes'
             
-        if self.drsuButton.GetValue():
-            self.parent.project.runs[0].data_return_method = 'DRSU'
-        elif self.usbButton.GetValue():
+        if self.usbButton.GetValue():
             self.parent.project.runs[0].data_return_method = 'USB Harddrives'
         else:
             self.parent.project.runs[0].data_return_method = 'UCF'

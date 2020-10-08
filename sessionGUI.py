@@ -2003,7 +2003,7 @@ class ObserverInfo(wx.Frame):
     """
     
     def __init__(self, parent):
-        wx.Frame.__init__(self, parent, title='Observer Information', size=(880,685))
+        wx.Frame.__init__(self, parent, title='Observer Information', size=(880,665))
         
         self.parent = parent
         
@@ -2200,8 +2200,7 @@ class ObserverInfo(wx.Frame):
                 tbfRB.Disable()
             
         did = wx.StaticText(panel, label='Data Return Method')
-        drsuRB = wx.RadioButton(panel, -1, 'DRSU', style=wx.RB_GROUP)
-        usbRB  = wx.RadioButton(panel, -1, 'Bare Drive (4 max)')
+        usbRB  = wx.RadioButton(panel, -1, 'Bare Drive(s)', style=wx.RB_GROUP)
         ucfRB  = wx.RadioButton(panel, -1, 'Copy to UCF')
         
         unam = wx.StaticText(panel, label='UCF Username:')
@@ -2222,15 +2221,7 @@ class ObserverInfo(wx.Frame):
         linear.Disable()
         stokes.Disable()
         
-        if self.parent.project.sessions[0].data_return_method == 'DRSU':
-            drsuRB.SetValue(True)
-            usbRB.SetValue(False)
-            ucfRB.SetValue(False)
-            
-            nchnText.SetValue("1024")
-            nintText.SetValue("6144")
-        elif self.parent.project.sessions[0].data_return_method == 'USB Harddrives':
-            drsuRB.SetValue(False)
+        if self.parent.project.sessions[0].data_return_method == 'USB Harddrives':
             usbRB.SetValue(True)
             ucfRB.SetValue(False)
             
@@ -2239,11 +2230,12 @@ class ObserverInfo(wx.Frame):
             linear.SetValue(True)
             stokes.SetValue(False)
         else:
-            drsuRB.SetValue(False)
             usbRB.SetValue(False)
             ucfRB.SetValue(True)
             
-            mtch = _usernameRE.search(self.parent.project.sessions[0].comments)
+            mtch = None
+            if self.parent.project.sessions[0].comments is not None:
+                mtch = _usernameRE.search(self.parent.project.sessions[0].comments)
             if mtch is not None:
                 unamText.SetValue(mtch.group('username'))
             unamText.Enable()
@@ -2327,24 +2319,23 @@ class ObserverInfo(wx.Frame):
         sizer.Add(tbnRB, pos=(row+8,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer.Add(drxRB, pos=(row+9,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer.Add(did, pos=(row+10,0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(drsuRB, pos=(row+10,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(usbRB, pos=(row+11,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(ucfRB, pos=(row+12,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(unam, pos=(row+12,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(unamText, pos=(row+12,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(drsCB, pos=(row+13,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(nchn, pos=(row+13,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(nchnText, pos=(row+13,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(nint, pos=(row+13,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(nintText, pos=(row+13,5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(spid, pos=(row+14,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(linear, pos=(row+14,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer.Add(stokes, pos=(row+14,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(usbRB, pos=(row+10,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(ucfRB, pos=(row+11,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(unam, pos=(row+11,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(unamText, pos=(row+11,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(drsCB, pos=(row+12,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(nchn, pos=(row+12,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(nchnText, pos=(row+12,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(nint, pos=(row+12,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(nintText, pos=(row+12,5), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(spid, pos=(row+13,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(linear, pos=(row+13,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(stokes, pos=(row+13,4), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         
         line = wx.StaticLine(panel)
-        sizer.Add(line, pos=(row+15, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
+        sizer.Add(line, pos=(row+14, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
         
-        row += 16
+        row += 15
         
         #
         # Buttons
@@ -2378,7 +2369,6 @@ class ObserverInfo(wx.Frame):
         self.tbfButton = tbfRB
         self.tbnButton = tbnRB
         self.drxButton = drxRB
-        self.drsuButton = drsuRB
         self.usbButton = usbRB
         self.ucfButton = ucfRB
         self.unamText = unamText
@@ -2465,11 +2455,7 @@ class ObserverInfo(wx.Frame):
         self.parent.project.sessions[0].name = self.sessionTitleEntry.GetValue()
         self.parent.project.sessions[0].comments = self.sessionCommentsEntry.GetValue().replace('\n', ';;')
         
-        if self.drsuButton.GetValue():
-            self.parent.project.sessions[0].data_return_method = 'DRSU'
-            self.parent.project.sessions[0].spcSetup = [0, 0]
-            self.parent.project.sessions[0].spcMetatag = None
-        elif self.usbButton.GetValue():
+        if self.usbButton.GetValue():
             self.parent.project.sessions[0].data_return_method = 'USB Harddrives'
             self.parent.project.sessions[0].spcSetup = [0, 0]
             self.parent.project.sessions[0].spcMetatag = None
@@ -2575,7 +2561,6 @@ class AdvancedInfo(wx.Frame):
         self.parent = parent
         self.bitsEntry = None
         self.samplesEntry = None
-        self.drsuButton = None
         self.usbButton = None
         self.reduceButton = None
         self.reduceEntry = None
