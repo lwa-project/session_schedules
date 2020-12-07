@@ -926,7 +926,7 @@ class SDFCreator(wx.Frame):
         else:
             
             if not self.onValidate(1, confirmValid=False):
-                self.displayError('The session definition file could not be saved due to errors in the file.', title='Save Failed')
+                self.displayError('The session definition file could not be saved due to errors in the file.  See the command standard output for details.', title='Save Failed')
             else:
                 try:
                     fh = open(self.filename, 'w')
@@ -944,7 +944,7 @@ class SDFCreator(wx.Frame):
         """
         
         if not self.onValidate(1, confirmValid=False):
-            self.displayError('The session definition file could not be saved due to errors in the file.', title='Save Failed')
+            self.displayError('The session definition file could not be saved due to errors in the file.  See the command standard output for details.', title='Save Failed')
         else:
             dialog = wx.FileDialog(self, "Select Output File", self.dirname, '', 'SDF Files (*.sdf,*.txt)|*.sdf;*.txt|All Files|*', wx.FD_SAVE|wx.FD_OVERWRITE_PROMPT)
             
@@ -2258,7 +2258,7 @@ class ObserverInfo(wx.Frame):
                 junk, mt = mt.split('=', 1)
                 mt = mt.replace('}', '')
                 
-                if mt in ('XX', 'YY', 'XY', 'YX', 'XXYY', 'XXXYYXYY'):
+                if mt in ('XXYY', 'CRCI', 'XXCRCIYY'):
                     linear.SetValue(True)
                     stokes.SetValue(False)
                 else:
@@ -2485,7 +2485,7 @@ class ObserverInfo(wx.Frame):
                 junk, mt = mt.split('=', 1)
                 mt = mt.replace('}', '')
                 
-                if mt in ('XX', 'YY', 'XY', 'YX', 'XXYY', 'XXXYYXYY'):
+                if mt in ('XXYY', 'CRCI', 'XXCRCIYY'):
                     isLinear = True
                 else:
                     isLinear = False
@@ -2980,69 +2980,37 @@ class AdvancedInfo(wx.Frame):
                 junk, mt = mt.split('=', 1)
                 mt = mt.replace('}', '')
                 
-                if mt in ('XX', 'YY', 'XY', 'YX', 'XXYY', 'XXXYYXYY'):
+                if mt in ('XXYY', 'CRCI', 'XXCRCIYY'):
                     isLinear = True
                 else:
                     isLinear = False
                     
             if isLinear:
-                opt1 = wx.RadioButton(panel, -1, 'XX', style=wx.RB_GROUP)
-                opt2 = wx.RadioButton(panel, -1, 'XY')
-                opt3 = wx.RadioButton(panel, -1, 'YX')
-                opt4 = wx.RadioButton(panel, -1, 'YY')
-                opt5 = wx.RadioButton(panel, -1, 'XX and YY')
-                opt6 = wx.RadioButton(panel, -1, 'XX, XY, YX, and YY')
+                opt1 = wx.RadioButton(panel, -1, 'XX and YY', style=wx.RB_GROUP)
+                opt2 = wx.RadioButton(panel, -1, 'Re(XY) and Im(XY)')
+                opt3 = wx.RadioButton(panel, -1, 'XX, Re(XY), Im(XY), and YY')
             else:
                 opt1 = wx.RadioButton(panel, -1, 'I', style=wx.RB_GROUP)
-                opt2 = wx.RadioButton(panel, -1, 'Q')
-                opt3 = wx.RadioButton(panel, -1, 'U')
-                opt4 = wx.RadioButton(panel, -1, 'V')
-                opt5 = wx.RadioButton(panel, -1, 'I and V')
-                opt6 = wx.RadioButton(panel, -1, 'I, Q, U, and V')
+                opt2 = wx.RadioButton(panel, -1, 'I and V')
+                opt3 = wx.RadioButton(panel, -1, 'I, Q, U, and V')
                 
             opt1.SetValue(False)
             opt2.SetValue(False)
             opt3.SetValue(False)
-            opt4.SetValue(False)
-            opt5.SetValue(False)
-            opt6.SetValue(False)
             
-            # What's this?  The current version of DROS v2 (November 9, 2012) 
-            # only supports XXYY, IV, and IQUV.
-            opt1.Enable(False)
-            opt2.Enable(False)
-            opt3.Enable(False)
-            opt4.Enable(False)
-            if isLinear:
-                opt6.Enable(False)
-                
-            if mt in ('XX', 'I'):
+            if mt in ('XXYY', 'I'):
                 opt1.SetValue(True)
-            elif mt in ('XY', 'Q'):
+            elif mt in ('CRCI', 'IV'):
                 opt2.SetValue(True)
-            elif mt in ('YX', 'U'):
+            elif mt in ('XXCRCIYY', 'IQUV'):
                 opt3.SetValue(True)
-            elif mt in ('YY', 'V'):
-                opt4.SetValue(True)
-            elif mt in ('XXYY', 'IV'):
-                opt5.SetValue(True)
-            elif mt in ('XXXYYXYY', 'IQUV'):
-                opt6.SetValue(True)
-            else:
-                if isLinear:
-                    opt5.SetValue(True)
-                else:
-                    opt6.SetValue(True)
-                    
+                
             sizer.Add(dros, pos=(row+0,0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
             
             sizer.Add(opt,  pos=(row+1, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
             sizer.Add(opt1, pos=(row+1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
             sizer.Add(opt2, pos=(row+1, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
             sizer.Add(opt3, pos=(row+1, 3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-            sizer.Add(opt4, pos=(row+2, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-            sizer.Add(opt5, pos=(row+2, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-            sizer.Add(opt6, pos=(row+2, 3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
             
             line = wx.StaticLine(panel)
             sizer.Add(line, pos=(row+3, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
@@ -3111,9 +3079,6 @@ class AdvancedInfo(wx.Frame):
             self.opt1 = opt1
             self.opt2 = opt2
             self.opt3 = opt3
-            self.opt4 = opt4
-            self.opt5 = opt5
-            self.opt6 = opt6
             
     def initEvents(self):
         self.Bind(wx.EVT_BUTTON, self.onOK, id=ID_OBS_INFO_OK)
@@ -3317,34 +3282,22 @@ class AdvancedInfo(wx.Frame):
                 junk, mt = mt.split('=', 1)
                 mt = mt.replace('}', '')
                 
-                if mt in ('XX', 'YY', 'XY', 'YX', 'XXYY', 'XXXYYXYY'):
+                if mt in ('XXYY', 'CRCI', 'XXCRCIYY'):
                     isLinear = True
                 else:
                     isLinear = False
                     
             if isLinear:
                 if self.opt1.GetValue():
-                    self.parent.project.sessions[0].spcMetatag = '{Stokes=XX}'
-                elif self.opt2.GetValue():
-                    self.parent.project.sessions[0].spcMetatag = '{Stokes=XY}'
-                elif self.opt3.GetValue():
-                    self.parent.project.sessions[0].spcMetatag = '{Stokes=YX}'
-                elif self.opt4.GetValue():
-                    self.parent.project.sessions[0].spcMetatag = '{Stokes=YY}'
-                elif self.opt5.GetValue():
                     self.parent.project.sessions[0].spcMetatag = '{Stokes=XXYY}'
+                elif self.opt2.GetValue():
+                    self.parent.project.sessions[0].spcMetatag = '{Stokes=CRCI}'
                 else:
-                    self.parent.project.sessions[0].spcMetatag = '{Stokes=XXXYYXYY}'
+                    self.parent.project.sessions[0].spcMetatag = '{Stokes=XXCRCIYY}'
             else:
                 if self.opt1.GetValue():
                     self.parent.project.sessions[0].spcMetatag = '{Stokes=I}'
                 elif self.opt2.GetValue():
-                    self.parent.project.sessions[0].spcMetatag = '{Stokes=Q}'
-                elif self.opt3.GetValue():
-                    self.parent.project.sessions[0].spcMetatag = '{Stokes=U}'
-                elif self.opt4.GetValue():
-                    self.parent.project.sessions[0].spcMetatag = '{Stokes=V}'
-                elif self.opt5.GetValue():
                     self.parent.project.sessions[0].spcMetatag = '{Stokes=IV}'
                 else:
                     self.parent.project.sessions[0].spcMetatag = '{Stokes=IQUV}'
@@ -3773,7 +3726,7 @@ class VolumeInfo(wx.Frame):
                 junk, mt = mt.split('=', 1)
                 mt = mt.replace('}', '')
                 
-                if mt in ('XX', 'YY', 'XY', 'YX', 'XXYY', 'XXXYYXYY'):
+                if mt in ('XXYY', 'CRCI', 'XXCRCIYY'):
                     products = len(mt)//2
                 else:
                     products = len(mt)
