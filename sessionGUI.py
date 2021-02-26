@@ -1992,7 +1992,6 @@ ID_OBS_INFO_DRSPEC = 211
 ID_OBS_INFO_OK = 212
 ID_OBS_INFO_CANCEL = 213
 
-_usernameRE = re.compile(r'ucfuser:[ \t]*(?P<username>[a-zA-Z]+)(\/(?P<subdir>[a-zA-Z0-9\/\+\-_]+))?')
 _cleanup0RE = re.compile(r';;(;;)+')
 _cleanup1RE = re.compile(r'^;;')
 
@@ -2154,7 +2153,7 @@ class ObserverInfo(wx.Frame):
         if self.parent.project.sessions[0].name != '':
             snameText.SetValue(self.parent.project.sessions[0].name)
         if self.parent.project.sessions[0].comments != '' and self.parent.project.sessions[0].comments is not None:
-            scomsText.SetValue(_usernameRE.sub('', self.parent.project.sessions[0].comments).replace(';;', '\n'))
+            scomsText.SetValue(sdf.UCF_USERNAME_RE.sub('', self.parent.project.sessions[0].comments).replace(';;', '\n'))
         
         tid = wx.StaticText(panel, label='Session Type')
         tbwRB = wx.RadioButton(panel, -1, 'Transient Buffer-Wide (TBW)', style=wx.RB_GROUP)
@@ -2235,7 +2234,7 @@ class ObserverInfo(wx.Frame):
             
             mtch = None
             if self.parent.project.sessions[0].comments is not None:
-                mtch = _usernameRE.search(self.parent.project.sessions[0].comments)
+                mtch = sdf.UCF_USERNAME_RE.search(self.parent.project.sessions[0].comments)
             if mtch is not None:
                 unamText.SetValue(mtch.group('username'))
             unamText.Enable()
@@ -2461,13 +2460,13 @@ class ObserverInfo(wx.Frame):
             self.parent.project.sessions[0].spcMetatag = None
         else:
             self.parent.project.sessions[0].data_return_method = 'UCF'
-            tempc = _usernameRE.sub('', self.parent.project.sessions[0].comments)
+            tempc = sdf.UCF_USERNAME_RE.sub('', self.parent.project.sessions[0].comments)
             self.parent.project.sessions[0].comments = tempc + ';;ucfuser:%s' % self.unamText.GetValue()
             
             self.parent.project.sessions[0].spcSetup = [0, 0]
             self.parent.project.sessions[0].spcMetatag = None
             
-            mtch = _usernameRE.search(self.parent.project.sessions[0].comments)
+            mtch = sdf.UCF_USERNAME_RE.search(self.parent.project.sessions[0].comments)
             if mtch is None:
                 self.displayError('Cannot find UCF username needed for copying data to the UCF.', title='Missing UCF User Name')
                 return False
