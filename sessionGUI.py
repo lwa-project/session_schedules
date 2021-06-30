@@ -2495,13 +2495,13 @@ class ObserverInfo(wx.Frame):
                 
         if self.tbwButton.GetValue():
             self.parent.mode = 'TBW'
-            self.parent.project.sessions[0].includeStationStatic = True
+            self.parent.project.sessions[0].include_station_smib = True
         elif self.tbfButton.GetValue():
             self.parent.mode = 'TBF'
-            self.parent.project.sessions[0].includeStationStatic = True
+            self.parent.project.sessions[0].include_station_smib = True
         elif self.tbnButton.GetValue():
             self.parent.mode = 'TBN'
-            self.parent.project.sessions[0].includeStationStatic = True
+            self.parent.project.sessions[0].include_station_smib = True
         else:
             self.parent.mode = 'DRX'
         self.parent.setMenuButtons(self.parent.mode)
@@ -2633,14 +2633,14 @@ class AdvancedInfo(wx.Frame):
         mupComboMCS.SetStringSelection(self.__timeToCombo(self.parent.project.sessions[0].updateMIB['MCS']))
         
         schLog = wx.CheckBox(panel, -1, label='Include relevant MSC/Scheduler Log')
-        schLog.SetValue(self.parent.project.sessions[0].logScheduler)
+        schLog.SetValue(self.parent.project.sessions[0].include_mcssch_log)
         exeLog = wx.CheckBox(panel, -1, label='Include relevant MSC/Executive Log')
-        exeLog.SetValue(self.parent.project.sessions[0].logExecutive)
+        exeLog.SetValue(self.parent.project.sessions[0].include_mcsexe_log)
         
         incSMIB = wx.CheckBox(panel, -1, 'Include station static MIB')
-        incSMIB.SetValue(self.parent.project.sessions[0].includeStationStatic)
+        incSMIB.SetValue(self.parent.project.sessions[0].include_station_smib)
         incDESG = wx.CheckBox(panel, -1, 'Include design and calibration information')
-        incDESG.SetValue(self.parent.project.sessions[0].includeDesign)
+        incDESG.SetValue(self.parent.project.sessions[0].include_station_design)
         
         sizer.Add(mcs, pos=(row+0,0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
         
@@ -3153,11 +3153,11 @@ class AdvancedInfo(wx.Frame):
         self.parent.project.sessions[0].updateMIB['SHL'] = self.__parse_timeCombo(self.mupSHL)
         self.parent.project.sessions[0].updateMIB['MCS'] = self.__parse_timeCombo(self.mupMCS)
         
-        self.parent.project.sessions[0].logScheduler = self.schLog.GetValue()
-        self.parent.project.sessions[0].logExecutive = self.exeLog.GetValue()
+        self.parent.project.sessions[0].include_mcssch_log = self.schLog.GetValue()
+        self.parent.project.sessions[0].include_mcsexe_log = self.exeLog.GetValue()
         
-        self.parent.project.sessions[0].includeStationStatic = self.incSMIB.GetValue()
-        self.parent.project.sessions[0].includeDesign = self.incDESG.GetValue()
+        self.parent.project.sessions[0].include_station_smib = self.incSMIB.GetValue()
+        self.parent.project.sessions[0].include_station_design = self.incDESG.GetValue()
         
         refresh_duration = False
         aspFltDict = {'MCS Decides': -1, 'Split': 0, 'Full': 1, 'Reduced': 2, 'Off': 3, 
