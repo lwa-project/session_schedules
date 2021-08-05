@@ -1,3 +1,5 @@
+[![Travis](https://travis-ci.com/lwa-project/session_schedules.svg?branch=master)](https://travis-ci.com/lwa-project/session_schedules)
+
 Session Schedules
 =================
 

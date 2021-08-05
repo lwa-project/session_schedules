@@ -793,7 +793,7 @@ class gas(object):
         
         f = self.fitness()
             
-        best = f.argmax()
+        best = int(f.argmax())
         output = []
         for p,o in zip(self.projects, self.offsets[best]):
             output.extend(p.getProjects(o))

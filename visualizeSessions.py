@@ -373,7 +373,7 @@ class Visualization_GUI(object):
         # Plot Sun elevation in a way that indicates day and night (if needed)
         if self.showDayNight:
             points, alts = self.getSolarElevation()
-            points = points.reshape(-1, 1, 2)
+            points = points.reshape((-1, 1, 2))
             if self.adp:
                 points[:,:,1] = 3.75
             else:
@@ -387,7 +387,7 @@ class Visualization_GUI(object):
         # Plot Jupiter's elevation (if needed)
         if self.showJupiter:
             points, alts = self.getJovianElevation()
-            points = points.reshape(-1, 1, 2)
+            points = points.reshape((-1, 1, 2))
             points[:,:,1] = -1.75
             segments = numpy.concatenate([points[:-1], points[1:]], axis=1)
             lc = LineCollection(segments, cmap=plt.get_cmap('RdYlGn'), norm=plt.Normalize(0, 90))
