@@ -22,6 +22,5 @@ jobs:
           run: pip install "healpy<1.14.0"
         - run: pip install git+https://github.com/lwa-project/lsl.git
         - run: pip install pylint
-        - run: cd TBN/Calibration && make
         - continue-on-error: ${{ matrix.python-version == '2.7' }}
           run: cd tests && python -m unittest discover
