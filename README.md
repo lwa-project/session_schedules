@@ -1,4 +1,4 @@
-[![Travis](https://travis-ci.com/lwa-project/session_schedules.svg?branch=master)](https://travis-ci.com/lwa-project/session_schedules)
+![GHA](https://github.com/lwa-project/session_schedules/actions/workflows/main.yml/badge.svg)
 
 Session Schedules
 =================
