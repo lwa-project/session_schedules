@@ -1,0 +1,27 @@
+name: SessionSchedules
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ['2.7', '3.6', '3.8']
+      fail-fast: false
+    steps:
+        - if: ${{ matrix.os == 'ubuntu-latest' }}
+          run: sudo apt-get install -y build-essential ca-certificates curl git pkg-config gzip libgdbm-dev libfftw3-dev libhdf5-dev
+        - if: ${{ matrix.os == 'macos-latest' }}
+          run: brew install pkg-config fftw hdf5
+        - uses: actions/setup-python@v2
+          with:
+            python-version: ${{ matrix.python-version }}
+        - uses: actions/checkout@v2
+        - run: pip install setuptools numpy matplotlib scipy h5py 
+        - if: ${{ matrix.python-version == '2.7' }}
+          run: pip install "healpy<1.14.0"
+        - run: pip install git+https://github.com/lwa-project/lsl.git
+        - run: pip install pylint
+        - run: cd TBN/Calibration && make
+        - continue-on-error: ${{ matrix.python-version == '2.7' }}
+        - run: cd tests && python -m unittest discover
