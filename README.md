@@ -1,4 +1,4 @@
-![GHA](https://github.com/lwa-project/session_schedules/actions/workflows/main.yml/badge.svg)
+[![GHA](https://github.com/lwa-project/session_schedules/actions/workflows/main.yml/badge.svg)](https://github.com/lwa-project/session_schedules/actions/workflows/main.yml)
 
 Session Schedules
 =================
