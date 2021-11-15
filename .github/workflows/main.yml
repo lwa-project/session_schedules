@@ -23,4 +23,6 @@ jobs:
         - run: pip install git+https://github.com/lwa-project/lsl.git
         - run: pip install pylint
         - continue-on-error: ${{ matrix.python-version == '2.7' }}
-          run: cd tests && python -m unittest discover
+          run: |
+            cd tests
+            python -m unittest discover
