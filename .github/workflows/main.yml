@@ -10,9 +10,23 @@ jobs:
       fail-fast: false
     steps:
         - if: ${{ matrix.os == 'ubuntu-latest' }}
-          run: sudo apt-get install -y build-essential ca-certificates curl git pkg-config gzip libgdbm-dev libfftw3-dev libhdf5-dev
+          run: |
+            sudo apt-get install -y \
+              build-essential \
+              ca-certificates \
+              curl \
+              git \
+              gzip \
+              libfftw3-dev \
+              libhdf5-dev \
+              libgdbm-dev \
+              pkg-config
         - if: ${{ matrix.os == 'macos-latest' }}
-          run: brew install pkg-config fftw hdf5
+          run: |
+            brew install \
+              fftw \
+              hdf5 \
+              pkg-config 
         - uses: actions/setup-python@v2
           with:
             python-version: ${{ matrix.python-version }}
