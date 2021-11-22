@@ -2836,11 +2836,15 @@ class AdvancedInfo(wx.Frame):
                 tgainText.SetStringSelection('MCS Decides')
             else:
                 tgainText.SetStringSelection('%i' % self.parent.project.sessions[0].observations[0].gain)
+            gainHelpIcon = wx.Bitmap(os.path.join(self.parent.scriptPath, 'icons', 'dialog-question.png'))
+            self.gainHelp = wx.StaticBitmap(panel, bitmap=gainHelpIcon)
+            self.gainHelpText = "The 'MCS Decides' value is 20.  Smaller values represent higher gains."
             
             sizer.Add(tbn, pos=(row+0,0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
             
             sizer.Add(tgain, pos=(row+1, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-            sizer.Add(tgainText, pos=(row+1, 1), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+            sizer.Add(tgainText, pos=(row+1, 1), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=2)
+            sizer.Add(self.gainHelp, pos=(row+1, 2), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
             
             line = wx.StaticLine(panel)
             sizer.Add(line, pos=(row+2, 0), span=(1, 6), flag=wx.EXPAND|wx.BOTTOM, border=10)
@@ -2862,7 +2866,10 @@ class AdvancedInfo(wx.Frame):
                 dgainText.SetStringSelection('MCS Decides')
             else:
                 dgainText.SetStringSelection('%i' % self.parent.project.sessions[0].observations[0].gain)
-                
+            gainHelpIcon = wx.Bitmap(os.path.join(self.parent.scriptPath, 'icons', 'dialog-question.png'))
+            self.gainHelp = wx.StaticBitmap(panel, bitmap=gainHelpIcon)
+            self.gainHelpText = "The 'MCS Decides' value is 6.  Smaller values represent higher gains."
+            
             dbeam = wx.StaticText(panel, label='Beam')
             dbeamText = wx.ComboBox(panel, -1, value='MCS Decides', choices=drxBeam, style=wx.CB_READONLY)
             if self.parent.project.sessions[0].drx_beam == -1:
@@ -2873,7 +2880,8 @@ class AdvancedInfo(wx.Frame):
             sizer.Add(drx, pos=(row+0,0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
             
             sizer.Add(dgain, pos=(row+1, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-            sizer.Add(dgainText, pos=(row+1, 1), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+            sizer.Add(dgainText, pos=(row+1, 1), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=2)
+            sizer.Add(self.gainHelp, pos=(row+1, 2), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
             sizer.Add(dbeam, pos=(row+2, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
             sizer.Add(dbeamText, pos=(row+2, 1), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
             
@@ -3082,9 +3090,20 @@ class AdvancedInfo(wx.Frame):
     def initEvents(self):
         self.Bind(wx.EVT_BUTTON, self.onOK, id=ID_OBS_INFO_OK)
         self.Bind(wx.EVT_BUTTON, self.onCancel, id=ID_OBS_INFO_CANCEL)
+        try:
+            self.gainHelp.Bind(wx.EVT_MOTION, self.onMouseOver)
+        except AttributeError:
+            pass
         if getattr(self, 'bdmPolX', None) is not None:
             self.Bind(wx.EVT_CHECKBOX, self.onChecked, id=ID_OBS_BDM_CHECKED)
             
+    def onMouseOver(self, event):
+        """
+        Show the gain help text to help users sort out our gains.
+        """
+        
+        self.gainHelp.SetToolTipString(self.gainHelpText)
+        
     def onChecked(self, event):
         """
         Toggle the beam-dipole mode setup on and off.
