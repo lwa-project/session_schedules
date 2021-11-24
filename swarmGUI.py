@@ -1762,7 +1762,7 @@ class ObserverInfo(wx.Frame):
     """
     
     def __init__(self, parent):
-        wx.Frame.__init__(self, parent, title='Observer Information', size=(735,575))
+        wx.Frame.__init__(self, parent, title='Observer Information', size=(720,670))
         
         self.parent = parent
         

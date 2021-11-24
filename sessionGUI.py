@@ -2002,7 +2002,7 @@ class ObserverInfo(wx.Frame):
     """
     
     def __init__(self, parent):
-        wx.Frame.__init__(self, parent, title='Observer Information', size=(880,665))
+        wx.Frame.__init__(self, parent, title='Observer Information', size=(890,730))
         
         self.parent = parent
         
@@ -2159,7 +2159,7 @@ class ObserverInfo(wx.Frame):
         tbwRB = wx.RadioButton(panel, -1, 'Transient Buffer-Wide (TBW)', style=wx.RB_GROUP)
         tbfRB = wx.RadioButton(panel, -1, 'Transient Buffer-Frequency Domain (TBF)')
         tbnRB = wx.RadioButton(panel, -1, 'Transient Buffer-Narrow (TBN)')
-        drxRB = wx.RadioButton(panel, -1, 'Beam Forming')
+        drxRB = wx.RadioButton(panel, -1, 'Beam Forming (DRX)')
         if self.parent.mode != '':
             if self.parent.mode == 'TBW':
                 tbwRB.SetValue(True)
@@ -2206,6 +2206,7 @@ class ObserverInfo(wx.Frame):
         unamText = wx.TextCtrl(panel)
         unamText.Disable()
         
+        rid = wx.StaticText(panel, label='Beam Processing')
         drsCB  = wx.CheckBox(panel, ID_OBS_INFO_DRSPEC, 'DR spectrometer')
         
         nchn = wx.StaticText(panel, label='Channels')
@@ -2322,6 +2323,7 @@ class ObserverInfo(wx.Frame):
         sizer.Add(ucfRB, pos=(row+11,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer.Add(unam, pos=(row+11,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer.Add(unamText, pos=(row+11,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
+        sizer.Add(rid, pos=(row+12,0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer.Add(drsCB, pos=(row+12,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer.Add(nchn, pos=(row+12,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer.Add(nchnText, pos=(row+12,3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
@@ -2836,7 +2838,7 @@ class AdvancedInfo(wx.Frame):
                 tgainText.SetStringSelection('MCS Decides')
             else:
                 tgainText.SetStringSelection('%i' % self.parent.project.sessions[0].observations[0].gain)
-            gainHelpIcon = wx.Bitmap(os.path.join(self.parent.scriptPath, 'icons', 'dialog-question.png'))
+            gainHelpIcon = wx.Bitmap(os.path.join(self.parent.scriptPath, 'icons', 'tooltip.png'))
             self.gainHelp = wx.StaticBitmap(panel, bitmap=gainHelpIcon)
             self.gainHelpText = "The 'MCS Decides' value is 20.  Smaller values represent higher gains."
             
@@ -2866,7 +2868,7 @@ class AdvancedInfo(wx.Frame):
                 dgainText.SetStringSelection('MCS Decides')
             else:
                 dgainText.SetStringSelection('%i' % self.parent.project.sessions[0].observations[0].gain)
-            gainHelpIcon = wx.Bitmap(os.path.join(self.parent.scriptPath, 'icons', 'dialog-question.png'))
+            gainHelpIcon = wx.Bitmap(os.path.join(self.parent.scriptPath, 'icons', 'tooltip.png'))
             self.gainHelp = wx.StaticBitmap(panel, bitmap=gainHelpIcon)
             self.gainHelpText = "The 'MCS Decides' value is 6.  Smaller values represent higher gains."
             
