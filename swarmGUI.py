@@ -71,7 +71,7 @@ else:
     AppendToolItem = lambda *args, **kwds: args[0].AddLabelTool(*args[1:], **kwds)
 
 
-class ChoiceMixIn(object):
+class ChoiceMixIn(wx.Control):
     def __init__(self, options={}):
         self.options = options
         self.choices = {}
