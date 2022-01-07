@@ -25,13 +25,7 @@ from lsl.common import stations
 from lsl.astro import deg_to_dms, deg_to_hms, MJD_OFFSET, DJD_OFFSET
 from lsl.reader.tbn import FILTER_CODES as TBNFilters
 from lsl.reader.drx import FILTER_CODES as DRXFilters
-from lsl.common import sdf
-try:
-    from lsl.common import sdfADP
-    adpReady = True
-except ImportError:
-    sdfADP = None
-    adpReady = False
+from lsl.common import sdf, sdfADP
 from lsl.misc import parser as aph
 
 import wx
