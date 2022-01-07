@@ -32,12 +32,7 @@ from lsl import astro
 from lsl.common import stations
 from lsl.transform import Time
 from lsl.astro import utcjd_to_unix, MJD_OFFSET
-from lsl.common import sdf
-try:
-    from lsl.common import sdfADP
-    adpReady = True
-except ImportError:
-    adpReady = False
+from lsl.common import sdf, sdfADP
 from lsl.misc import parser as aph
 
 
@@ -96,15 +91,12 @@ def main(args):
         project = sdf.parse_sdf(inputSDF)
         adp = False
     except Exception as e:
-        if adpReady:
-            ## LWA-SV
-            ### Try again
-            station = stations.lwasv
-            project = sdfADP.parse_sdf(inputSDF)
-            adp = True
-        else:
-            raise e
-            
+        ## LWA-SV
+        ### Try again
+        station = stations.lwasv
+        project = sdfADP.parse_sdf(inputSDF)
+        adp = True
+        
     # Load the station and objects to find the Sun and Jupiter
     observer = station.get_observer()
     Sun = ephem.Sun()

@@ -12,16 +12,9 @@ import numpy
 import argparse
 from datetime import datetime, timedelta
 
-from lsl.common import sdf, metabundle
+from lsl.common import sdf, metabundle, sdfAPD, metabundleADP
 from lsl.common import stations
 from lsl.astro import utcjd_to_unix, MJD_OFFSET
-try:
-    from lsl.common import sdfADP, metabundleADP
-    adpReady = True
-except ImportError:
-    sdfADP = None
-    metabundleADP = None
-    adpReady = False
 
 import wx
 from wx.lib.mixins.listctrl import CheckListCtrlMixin

@@ -15,15 +15,9 @@ import argparse
 import tempfile
 import subprocess
 
-from lsl.common import sdf
+from lsl.common import sdf, sdfADP
 from lsl.common.stations import lwa1
 from lsl.astro import utcjd_to_unix, MJD_OFFSET
-try:
-    from lsl.common import sdfADP
-    adpReady = True
-except ImportError:
-    sdfADP = None
-    adpReady = False
 
 
 _tpss_base = os.path.join(os.path.dirname(__file__), 'tpss')
