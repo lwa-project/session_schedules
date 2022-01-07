@@ -12,7 +12,7 @@ import numpy
 import argparse
 from datetime import datetime, timedelta
 
-from lsl.common import sdf, metabundle, sdfAPD, metabundleADP
+from lsl.common import sdf, metabundle, sdfADP, metabundleADP
 from lsl.common import stations
 from lsl.astro import utcjd_to_unix, MJD_OFFSET
 
