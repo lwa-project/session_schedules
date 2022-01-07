@@ -1386,19 +1386,19 @@ class SDFCreator(wx.Frame):
         # Do a global validation
         sys.stdout = StringIO()
         if self.project.validate(verbose=True):
-            msg =  sys.stdout.getvalue()[:-1]
+            full_msg =  sys.stdout.getvalue()[:-1]
             sys.stdout.close()
             sys.stdout = sys.__stdout__
             if confirmValid:
                 wx.MessageBox('Congratulations, you have a valid set of observations.', 'Validator Results')
             return True
         else:
-            msg =  sys.stdout.getvalue()[:-1]
+            full_msg =  sys.stdout.getvalue()[:-1]
             sys.stdout.close()
             sys.stdout = sys.__stdout__
             
-            msgLines = msg.split('\n')
-            for msg in msgLines:
+            msg_lines = full_msg.split('\n')
+            for msg in msg_lines:
                 if msg.find('Error') != -1:
                     print(msg)
                     
