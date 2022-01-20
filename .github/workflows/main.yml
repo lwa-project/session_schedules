@@ -25,6 +25,7 @@ jobs:
               libfftw3-dev \
               libhdf5-dev \
               libgdbm-dev \
+              libwxgtk3.0-dev \
               pkg-config
         - name: "Software Install - MacOS"
           if: ${{ matrix.os == 'macos-latest' }}
