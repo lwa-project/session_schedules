@@ -42,12 +42,7 @@ jobs:
           run: |
             pip install numpy
             pip install -r requirements.txt
-        - if: ${{ matrix.python-version == '2.7' }}
-          run: pip install "healpy<1.14.0"
-        - name: "Software Install - Python, Part 2"
-          run: |
-            pip install \
-              pylint
+            pip install pylint
         - name: Test
           continue-on-error: ${{ matrix.python-version == '2.7' }}
           run: |

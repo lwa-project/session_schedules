@@ -5,3 +5,4 @@ scipy
 h5py
 lsl
 wxpython
+healpy < 1.14.0; python_version <= '2.7'
