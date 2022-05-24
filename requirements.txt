@@ -4,5 +4,6 @@ matplotlib
 scipy
 h5py
 lsl
+pytz
 wxpython
 healpy < 1.14.0; python_version <= '2.7'
