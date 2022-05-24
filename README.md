@@ -31,14 +31,15 @@ sessionGUI.py
 shiftSDF.py
   Multi-purpose tool for shifting SDF files.  This utility allows the operator
   to:
-    * Move a SDF file to a new start date/time
-    * Move a SDF file to a new UTC date but the same LST
-    * Apply a pointing correction (currently ~430 seconds in RA) to
-      the observations
-    * Switch the session ID to a new value
-    * Convert TRK_SOL and TRK_JOV observations to TRK_RADEC
-    * Only update one of the above and leave the time alone
-    * Print out the contents of the SDF file in an easy-to-digest manner
+  
+* Move a SDF file to a new start date/time
+* Move a SDF file to a new UTC date but the same LST
+* Apply a pointing correction (currently ~430 seconds in RA) to
+the observations
+* Switch the session ID to a new value
+* Convert TRK_SOL and TRK_JOV observations to TRK_RADEC
+* Only update one of the above and leave the time alone
+* Print out the contents of the SDF file in an easy-to-digest manner
 
 visualizeSessions.py
   Tool for operators to examine multiple SDFs at the same time.
@@ -66,12 +67,13 @@ calibratorSearch.py
 shiftIDF.py
   Multi-purpose tool for shifting IDF files.  This utility allows the operator
   to:
-    * Move a IDF file to a new start date/time
-    * Move a IDF file to a new UTC date but the same LST
-    * Switch the run ID to a new value
-    * Convert TRK_SOL and TRK_JOV observations to TRK_RADEC
-    * Only update one of the above and leave the time alone
-    * Print out the contents of the IDF file in an easy-to-digest manner
+  
+* Move a IDF file to a new start date/time
+* Move a IDF file to a new UTC date but the same LST
+* Switch the run ID to a new value
+* Convert TRK_SOL and TRK_JOV observations to TRK_RADEC
+* Only update one of the above and leave the time alone
+* Print out the contents of the IDF file in an easy-to-digest manner
   
 Other Contents
 --------------
