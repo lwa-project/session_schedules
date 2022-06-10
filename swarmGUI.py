@@ -1773,7 +1773,7 @@ class ObserverInfo(wx.Frame):
     def initUI(self):
         row = 0
         panel = ScrolledPanel(self)
-        sizer = wx.GridBagSizer(5, 5)
+        sizer = wx.GridBagSizer(0, 0)
         
         font = wx.SystemSettings.GetFont(wx.SYS_SYSTEM_FONT)
         font.SetPointSize(font.GetPointSize()+2)
@@ -2004,8 +2004,8 @@ class ObserverInfo(wx.Frame):
         
         ok = wx.Button(panel, ID_OBS_INFO_OK, 'Ok', size=(90, 28))
         cancel = wx.Button(panel, ID_OBS_INFO_CANCEL, 'Cancel', size=(90, 28))
-        sizer.Add(ok, pos=(row+0, 4))
-        sizer.Add(cancel, pos=(row+0, 5), flag=wx.RIGHT|wx.BOTTOM, border=5)
+        sizer.Add(ok, pos=(row+0, 4), flag=wx.ALL, border=5)
+        sizer.Add(cancel, pos=(row+0, 5), flag=wx.ALL, border=5)
         
         panel.SetupScrolling(scroll_x=True, scroll_y=True) 
         panel.SetSizer(sizer)
@@ -2166,7 +2166,7 @@ class AdvancedInfo(wx.Frame):
         
         row = 0
         panel = ScrolledPanel(self)
-        sizer = wx.GridBagSizer(5, 5)
+        sizer = wx.GridBagSizer(0, 0)
         
         font = wx.SystemSettings.GetFont(wx.SYS_SYSTEM_FONT)
         font.SetPointSize(font.GetPointSize()+2)
@@ -2287,8 +2287,8 @@ class AdvancedInfo(wx.Frame):
         
         ok = wx.Button(panel, ID_OBS_INFO_OK, 'Ok', size=(90, 28))
         cancel = wx.Button(panel, ID_OBS_INFO_CANCEL, 'Cancel', size=(90, 28))
-        sizer.Add(ok, pos=(row+0, 4))
-        sizer.Add(cancel, pos=(row+0, 5), flag=wx.RIGHT|wx.BOTTOM, border=5)
+        sizer.Add(ok, pos=(row+0, 4), flag=wx.ALL, border=5)
+        sizer.Add(cancel, pos=(row+0, 5), flag=wx.ALL, border=5)
         
         panel.SetupScrolling(scroll_x=True, scroll_y=True) 
         panel.SetSizer(sizer)
@@ -2776,21 +2776,18 @@ ID_VOL_INFO_OK = 511
 
 class VolumeInfo(wx.Frame):
     def __init__ (self, parent):
-        nObs = len(parent.project.runs[0].scans)		
-        wx.Frame.__init__(self, parent, title='Estimated Data Volume', size=(400, nObs*20+120))
+        wx.Frame.__init__(self, parent, title='Estimated Data Volume')
         
         self.parent = parent
         
         self.initUI()
         self.initEvents()
-        x,y = self.GetBestSize()
-        self.SetSize((x,y))
         self.Show()
         
     def initUI(self):
         row = 0
         panel = wx.Panel(self)
-        sizer = wx.GridBagSizer(4, 4)
+        sizer = wx.GridBagSizer(0, 0)
         
         font = wx.SystemSettings.GetFont(wx.SYS_SYSTEM_FONT)
         font.SetPointSize(font.GetPointSize()+2)
@@ -2835,10 +2832,10 @@ class VolumeInfo(wx.Frame):
             rvText = wx.StaticText(panel, label='%.2f GB' % (rawDataVolume/1024.0**3,))
             cvText = wx.StaticText(panel, label='%.2f MB' % (corDataVolume/1024.0**2,))
             
-            sizer.Add(idText, pos=(row+0, 0), flag=wx.ALIGN_LEFT, border=5)
-            sizer.Add(tpText, pos=(row+0, 1), flag=wx.ALIGN_CENTER, border=5)
-            sizer.Add(rvText, pos=(row+0, 2), flag=wx.ALIGN_CENTER, border=5)
-            sizer.Add(cvText, pos=(row+0, 3), flag=wx.ALIGN_RIGHT, border=5)
+            sizer.Add(idText, pos=(row+0, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.ALIGN_LEFT, border=5)
+            sizer.Add(tpText, pos=(row+0, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.ALIGN_CENTER, border=5)
+            sizer.Add(rvText, pos=(row+0, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.ALIGN_CENTER, border=5)
+            sizer.Add(cvText, pos=(row+0, 3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.ALIGN_RIGHT, border=5)
             
             scanCount += 1
             rawTotalData += rawDataVolume
@@ -2857,17 +2854,17 @@ class VolumeInfo(wx.Frame):
         cvText = wx.StaticText(panel, label='%.2f GB' % (corTotalData/1024.0**3,))
         cvText.SetFont(font)
         
-        sizer.Add(ttText, pos=(row+0, 0), flag=wx.ALIGN_LEFT, border=5)
-        sizer.Add(rvText, pos=(row+0, 2), flag=wx.ALIGN_CENTER, border=5)
-        sizer.Add(cvText, pos=(row+0, 3), flag=wx.ALIGN_RIGHT, border=5)
+        sizer.Add(ttText, pos=(row+0, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.ALIGN_LEFT, border=5)
+        sizer.Add(rvText, pos=(row+0, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.ALIGN_CENTER, border=5)
+        sizer.Add(cvText, pos=(row+0, 3), flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.ALIGN_RIGHT, border=5)
         
         row += 1
         
         ok = wx.Button(panel, ID_VOL_INFO_OK, 'Ok', size=(90, 28))
-        sizer.Add(ok, pos=(row+0, 3))
+        sizer.Add(ok, pos=(row+0, 3), flag=wx.ALL, border=5)
         
         panel.SetSizer(sizer)
-        panel.Fit()
+        sizer.Fit(self)
         
     def initEvents(self):
         self.Bind(wx.EVT_BUTTON, self.onOk, id=ID_VOL_INFO_OK)
@@ -2883,15 +2880,13 @@ ID_RESOLVE_CANCEL = 614
 
 class ResolveTarget(wx.Frame):
     def __init__ (self, parent):	
-        wx.Frame.__init__(self, parent, title='Resolve Target', size=(475, 200))
+        wx.Frame.__init__(self, parent, title='Resolve Target')
         
         self.parent = parent
         
         self.setSource()
         self.initUI()
         self.initEvents()
-        x,y = self.GetBestSize()
-        self.SetSize((x,y))
         self.Show()
         
     def setSource(self):
@@ -2909,7 +2904,7 @@ class ResolveTarget(wx.Frame):
     def initUI(self):
         row = 0
         panel = wx.Panel(self)
-        sizer = wx.GridBagSizer(5, 5)
+        sizer = wx.GridBagSizer(0, 0)
         
         src = wx.StaticText(panel, label='Target Name:')
         srcText = wx.TextCtrl(panel)
@@ -2956,12 +2951,13 @@ class ResolveTarget(wx.Frame):
         appli = wx.Button(panel, ID_RESOLVE_APPLY, 'Apply', size=(90, 28))
         cancel = wx.Button(panel, ID_RESOLVE_CANCEL, 'Cancel', size=(90, 28))
         
-        sizer.Add(inclPM, pos=(row+8, 0))
-        sizer.Add(resolve, pos=(row+8, 2))
-        sizer.Add(appli, pos=(row+8, 3))
-        sizer.Add(cancel, pos=(row+8, 4))
+        sizer.Add(inclPM, pos=(row+8, 0), flag=wx.ALL, border=5)
+        sizer.Add(resolve, pos=(row+8, 2), flag=wx.ALL, border=5)
+        sizer.Add(appli, pos=(row+8, 3), flag=wx.ALL, border=5)
+        sizer.Add(cancel, pos=(row+8, 4), flag=wx.ALL, border=5)
         
-        panel.SetSizerAndFit(sizer)
+        panel.SetSizer(sizer)
+        sizer.Fit(self)
         
         self.srcText = srcText
         self.raText = raText
@@ -3073,7 +3069,7 @@ ID_SCHEDULE_CANCEL = 613
 
 class ScheduleWindow(wx.Frame):
     def __init__ (self, parent):	
-        wx.Frame.__init__(self, parent, title='Run Scheduling', size=(375, 150))
+        wx.Frame.__init__(self, parent, title='Run Scheduling')
         
         self.parent = parent
         
@@ -3084,7 +3080,7 @@ class ScheduleWindow(wx.Frame):
     def initUI(self):
         row = 0
         panel = wx.Panel(self)
-        sizer = wx.GridBagSizer(3, 3)
+        sizer = wx.GridBagSizer(0, 0)
         
         font = wx.SystemSettings.GetFont(wx.SYS_SYSTEM_FONT)
         font.SetPointSize(font.GetPointSize()+2)
@@ -3126,7 +3122,8 @@ class ScheduleWindow(wx.Frame):
         sizer.Add(appli, pos=(row+0, 0))
         sizer.Add(cancel, pos=(row+0, 1))
         
-        panel.SetSizerAndFit(sizer)
+        panel.SetSizer(sizer)
+        sizer.Fit(self)
         
         self.sidereal = sidereal
         self.solar = solar
@@ -3172,7 +3169,7 @@ class ProperMotionWindow(wx.Frame):
         self.scan = self.parent.project.runs[0].scans[self.scanID]
         
         title = 'Scan #%i Proper Motion' % (scanID+1,)
-        wx.Frame.__init__(self, parent, title=title, size=(375, 150))
+        wx.Frame.__init__(self, parent, title=title)
         
         self.initUI()
         self.initEvents()
@@ -3181,7 +3178,7 @@ class ProperMotionWindow(wx.Frame):
     def initUI(self):
         row = 0
         panel = wx.Panel(self)
-        sizer = wx.GridBagSizer(5, 5)
+        sizer = wx.GridBagSizer(0, 0)
         
         src = wx.StaticText(panel, label='Target Name:')
         srcText = wx.TextCtrl(panel, style=wx.TE_READONLY)
@@ -3210,10 +3207,11 @@ class ProperMotionWindow(wx.Frame):
         appli = wx.Button(panel, ID_PMOTION_APPLY, 'Apply', size=(90, 28))
         cancel = wx.Button(panel, ID_PMOTION_CANCEL, 'Cancel', size=(90, 28))
         
-        sizer.Add(appli, pos=(row+5, 3))
-        sizer.Add(cancel, pos=(row+5, 4))
+        sizer.Add(appli, pos=(row+5, 3), flag=wx.ALL, border=5)
+        sizer.Add(cancel, pos=(row+5, 4), flag=wx.ALL, border=5)
         
-        panel.SetSizerAndFit(sizer)
+        panel.SetSizer(sizer)
+        sizer.Fit(self)
         
         self.prText = prText
         self.pdText = pdText
@@ -3357,7 +3355,7 @@ class HelpWindow(wx.Frame):
         
         self.CreateStatusBar()
         
-        panel.SetSizer(vbox)
+        panel.SetSizerAndFit(vbox)
 
 
 if __name__ == "__main__":
