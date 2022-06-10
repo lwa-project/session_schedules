@@ -1996,7 +1996,7 @@ class ObserverInfo(wx.Frame):
     """
     
     def __init__(self, parent):
-        wx.Frame.__init__(self, parent, title='Observer Information', size=(890,730))
+        wx.Frame.__init__(self, parent, title='Observer Information')
         
         self.parent = parent
         
@@ -2343,7 +2343,7 @@ class ObserverInfo(wx.Frame):
         
         panel.SetupScrolling(scroll_x=True, scroll_y=True) 
         panel.SetSizer(sizer)
-        panel.Fit()
+        sizer.Fit(self)
         
         #
         # Save the various widgets for access later
@@ -2542,16 +2542,7 @@ ID_ADV_INFO_CANCEL = 313
 
 class AdvancedInfo(wx.Frame):
     def __init__(self, parent):
-        if parent.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF:
-            size = (735, 640)
-        elif parent.mode in ('TBW', 'TBF'):
-            size = (735, 540)
-        elif parent.project.sessions[0].spcSetup[0] != 0 and parent.project.sessions[0].spcSetup[1] != 0:
-            size = (735, 740)
-        else:
-            size = (735, 665)
-            
-        wx.Frame.__init__(self, parent, title='Advanced Settings', size=size)
+        wx.Frame.__init__(self, parent, title='Advanced Settings')
         
         self.parent = parent
         self.bitsEntry = None
@@ -3030,7 +3021,7 @@ class AdvancedInfo(wx.Frame):
         
         panel.SetupScrolling(scroll_x=True, scroll_y=True) 
         panel.SetSizer(sizer)
-        panel.Fit()
+        sizer.Fit(self)
         
         #
         # Save the various widgets for access later

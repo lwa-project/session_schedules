@@ -1762,7 +1762,7 @@ class ObserverInfo(wx.Frame):
     """
     
     def __init__(self, parent):
-        wx.Frame.__init__(self, parent, title='Observer Information', size=(720,670))
+        wx.Frame.__init__(self, parent, title='Observer Information')
         
         self.parent = parent
         
@@ -2009,7 +2009,7 @@ class ObserverInfo(wx.Frame):
         
         panel.SetupScrolling(scroll_x=True, scroll_y=True) 
         panel.SetSizer(sizer)
-        panel.Fit()
+        sizer.Fit(self)
         
         #
         # Save the various widgets for access later
@@ -2151,9 +2151,7 @@ ID_STATION_CHECKED = 314
 
 class AdvancedInfo(wx.Frame):
     def __init__(self, parent):
-        size = (540, 310)
-        
-        wx.Frame.__init__(self, parent, title='Advanced Settings', size=size)
+        wx.Frame.__init__(self, parent, title='Advanced Settings')
         
         self.parent = parent
         
@@ -2294,7 +2292,7 @@ class AdvancedInfo(wx.Frame):
         
         panel.SetupScrolling(scroll_x=True, scroll_y=True) 
         panel.SetSizer(sizer)
-        panel.Fit()
+        sizer.Fit(self)
         
         #
         # Save the various widgets for access later
