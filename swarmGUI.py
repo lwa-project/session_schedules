@@ -1712,6 +1712,10 @@ class IDFCreator(wx.Frame):
         
         print("[%i] Parsing file '%s'" % (os.getpid(), filename))
         self.project = idf.parse_idf(filename)
+        if len(self.project.runs) == 0:
+            raise RuntimeError("Provided IDF does not define any runs")
+        if len(self.project.runs[0].scans) == 0:
+            raise RuntimeError("Provided IDF does not define any scans")
         self.setMenuButtons(self.project.runs[0].scans[0].mode)
         if self.project.runs[0].scans[0].mode[0:3] == 'TRK':
             self.mode = 'DRX'

@@ -1929,6 +1929,10 @@ class SDFCreator(wx.Frame):
         
         print("[%i] Parsing file '%s'" % (os.getpid(), filename))
         self.project = self.sdf.parse_sdf(filename)
+        if len(self.project.sessions) == 0:
+            raise RuntimeError("Provided SDF does not define any sessions")
+        if len(self.project.sessions[0].observations) == 0:
+            raise RuntimeError("Provided SDF does not define any observations")
         self.setMenuButtons(self.project.sessions[0].observations[0].mode)
         if self.project.sessions[0].observations[0].mode == 'TBW':
             self.mode = 'TBW'
