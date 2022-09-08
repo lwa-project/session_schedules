@@ -2000,7 +2000,7 @@ class ObserverInfo(wx.Frame):
     """
     
     def __init__(self, parent):
-        wx.Frame.__init__(self, parent, title='Observer Information', size=(890,730))
+        wx.Frame.__init__(self, parent, title='Observer Information')
         
         self.parent = parent
         
@@ -2011,7 +2011,7 @@ class ObserverInfo(wx.Frame):
     def initUI(self):
         row = 0
         panel = ScrolledPanel(self)
-        sizer = wx.GridBagSizer(5, 5)
+        sizer = wx.GridBagSizer(0, 0)
         
         font = wx.SystemSettings.GetFont(wx.SYS_SYSTEM_FONT)
         font.SetPointSize(font.GetPointSize()+2)
@@ -2342,12 +2342,12 @@ class ObserverInfo(wx.Frame):
         
         ok = wx.Button(panel, ID_OBS_INFO_OK, 'Ok', size=(90, 28))
         cancel = wx.Button(panel, ID_OBS_INFO_CANCEL, 'Cancel', size=(90, 28))
-        sizer.Add(ok, pos=(row+0, 4))
-        sizer.Add(cancel, pos=(row+0, 5), flag=wx.RIGHT|wx.BOTTOM, border=5)
+        sizer.Add(ok, pos=(row+0, 4), flag=wx.ALL, border=5)
+        sizer.Add(cancel, pos=(row+0, 5), flag=wx.ALL, border=5)
         
         panel.SetupScrolling(scroll_x=True, scroll_y=True) 
         panel.SetSizer(sizer)
-        panel.Fit()
+        sizer.Fit(self)
         
         #
         # Save the various widgets for access later
@@ -2546,16 +2546,7 @@ ID_ADV_INFO_CANCEL = 313
 
 class AdvancedInfo(wx.Frame):
     def __init__(self, parent):
-        if parent.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF:
-            size = (735, 640)
-        elif parent.mode in ('TBW', 'TBF'):
-            size = (735, 540)
-        elif parent.project.sessions[0].spcSetup[0] != 0 and parent.project.sessions[0].spcSetup[1] != 0:
-            size = (735, 740)
-        else:
-            size = (735, 665)
-            
-        wx.Frame.__init__(self, parent, title='Advanced Settings', size=size)
+        wx.Frame.__init__(self, parent, title='Advanced Settings')
         
         self.parent = parent
         self.bitsEntry = None
@@ -2586,7 +2577,7 @@ class AdvancedInfo(wx.Frame):
         
         row = 0
         panel = ScrolledPanel(self)
-        sizer = wx.GridBagSizer(5, 5)
+        sizer = wx.GridBagSizer(0, 0)
         
         font = wx.SystemSettings.GetFont(wx.SYS_SYSTEM_FONT)
         font.SetPointSize(font.GetPointSize()+2)
@@ -2832,7 +2823,8 @@ class AdvancedInfo(wx.Frame):
             
             tgain = wx.StaticText(panel, label='Gain')
             tgainText =  wx.ComboBox(panel, -1, value='MCS Decides', choices=tbnGain, style=wx.CB_READONLY)
-            if self.parent.project.sessions[0].observations[0].gain == -1:
+            if len(self.parent.project.sessions[0].observations) == 0 \
+               or self.parent.project.sessions[0].observations[0].gain == -1:
                 tgainText.SetStringSelection('MCS Decides')
             else:
                 tgainText.SetStringSelection('%i' % self.parent.project.sessions[0].observations[0].gain)
@@ -3029,12 +3021,12 @@ class AdvancedInfo(wx.Frame):
         
         ok = wx.Button(panel, ID_OBS_INFO_OK, 'Ok', size=(90, 28))
         cancel = wx.Button(panel, ID_OBS_INFO_CANCEL, 'Cancel', size=(90, 28))
-        sizer.Add(ok, pos=(row+0, 4))
-        sizer.Add(cancel, pos=(row+0, 5), flag=wx.RIGHT|wx.BOTTOM, border=5)
+        sizer.Add(ok, pos=(row+0, 4), flag=wx.ALL, border=5)
+        sizer.Add(cancel, pos=(row+0, 5), flag=wx.ALL, border=5)
         
         panel.SetupScrolling(scroll_x=True, scroll_y=True) 
         panel.SetSizer(sizer)
-        panel.Fit()
+        sizer.Fit(self)
         
         #
         # Save the various widgets for access later
@@ -3706,21 +3698,18 @@ ID_VOL_INFO_OK = 511
 
 class VolumeInfo(wx.Frame):
     def __init__ (self, parent):
-        nObs = len(parent.project.sessions[0].observations)		
-        wx.Frame.__init__(self, parent, title='Estimated Data Volume', size=(400, nObs*20+120))
+        wx.Frame.__init__(self, parent, title='Estimated Data Volume')
         
         self.parent = parent
         
         self.initUI()
         self.initEvents()
-        x,y = self.GetBestSize()
-        self.SetSize((x,y))
         self.Show()
         
     def initUI(self):
         row = 0
         panel = wx.Panel(self)
-        sizer = wx.GridBagSizer(5, 5)
+        sizer = wx.GridBagSizer(0, 0)
         
         font = wx.SystemSettings.GetFont(wx.SYS_SYSTEM_FONT)
         font.SetPointSize(font.GetPointSize()+2)
@@ -3765,9 +3754,9 @@ class VolumeInfo(wx.Frame):
             tpText = wx.StaticText(panel, label=mode)
             dvText = wx.StaticText(panel, label='%.2f GB' % (dataVolume/1024.0**3,))
             
-            sizer.Add(idText, pos=(row+0, 0), flag=wx.ALIGN_LEFT, border=5)
-            sizer.Add(tpText, pos=(row+0, 1), flag=wx.ALIGN_CENTER, border=5)
-            sizer.Add(dvText, pos=(row+0, 2), flag=wx.ALIGN_RIGHT, border=5)
+            sizer.Add(idText, pos=(row+0, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.ALIGN_LEFT, border=5)
+            sizer.Add(tpText, pos=(row+0, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.ALIGN_CENTER, border=5)
+            sizer.Add(dvText, pos=(row+0, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.ALIGN_RIGHT, border=5)
             
             observationCount += 1
             totalData += dataVolume
@@ -3783,16 +3772,16 @@ class VolumeInfo(wx.Frame):
         dvText = wx.StaticText(panel, label='%.2f GB' % (totalData/1024.0**3,))
         dvText.SetFont(font)
         
-        sizer.Add(ttText, pos=(row+0, 0), flag=wx.ALIGN_LEFT, border=5)
-        sizer.Add(dvText, pos=(row+0, 2), flag=wx.ALIGN_RIGHT, border=5)
+        sizer.Add(ttText, pos=(row+0, 0), flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.ALIGN_LEFT, border=5)
+        sizer.Add(dvText, pos=(row+0, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT|wx.ALIGN_RIGHT, border=5)
         
         row += 1
         
         ok = wx.Button(panel, ID_VOL_INFO_OK, 'Ok', size=(90, 28))
-        sizer.Add(ok, pos=(row+0, 2))
+        sizer.Add(ok, pos=(row+0, 2), flag=wx.ALL, border=5)
         
         panel.SetSizer(sizer)
-        panel.Fit()
+        sizer.Fit(self)
         
     def initEvents(self):
         self.Bind(wx.EVT_BUTTON, self.onOk, id=ID_VOL_INFO_OK)
@@ -3807,7 +3796,7 @@ ID_RESOLVE_CANCEL = 613
 
 class ResolveTarget(wx.Frame):
     def __init__ (self, parent):	
-        wx.Frame.__init__(self, parent, title='Resolve Target', size=(475, 200))
+        wx.Frame.__init__(self, parent, title='Resolve Target')
         
         self.parent = parent
         
@@ -3817,8 +3806,6 @@ class ResolveTarget(wx.Frame):
         else:
             self.initUI()
             self.initEvents()
-            x,y = self.GetBestSize()
-            self.SetSize((x,y))
             self.Show()
             
     def setSource(self):
@@ -3842,7 +3829,7 @@ class ResolveTarget(wx.Frame):
     def initUI(self):
         row = 0
         panel = wx.Panel(self)
-        sizer = wx.GridBagSizer(5, 5)
+        sizer = wx.GridBagSizer(0, 0)
         
         src = wx.StaticText(panel, label='Target Name:')
         srcText = wx.TextCtrl(panel)
@@ -3877,11 +3864,12 @@ class ResolveTarget(wx.Frame):
         appli = wx.Button(panel, ID_RESOLVE_APPLY, 'Apply', size=(90, 28))
         cancel = wx.Button(panel, ID_RESOLVE_CANCEL, 'Cancel', size=(90, 28))
         
-        sizer.Add(resolve, pos=(row+6, 2))
-        sizer.Add(appli, pos=(row+6, 3))
-        sizer.Add(cancel, pos=(row+6, 4))
+        sizer.Add(resolve, pos=(row+6, 2), flag=wx.ALL, border=5)
+        sizer.Add(appli, pos=(row+6, 3), flag=wx.ALL, border=5)
+        sizer.Add(cancel, pos=(row+6, 4), flag=wx.ALL, border=5)
         
-        panel.SetSizerAndFit(sizer)
+        panel.SetSizer(sizer)
+        sizer.Fit(self)
         
         self.srcText = srcText
         self.raText = raText
@@ -3968,7 +3956,7 @@ ID_SCHEDULE_CANCEL = 613
 
 class ScheduleWindow(wx.Frame):
     def __init__ (self, parent):	
-        wx.Frame.__init__(self, parent, title='Session Scheduling', size=(375, 150))
+        wx.Frame.__init__(self, parent, title='Session Scheduling')
         
         self.parent = parent
         
@@ -3979,7 +3967,7 @@ class ScheduleWindow(wx.Frame):
     def initUI(self):
         row = 0
         panel = wx.Panel(self)
-        sizer = wx.GridBagSizer(3, 3)
+        sizer = wx.GridBagSizer(0, 0)
         
         font = wx.SystemSettings.GetFont(wx.SYS_SYSTEM_FONT)
         font.SetPointSize(font.GetPointSize()+2)
@@ -4018,10 +4006,11 @@ class ScheduleWindow(wx.Frame):
         appli = wx.Button(panel, ID_SCHEDULE_APPLY, 'Apply', size=(90, 28))
         cancel = wx.Button(panel, ID_SCHEDULE_CANCEL, 'Cancel', size=(90, 28))
         
-        sizer.Add(appli, pos=(row+0, 0))
-        sizer.Add(cancel, pos=(row+0, 1))
+        sizer.Add(appli, pos=(row+0, 0), flag=wx.ALIGN_LEFT, border=5)
+        sizer.Add(cancel, pos=(row+0, 1), flag=wx.ALL, border=5)
         
-        panel.SetSizerAndFit(sizer)
+        panel.SetSizer(sizer)
+        sizer.Fit(self)
         
         self.sidereal = sidereal
         self.solar = solar
@@ -4089,7 +4078,7 @@ class HelpWindow(wx.Frame):
         
         self.CreateStatusBar()
         
-        panel.SetSizer(vbox)
+        panel.SetSizerAndFit(vbox)
 
 
 ID_STEPPED_DONE = 701

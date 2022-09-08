@@ -134,7 +134,7 @@ class CalibratorSearch(wx.Frame):
         
         # Target name/search
         panel1 = wx.Panel(panel)
-        sizer1 = wx.GridBagSizer(7, 7)
+        sizer1 = wx.GridBagSizer(0, 0)
         ## Name
         lbl = wx.StaticText(panel1, label='Target Parameters')
         lbl.SetFont(font)
@@ -173,7 +173,7 @@ class CalibratorSearch(wx.Frame):
         # Search control
         ## Setup
         panel2 = wx.Panel(panel)
-        sizer2 = wx.GridBagSizer(7, 7)
+        sizer2 = wx.GridBagSizer(0, 0)
         lbl = wx.StaticText(panel2, label='VLSSr Search Parameters')
         lbl.SetFont(font)
         
@@ -220,7 +220,7 @@ class CalibratorSearch(wx.Frame):
         # Candidate list
         ## Setup
         panel3 = wx.Panel(panel)
-        sizer3 = wx.GridBagSizer(7,7)
+        sizer3 = wx.GridBagSizer(0, 0)
         lbl = wx.StaticText(panel3, label='Candidates')
         lbl.SetFont(font)
         
@@ -248,13 +248,14 @@ class CalibratorSearch(wx.Frame):
         sizer3.Add(sz, pos=(row+9, 0), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer3.Add(szText, pos=(row+9, 1), span=(1, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
         sizer3.Add(szUnit, pos=(row+9, 3), span=(1, 1), flag=wx.EXPAND|wx.ALIGN_LEFT, border=5)
-        display = wx.Button(panel3, ID_DISPLAY, 'Display Selected', size=(100, 28))
+        display = wx.Button(panel3, ID_DISPLAY, 'Display Selected', size=(120, 28))
         sizer3.Add(display, pos=(row+9, 6), span=(1, 1), flag=wx.EXPAND|wx.ALIGN_CENTER, border=5)
         
         panel3.SetSizer(sizer3)
         sizer.Add(panel3, flag=wx.EXPAND|wx.LEFT|wx.RIGHT)
         
-        panel.SetSizerAndFit(sizer)
+        panel.SetSizer(sizer)
+        sizer.Fit(self)
         
         # Save
         self.nameText = srcText
@@ -439,6 +440,11 @@ class CalibratorSearch(wx.Frame):
                           'searchrad': max_dist*3600, 
                           'verhalf': 12*60, 
                           'poslist': ''})
+        try:
+            data = data.encode()
+        except AttributeError:
+            # Python2 catch
+            pass
         candidates = []
         try:
             result = urlopen('https://www.cv.nrao.edu/cgi-bin/newVLSSlist.pl', data)
@@ -447,6 +453,11 @@ class CalibratorSearch(wx.Frame):
             ## Parse
             inside = False
             for line in lines:
+                try:
+                    line = line.decode()
+                except AttributeError:
+                    # Python2 catch
+                    pass
                 line = line.rstrip()
                 if line.find('h  m    s    d  m   s   Ori      Jy') != -1:
                     inside = True
@@ -546,7 +557,11 @@ class CalibratorSearch(wx.Frame):
                           'MAPROG': 'SIN',
                           'rotate': 0.0,  
                           'Type': 'image/x-fits'})
-                    
+        try:
+            data = data.encode()
+        except AttributeError:
+            # Python2 catch
+            pass
         with NamedTemporaryFile(suffix='.fits', prefix='vlssr-') as th:
             try:
                 result = urlopen('https://www.cv.nrao.edu/cgi-bin/newVLSSpostage.pl', data)
