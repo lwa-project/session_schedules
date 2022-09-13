@@ -1928,7 +1928,10 @@ class SDFCreator(wx.Frame):
         self.initSDF()
         
         print("[%i] Parsing file '%s'" % (os.getpid(), filename))
-        self.project = self.sdf.parse_sdf(filename)
+        try:
+            self.project = self.sdf.parse_sdf(filename)
+        except Exception as e:
+            raise RuntimeError("Cannot parse provided SDF: %s" % str(e))
         if len(self.project.sessions) == 0:
             raise RuntimeError("Provided SDF does not define any sessions")
         if len(self.project.sessions[0].observations) == 0:

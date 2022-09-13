@@ -1711,7 +1711,10 @@ class IDFCreator(wx.Frame):
         self.initIDF()
         
         print("[%i] Parsing file '%s'" % (os.getpid(), filename))
-        self.project = idf.parse_idf(filename)
+        try:
+            self.project = idf.parse_idf(filename)
+        except Exception as e:
+            raise RuntimeError("Cannot parse provided IDF: %s" % str(e))
         if len(self.project.runs) == 0:
             raise RuntimeError("Provided IDF does not define any runs")
         if len(self.project.runs[0].scans) == 0:
