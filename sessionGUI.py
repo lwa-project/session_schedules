@@ -344,7 +344,7 @@ class ObservationListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrl
             ChoiceMixIn.OpenDropdown(self, col, row)
         elif self.parent.project.sessions[0].observations[row].mode == 'TBW' and col in [5, 6, 7]:
             pass
-        elif self.parent.project.sessions[0].observations[row].mode in ['TRK_SOL', 'TRK_JOV'] and col in [6, 7]:
+        elif self.parent.project.sessions[0].observations[row].mode in ['TRK_SOL', 'TRK_JOV', 'TRK_LUN'] and col in [6, 7]:
             pass
         elif self.parent.project.sessions[0].observations[row].mode == 'STEPPED' and col in [5, 6, 7, 8, 9, 11]:
             pass
@@ -679,7 +679,7 @@ class SDFCreator(wx.Frame):
         addDRXJ = wx.MenuItem(add, ID_ADD_DRX_JOVIAN, 'DRX - &Jovian')
         AppendMenuItem(add, addDRXJ)
         addDRXL = wx.MenuItem(add, ID_ADD_DRX_LUNAR, 'DRX - &Lunar')
-        AppendMenuItem(add, addDRXJ)
+        AppendMenuItem(add, addDRXL)
         addSteppedRADec = wx.MenuItem(add, ID_ADD_STEPPED_RADEC, 'DRX - Ste&pped - RA/Dec')
         AppendMenuItem(add, addSteppedRADec)
         addSteppedAzAlt = wx.MenuItem(add, ID_ADD_STEPPED_AZALT, 'DRX - Ste&pped - Az/Alt')
@@ -760,7 +760,7 @@ class SDFCreator(wx.Frame):
                                 longHelp='Add a new beam forming DRX observation that tracks the Sun')
         AppendToolItem(self.toolbar, ID_ADD_DRX_JOVIAN, 'drx-jovian', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'drx-jovian.png')), shortHelp='Add DRX - Jovian', 
                                 longHelp='Add a new beam forming DRX observation that tracks Jupiter')
-        AppendToolItem(self.toolbar, ID_ADD_DRX_LUNAR, 'drx-lunar', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'drx-jovian.png')), shortHelp='Add DRX - Lunar', 
+        AppendToolItem(self.toolbar, ID_ADD_DRX_LUNAR, 'drx-lunar', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'drx-lunar.png')), shortHelp='Add DRX - Lunar', 
                                 longHelp='Add a new beam forming DRX observation that tracks the Moon')
         AppendToolItem(self.toolbar, ID_ADD_STEPPED_RADEC,  'stepped', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'stepped-radec.png')), shortHelp='Add DRX - Stepped - RA/Dec', 
                                 longHelp='Add a new beam forming DRX observation with custom RA/Dec position and frequency stepping')
@@ -1802,6 +1802,9 @@ class SDFCreator(wx.Frame):
                 SetListItem(self.listControl, index, 7, "--")
             elif obs.mode == 'TRK_JOV':
                 SetListItem(self.listControl, index, 6, "Jupiter")
+                SetListItem(self.listControl, index, 7, "--")
+            elif obs.mode == 'TRK_LUN':
+                SetListItem(self.listControl, index, 6, "Moon")
                 SetListItem(self.listControl, index, 7, "--")
             elif obs.mode == 'STEPPED':
                 SetListItem(self.listControl, index, 6, "STEPPED")
