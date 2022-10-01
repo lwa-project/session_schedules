@@ -509,10 +509,11 @@ ID_ADD_TBN = 25
 ID_ADD_DRX_RADEC = 26
 ID_ADD_DRX_SOLAR = 27
 ID_ADD_DRX_JOVIAN = 28
-ID_ADD_STEPPED_RADEC = 29
-ID_ADD_STEPPED_AZALT = 30
-ID_EDIT_STEPPED = 31
-ID_REMOVE = 32
+ID_ADD_DRX_LUNAR = 29
+ID_ADD_STEPPED_RADEC = 30
+ID_ADD_STEPPED_AZALT = 31
+ID_EDIT_STEPPED = 32
+ID_REMOVE = 33
 ID_VALIDATE = 40
 ID_TIMESERIES = 41
 ID_RESOLVE = 42
@@ -677,6 +678,8 @@ class SDFCreator(wx.Frame):
         AppendMenuItem(add, addDRXS)
         addDRXJ = wx.MenuItem(add, ID_ADD_DRX_JOVIAN, 'DRX - &Jovian')
         AppendMenuItem(add, addDRXJ)
+        addDRXL = wx.MenuItem(add, ID_ADD_DRX_LUNAR, 'DRX - &Lunar')
+        AppendMenuItem(add, addDRXJ)
         addSteppedRADec = wx.MenuItem(add, ID_ADD_STEPPED_RADEC, 'DRX - Ste&pped - RA/Dec')
         AppendMenuItem(add, addSteppedRADec)
         addSteppedAzAlt = wx.MenuItem(add, ID_ADD_STEPPED_AZALT, 'DRX - Ste&pped - Az/Alt')
@@ -703,6 +706,7 @@ class SDFCreator(wx.Frame):
         self.obsmenu['drx-radec'] = addDRXR
         self.obsmenu['drx-solar'] = addDRXS
         self.obsmenu['drx-jovian'] = addDRXJ
+        self.obsmenu['drx-lunar'] = addDRXL
         self.obsmenu['steppedRADec'] = addSteppedRADec
         self.obsmenu['steppedAzAlt'] = addSteppedAzAlt
         self.obsmenu['steppedEdit'] = editStepped
@@ -756,6 +760,8 @@ class SDFCreator(wx.Frame):
                                 longHelp='Add a new beam forming DRX observation that tracks the Sun')
         AppendToolItem(self.toolbar, ID_ADD_DRX_JOVIAN, 'drx-jovian', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'drx-jovian.png')), shortHelp='Add DRX - Jovian', 
                                 longHelp='Add a new beam forming DRX observation that tracks Jupiter')
+        AppendToolItem(self.toolbar, ID_ADD_DRX_LUNAR, 'drx-lunar', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'drx-jovian.png')), shortHelp='Add DRX - Lunar', 
+                                longHelp='Add a new beam forming DRX observation that tracks the Moon')
         AppendToolItem(self.toolbar, ID_ADD_STEPPED_RADEC,  'stepped', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'stepped-radec.png')), shortHelp='Add DRX - Stepped - RA/Dec', 
                                 longHelp='Add a new beam forming DRX observation with custom RA/Dec position and frequency stepping')
         AppendToolItem(self.toolbar, ID_ADD_STEPPED_AZALT,  'stepped', wx.Bitmap(os.path.join(self.scriptPath, 'icons', 'stepped-azalt.png')), shortHelp='Add DRX - Stepped - Az/Alt', 
@@ -816,6 +822,7 @@ class SDFCreator(wx.Frame):
         self.Bind(wx.EVT_MENU, self.onAddDRXR, id=ID_ADD_DRX_RADEC)
         self.Bind(wx.EVT_MENU, self.onAddDRXS, id=ID_ADD_DRX_SOLAR)
         self.Bind(wx.EVT_MENU, self.onAddDRXJ, id=ID_ADD_DRX_JOVIAN)
+        self.Bind(wx.EVT_MENU, self.onAddDRXL, id=ID_ADD_DRX_LUNAR)
         self.Bind(wx.EVT_MENU, self.onAddSteppedRADec, id=ID_ADD_STEPPED_RADEC)
         self.Bind(wx.EVT_MENU, self.onAddSteppedAzAlt, id=ID_ADD_STEPPED_AZALT)
         self.Bind(wx.EVT_MENU, self.onEditStepped, id=ID_EDIT_STEPPED)
@@ -1218,6 +1225,18 @@ class SDFCreator(wx.Frame):
         self.edited = True
         self.setSaveButton()
     
+    def onAddDRXL(self, event):
+        """
+        Add a tracking the Moon (DRX) observation to the list and update the main window.
+        """
+        
+        id = self.listControl.GetItemCount() + 1
+        gain = self.project.sessions[0].drxGain
+        self.project.sessions[0].observations.append( self.sdf.Lunar('lunar-%i' % id, 'target-%i' % id, self._getCurrentDateString(), '00:00:00.000', 42e6, 74e6, self._getDefaultFilter(), gain=gain) )
+        self.addObservation(self.project.sessions[0].observations[-1], id)
+        
+        self.edited = True
+        self.setSaveButton()
     def onAddSteppedRADec(self, event):
         """
         Add a RA/Dec stepped observation block.
@@ -1820,6 +1839,7 @@ class SDFCreator(wx.Frame):
             self.obsmenu['drx-radec'].Enable(False)
             self.obsmenu['drx-solar'].Enable(False)
             self.obsmenu['drx-jovian'].Enable(False)
+            self.obsmenu['drx-lunar'].Enable(False)
             self.obsmenu['steppedRADec'].Enable(False)
             self.obsmenu['steppedAzAlt'].Enable(False)
             self.obsmenu['steppedEdit'].Enable(False)
@@ -1830,6 +1850,7 @@ class SDFCreator(wx.Frame):
             self.toolbar.EnableTool(ID_ADD_DRX_RADEC,  False)
             self.toolbar.EnableTool(ID_ADD_DRX_SOLAR,  False)
             self.toolbar.EnableTool(ID_ADD_DRX_JOVIAN, False)
+            self.toolbar.EnableTool(ID_ADD_DRX_LUNAR, False)
             self.toolbar.EnableTool(ID_ADD_STEPPED_RADEC, False)
             self.toolbar.EnableTool(ID_ADD_STEPPED_AZALT, False)
             self.toolbar.EnableTool(ID_EDIT_STEPPED, False)
@@ -1840,6 +1861,7 @@ class SDFCreator(wx.Frame):
             self.obsmenu['drx-radec'].Enable(False)
             self.obsmenu['drx-solar'].Enable(False)
             self.obsmenu['drx-jovian'].Enable(False)
+            self.obsmenu['drx-lunar'].Enable(False)
             self.obsmenu['steppedRADec'].Enable(False)
             self.obsmenu['steppedAzAlt'].Enable(False)
             self.obsmenu['steppedEdit'].Enable(False)
@@ -1850,6 +1872,7 @@ class SDFCreator(wx.Frame):
             self.toolbar.EnableTool(ID_ADD_DRX_RADEC,  False)
             self.toolbar.EnableTool(ID_ADD_DRX_SOLAR,  False)
             self.toolbar.EnableTool(ID_ADD_DRX_JOVIAN, False)
+            self.toolbar.EnableTool(ID_ADD_DRX_LUNAR, False)
             self.toolbar.EnableTool(ID_ADD_STEPPED_RADEC, False)
             self.toolbar.EnableTool(ID_ADD_STEPPED_AZALT, False)
             self.toolbar.EnableTool(ID_EDIT_STEPPED, False)
@@ -1860,6 +1883,7 @@ class SDFCreator(wx.Frame):
             self.obsmenu['drx-radec'].Enable(False)
             self.obsmenu['drx-solar'].Enable(False)
             self.obsmenu['drx-jovian'].Enable(False)
+            self.obsmenu['drx-lunar'].Enable(False)
             self.obsmenu['steppedRADec'].Enable(False)
             self.obsmenu['steppedAzAlt'].Enable(False)
             self.obsmenu['steppedEdit'].Enable(False)
@@ -1870,6 +1894,7 @@ class SDFCreator(wx.Frame):
             self.toolbar.EnableTool(ID_ADD_DRX_RADEC,  False)
             self.toolbar.EnableTool(ID_ADD_DRX_SOLAR,  False)
             self.toolbar.EnableTool(ID_ADD_DRX_JOVIAN, False)
+            self.toolbar.EnableTool(ID_ADD_DRX_LUNAR, False)
             self.toolbar.EnableTool(ID_ADD_STEPPED_RADEC, False)
             self.toolbar.EnableTool(ID_ADD_STEPPED_AZALT, False)
             self.toolbar.EnableTool(ID_EDIT_STEPPED, False)
@@ -1880,6 +1905,7 @@ class SDFCreator(wx.Frame):
             self.obsmenu['drx-radec'].Enable(True)
             self.obsmenu['drx-solar'].Enable(True)
             self.obsmenu['drx-jovian'].Enable(True)
+            self.obsmenu['drx-lunar'].Enable(True)
             self.obsmenu['steppedRADec'].Enable(True)
             self.obsmenu['steppedAzAlt'].Enable(True)
             self.obsmenu['steppedEdit'].Enable(False)
@@ -1890,6 +1916,7 @@ class SDFCreator(wx.Frame):
             self.toolbar.EnableTool(ID_ADD_DRX_RADEC,  True)
             self.toolbar.EnableTool(ID_ADD_DRX_SOLAR,  True)
             self.toolbar.EnableTool(ID_ADD_DRX_JOVIAN, True)
+            self.toolbar.EnableTool(ID_ADD_DRX_LUNAR, True)
             self.toolbar.EnableTool(ID_ADD_STEPPED_RADEC, True)
             self.toolbar.EnableTool(ID_ADD_STEPPED_AZALT, True)
             self.toolbar.EnableTool(ID_EDIT_STEPPED, False)
@@ -1900,6 +1927,7 @@ class SDFCreator(wx.Frame):
             self.obsmenu['drx-radec'].Enable(False)
             self.obsmenu['drx-solar'].Enable(False)
             self.obsmenu['drx-jovian'].Enable(False)
+            self.obsmenu['drx-lunar'].Enable(False)
             self.obsmenu['steppedRADec'].Enable(False)
             self.obsmenu['steppedAzAlt'].Enable(False)
             self.obsmenu['steppedEdit'].Enable(False)
@@ -1910,6 +1938,7 @@ class SDFCreator(wx.Frame):
             self.toolbar.EnableTool(ID_ADD_DRX_RADEC,  False)
             self.toolbar.EnableTool(ID_ADD_DRX_SOLAR,  False)
             self.toolbar.EnableTool(ID_ADD_DRX_JOVIAN, False)
+            self.toolbar.EnableTool(ID_ADD_DRX_LUNAR, False)
             self.toolbar.EnableTool(ID_ADD_STEPPED_RADEC, False)
             self.toolbar.EnableTool(ID_ADD_STEPPED_AZALT, False)
             self.toolbar.EnableTool(ID_EDIT_STEPPED, False)
