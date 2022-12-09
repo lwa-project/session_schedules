@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """
 Apache mod_python module for resolving a catalog name to a RA/dec. pair using
