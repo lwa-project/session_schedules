@@ -11,13 +11,6 @@ Options:
 None
 """
 
-# Python2 compatibility
-from __future__ import print_function, division
-try:
-    input = raw_input
-except NameError:
-    pass
-    
 import os
 import sys
 import pytz
@@ -32,10 +25,7 @@ from lsl import astro
 from lsl.common import stations
 from lsl.transform import Time
 from lsl.astro import utcjd_to_unix, MJD_OFFSET
-try:
-    from lsl.common import idf
-except ImportError:
-    import idf
+from lsl.common import idf
 from lsl.misc import parser as aph
 
 

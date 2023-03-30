@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
 
-# Python2 compatibility
-from __future__ import print_function, division
-
 import os
 import re
 import sys
@@ -10,10 +7,7 @@ import copy
 import math
 import ephem
 import argparse
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from io import StringIO
+from io import StringIO
 from datetime import datetime, timedelta
 from xml.etree import ElementTree
 
@@ -3919,12 +3913,8 @@ class ResolveTarget(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.onCancel, id=ID_RESOLVE_CANCEL)
         
     def onResolve(self, event):
-        try:
-            from urllib2 import urlopen
-            from urllib import urlencode, quote_plus
-        except ImportError:
-            from urllib.request import urlopen
-            from urllib.parse import urlencode, quote_plus
+        from urllib.request import urlopen
+        from urllib.parse import urlencode, quote_plus
         
         self.source = self.srcText.GetValue()
         try:

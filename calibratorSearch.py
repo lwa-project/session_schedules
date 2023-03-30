@@ -1,20 +1,13 @@
 #!/usr/bin/env python3
 
-# Python2 compatibility
-from __future__ import print_function, division
-
 import os
 import re
 import sys
 import ephem
 import numpy
 import argparse
-try:
-    from urllib2 import urlopen
-    from urllib import urlencode, quote_plus
-except ImportError:
-    from urllib.request import urlopen
-    from urllib.parse import urlencode, quote_plus
+from urllib.request import urlopen
+from urllib.parse import urlencode, quote_plus
 from tempfile import NamedTemporaryFile
 from xml.etree import ElementTree
 import astropy.io.fits as astrofits
@@ -440,24 +433,16 @@ class CalibratorSearch(wx.Frame):
                           'searchrad': max_dist*3600, 
                           'verhalf': 12*60, 
                           'poslist': ''})
-        try:
-            data = data.encode()
-        except AttributeError:
-            # Python2 catch
-            pass
+        
         candidates = []
         try:
-            result = urlopen('https://www.cv.nrao.edu/cgi-bin/newVLSSlist.pl', data)
+            result = urlopen('https://www.cv.nrao.edu/cgi-bin/newVLSSlist.pl', data.encode())
             lines = result.readlines()
             
             ## Parse
             inside = False
             for line in lines:
-                try:
-                    line = line.decode()
-                except AttributeError:
-                    # Python2 catch
-                    pass
+                line = line.decode()
                 line = line.rstrip()
                 if line.find('h  m    s    d  m   s   Ori      Jy') != -1:
                     inside = True
@@ -557,14 +542,9 @@ class CalibratorSearch(wx.Frame):
                           'MAPROG': 'SIN',
                           'rotate': 0.0,  
                           'Type': 'image/x-fits'})
-        try:
-            data = data.encode()
-        except AttributeError:
-            # Python2 catch
-            pass
         with NamedTemporaryFile(suffix='.fits', prefix='vlssr-') as th:
             try:
-                result = urlopen('https://www.cv.nrao.edu/cgi-bin/newVLSSpostage.pl', data)
+                result = urlopen('https://www.cv.nrao.edu/cgi-bin/newVLSSpostage.pl', data.encode())
                 th.write(result.read())
                 th.flush()
                 th.seek(0)

@@ -11,13 +11,6 @@ Options:
 None
 """
 
-# Python2 compatibility
-from __future__ import print_function, division
-try:
-    input = raw_input
-except NameError:
-    pass
-    
 import os
 import sys
 import pytz
