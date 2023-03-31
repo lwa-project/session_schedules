@@ -8,19 +8,12 @@ https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oxp/SNV
 Returns an XML file with the coordinates of the target or an error.
 """
 
-# Python2 compatibility
-from __future__ import print_function, division
- 
 import os
 import sys
 import math
 import ephem
-try:
-    from urllib2 import urlopen
-    from urllib import urlencode, quote_plus
-except ImportError:
-    from urllib.request import urlopen
-    from urllib.parse import urlencode, quote_plus
+from urllib.request import urlopen
+from urllib.parse import urlencode, quote_plus
 import argparse
 from xml.etree import ElementTree
 

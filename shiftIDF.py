@@ -11,13 +11,6 @@ Options:
 None
 """
 
-# Python2 compatibility
-from __future__ import print_function, division
-try:
-    input = raw_input
-except NameError:
-    pass
-    
 import os
 import sys
 import pytz
@@ -32,10 +25,7 @@ from lsl import astro
 from lsl.common import stations
 from lsl.transform import Time
 from lsl.astro import utcjd_to_unix, MJD_OFFSET
-try:
-    from lsl.common import idf
-except ImportError:
-    import idf
+from lsl.common import idf
 from lsl.misc import parser as aph
 
 
@@ -348,14 +338,13 @@ def main(args):
         
     print(" ")
     print("Saving to: %s" % outputIDF)
-    fh = open(outputIDF, 'w')
     if not project.validate():
         # Make sure we are about to be valid
         project.validate(verbose=True)
         raise RuntimeError("Cannot validate IDF file")
         
-    fh.write( project.render() )
-    fh.close()
+    with open(outputIDF, 'w') as fh:
+        fh.write( project.render() )
 
 
 if __name__ == "__main__":

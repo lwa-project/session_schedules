@@ -33,10 +33,9 @@ def main(args):
         
     # Read the contents of the temporary SD file into a list so that we can examine
     # the file independently of the parser
-    fh = open(args.filename, 'r')
-    file = fh.readlines()
-    fh.close()
-    
+    with open(args.filename, 'r') as fh:
+        file = fh.readlines()
+        
     # Run the parser/validator.  This uses a copy of Steve's tpss program.  tpss is run
     # to level to to make sure that the file is valid.  If the exit status is not '2', 
     # the file is taken to be invalid.

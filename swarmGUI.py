@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
 
-# Python2 compatiability
-from __future__ import print_function, division
-
 import os
 import re
 import sys
@@ -11,10 +8,7 @@ import math
 import ephem
 import numpy
 import argparse
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from io import StringIO
+from io import StringIO
 from datetime import datetime, timedelta
 from xml.etree import ElementTree
 
@@ -884,10 +878,9 @@ class IDFCreator(wx.Frame):
                 self.displayError('The interferometer definition file could not be saved due to errors in the file.', title='Save Failed')
             else:
                 try:
-                    fh = open(self.filename, 'w')
-                    fh.write(self.project.render())
-                    fh.close()
-                    
+                    with open(self.filename, 'w') as fh:
+                        fh.write(self.project.render())
+                        
                     self.edited = False
                     self.setSaveButton()
                 except IOError as err:
@@ -908,10 +901,9 @@ class IDFCreator(wx.Frame):
                 
                 self.filename = dialog.GetPath()
                 try:
-                    fh = open(self.filename, 'w')
-                    fh.write(self.project.render())
-                    fh.close()
-                    
+                    with open(self.filename, 'w') as fh:
+                        fh.write(self.project.render())
+                        
                     self.edited = False
                     self.setSaveButton()
                 except IOError as err:
@@ -1791,10 +1783,9 @@ class ObserverInfo(wx.Frame):
         
         preferences = {}
         try:
-            ph = open(os.path.join(os.path.expanduser('~'), '.sessionGUI'))
-            pl = ph.readlines()
-            ph.close()
-        
+            with open(os.path.join(os.path.expanduser('~'), '.sessionGUI')) as ph:
+                pl = ph.readlines()
+                
             preferences = {}
             for line in pl:
                 line = line.replace('\n', '')
@@ -2982,12 +2973,8 @@ class ResolveTarget(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.onCancel, id=ID_RESOLVE_CANCEL)
         
     def onResolve(self, event):
-        try:
-            from urllib2 import urlopen
-            from urllib import urlencode, quote_plus
-        except ImportError:
-            from urllib.request import urlopen
-            from urllib.parse import urlencode, quote_plus
+        from urllib.request import urlopen
+        from urllib.parse import urlencode, quote_plus
         
         self.source = self.srcText.GetValue()
         try:
