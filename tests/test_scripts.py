@@ -17,7 +17,7 @@ else:
     
 run_scripts_tests = False
 try:
-    from pylint import run_pylint
+    from pylint.lint import Run
     if MODULE_BUILD is not None:
         run_scripts_tests = True
 except ImportError:
@@ -66,11 +66,11 @@ def _test_generator(script):
     """
     
     def test(self):
-        out, err = run_pylint("%s -E --extension-pkg-whitelist=numpy" % script, return_std=True)
-        out_lines = out.read().split('\n')
-        err_lines = err.read().split('\n')
-        out.close()
-        err.close()
+        results = Run([script, '-E', '--extension-pkg-whitelist=numpy'], do_exit=False)
+        out = results.stdout.getvalue()
+        err = results.stderr.getvalue()
+        out_lines = out.split('\n')
+        err_lines = err.split('\n')
         
         for line in out_lines:
             ignore = False
