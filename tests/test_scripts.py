@@ -17,7 +17,9 @@ else:
     
 run_scripts_tests = False
 try:
+    from io import StringIO
     from pylint.lint import Run
+    from pylint.reporters.text import TextReporter
     if MODULE_BUILD is not None:
         run_scripts_tests = True
 except ImportError:
@@ -66,11 +68,11 @@ def _test_generator(script):
     """
     
     def test(self):
-        results = Run([script, '-E', '--extension-pkg-whitelist=numpy'], do_exit=False)
-        out = results.stdout.getvalue()
-        err = results.stderr.getvalue()
+        pylint_output = StringIO()
+        reporter = TextReporter(pylint_output)
+        Run([script, '-E', '--extension-pkg-whitelist=numpy'], reporter=reporter, do_exit=False)
+        out = pylint_output.getvalue()
         out_lines = out.split('\n')
-        err_lines = err.split('\n')
         
         for line in out_lines:
             ignore = False
