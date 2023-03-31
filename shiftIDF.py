@@ -338,14 +338,13 @@ def main(args):
         
     print(" ")
     print("Saving to: %s" % outputIDF)
-    fh = open(outputIDF, 'w')
     if not project.validate():
         # Make sure we are about to be valid
         project.validate(verbose=True)
         raise RuntimeError("Cannot validate IDF file")
         
-    fh.write( project.render() )
-    fh.close()
+    with open(outputIDF, 'w') as fh:
+        fh.write( project.render() )
 
 
 if __name__ == "__main__":

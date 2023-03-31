@@ -403,14 +403,13 @@ def main(args):
             
     print(" ")
     print("Saving to: %s" % outputSDF)
-    fh = open(outputSDF, 'w')
     if not project.validate():
         # Make sure we are about to be valid
         project.validate(verbose=True)
         raise RuntimeError("Cannot validate SDF file")
         
-    fh.write( project.render() )
-    fh.close()
+    with open(outputSDF, 'w') as fh:
+        fh.write( project.render() )
 
 
 if __name__ == "__main__":
