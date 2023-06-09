@@ -37,10 +37,6 @@ visualizeSessions.py
 --------------------
 Tool for operators to examine multiple SDFs at the same time.
 
-efficianado.py
---------------
-Script to pack a collection of SDFs into the smallest possible time period.
-
 resolveCLI.py
 -------------
 Script to provide a name resolver that can be run from the command line.
@@ -49,6 +45,19 @@ validatorCLI.py
 ---------------
 Script to validate SDFs via the validation interfaces available 
 in sdf.py and with the tpss executable.  This validator runs tpss up to level 2.
+
+simpleTBN.py
+------------
+Script to quickly make a SDF with a single TBN recording.
+
+simpleTBF.py
+------------
+Script to quickly make a SDF with a single TBF recording.
+
+simpleDRX.py
+------------
+Script to quickly make a SDF with a single DRX observation of a target.  The
+target name is resolved into coordinates using the Sesame service.
 
 swarmGUI.py
 -----------
@@ -77,10 +86,10 @@ to:
 Other Contents
 --------------
 `docs`
-  Directory containing on-line documentation for sessionGUI.py
+  Directory containing on-line documentation for sessionGUI.py and swarmGUI.py
 
 `examples`
   Directory containing example SDFs from MCS.
 
 `icons`
-  Directory containing icons used by sessionGUI.py
+  Directory containing icons used by sessionGUI.py and swarmGUI.py
