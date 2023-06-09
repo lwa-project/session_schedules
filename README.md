@@ -86,10 +86,10 @@ to:
 Other Contents
 --------------
 `docs`
-  Directory containing on-line documentation for sessionGUI.py and swarmGUI.py
+  Directory containing on-line documentation for sessionGUI.py and swarmGUI.py.
 
 `examples`
   Directory containing example SDFs from MCS.
 
 `icons`
-  Directory containing icons used by sessionGUI.py and swarmGUI.py
+  Directory containing icons used by sessionGUI.py and swarmGUI.py.
