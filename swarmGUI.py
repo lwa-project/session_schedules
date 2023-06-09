@@ -1750,6 +1750,7 @@ class IDFCreator(wx.Frame):
 ID_OBS_INFO_DRSPEC = 211
 ID_OBS_INFO_OK = 212
 ID_OBS_INFO_CANCEL = 213
+ID_OBS_INFO_DEFAULTS = 214
 
 _cleanup0RE = re.compile(r';;(;;)+')
 _cleanup1RE = re.compile(r'^;;')
@@ -2002,8 +2003,10 @@ class ObserverInfo(wx.Frame):
         
         ok = wx.Button(panel, ID_OBS_INFO_OK, 'Ok', size=(90, 28))
         cancel = wx.Button(panel, ID_OBS_INFO_CANCEL, 'Cancel', size=(90, 28))
+        defaults = wx.Button(panel, ID_OBS_INFO_DEFAULTS, 'Save Defaults', size=(95, 28))
         sizer.Add(ok, pos=(row+0, 4), flag=wx.ALL, border=5)
         sizer.Add(cancel, pos=(row+0, 5), flag=wx.ALL, border=5)
+        sizer.Add(defaults, pos=(row+0, 0), flag=wx.ALL, border=5)
         
         panel.SetupScrolling(scroll_x=True, scroll_y=True) 
         panel.SetSizer(sizer)
@@ -2038,6 +2041,7 @@ class ObserverInfo(wx.Frame):
         
         self.Bind(wx.EVT_BUTTON, self.onOK, id=ID_OBS_INFO_OK)
         self.Bind(wx.EVT_BUTTON, self.onCancel, id=ID_OBS_INFO_CANCEL)
+        self.Bind(wx.EVT_BUTTON, self.onSaveDefaults, id=ID_OBS_INFO_DEFAULTS)
         
     def onRadioButtons(self, event):
         """
@@ -2125,6 +2129,45 @@ class ObserverInfo(wx.Frame):
     def onCancel(self, event):
         self.Close()
         
+    def onSaveDefaults(self, event):
+        preferences = {}
+        try:
+            with open(os.path.join(os.path.expanduser('~'), '.sessionGUI')) as ph:
+                pl = ph.readlines()
+                
+            preferences = {}
+            for line in pl:
+                line = line.replace('\n', '')
+                if len(line) < 3:
+                    continue
+                if line[0] == '#':
+                    continue
+                key, value = line.split(None, 1)
+                preferences[key] = value
+        except:
+            pass
+            
+        try:
+            preferences['ObserverID'] = int(self.observerIDEntry.GetValue())
+        except (TypeError, ValueError):
+            pass
+        first = self.observerFirstEntry.GetValue()
+        if len(first):
+            preferences['ObserverFirstName'] = first
+        last = self.observerLastEntry.GetValue()
+        if len(last):
+            preferences['ObserverLastName'] = last
+        pID = self.projectIDEntry.GetValue()
+        if len(pID):
+            preferences['ProjectID'] = pID
+        pTitle = self.projectTitleEntry.GetValue()
+        if len(pTitle):
+            preferences['ProjectName'] = pTitle
+            
+        with open(os.path.join(os.path.expanduser('~'), '.sessionGUI'), 'w') as ph:
+            for key in preferences:
+                ph.write("%-24s %s\n" % (key, str(preferences[key])))
+                
     def displayError(self, error, details=None, title=None):
         """
         Display an error dialog and write an error message to the command 
