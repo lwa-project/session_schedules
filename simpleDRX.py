@@ -103,6 +103,7 @@ def main(args):
     proj = sdf.Project(obs, "Simple DRX Run", args.project_code)
     ## Session
     ses = sdf.Session("Simple DRX Run", args.session_id)
+    ses.drx_beam = args.beam
     ## Observation
     drx = sdf.DRX('DRX', args.target, tSDF, args.duration, ra, dec, args.frequency1, args.frequency2, 7, gain=args.gain)
     ses.append(drx)
@@ -138,6 +139,8 @@ if __name__ == "__main__":
                         help='observation UTC start time; HH:MM:SS[.sss]')
     parser.add_argument('target', type=str,
                         help='target name to observe')
+    parser.add_argument('-b', '--beam', type=aph.positive_int, default=1,
+                        help='Beam to use')
     parser.add_argument('-1', '--frequency1', type=aph.frequency, default='38.1MHz',
                         help='Tuning 1 center frequency')
     parser.add_argument('-2', '--frequency2', type=aph.frequency, default='74.05MHz',
