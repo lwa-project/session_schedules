@@ -123,6 +123,9 @@ def main(args):
     # Resolve the target to coordinates
     ra, dec = resolve(args.target)
     
+    # Load in the preferences
+    prefs = load_preferences()
+    
     # Create the SDF
     ## Observer
     obs = sdf.Observer("%s %s" % (prefs['ObserverFirstName'], prefs['ObserverLastName']),

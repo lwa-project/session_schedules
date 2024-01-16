@@ -17,6 +17,33 @@ from lsl.misc import parser as aph
 _UTC = pytz.utc
 
 
+def load_preferences():
+    """
+    Load sessionGUI.py preferences for the observer info.
+    """
+    
+    preferences = {'ObserverID': 0,
+                   'ObserverFirstName': 'Your',
+                   'ObserverLastName': 'Name'}
+    try:
+        with open(os.path.join(os.path.expanduser('~'), '.sessionGUI')) as ph:
+            pl = ph.readlines()
+            
+        preferences = {}
+        for line in pl:
+            line = line.replace('\n', '')
+            if len(line) < 3:
+                continue
+            if line[0] == '#':
+                continue
+            key, value = line.split(None, 1)
+            preferences[key] = value
+    except:
+        pass
+        
+    return preferences
+
+
 def main(args):
     # Set the start date/time
     y, m, d = args.start_date.split('/', 2)
@@ -34,11 +61,18 @@ def main(args):
     samples = int(round(args.duration * fS))
     print(samples)
     
+    # Load in the preferences
+    prefs = load_preferences()
+    
     # Create the SDF
     ## Observer
-    obs = sdf.Observer("Your Name",  0)
+    obs = sdf.Observer("%s %s" % (prefs['ObserverFirstName'], prefs['ObserverLastName']),
+                       prefs['ObserverID'])
     ## Project
     proj = sdf.Project(obs, "Simple TBF Run", args.project_code)
+    if 'ProjectID' in prefs and 'ProjectName' in prefs:
+        if args.project_code == prefs['ProjectID']:
+            proj.name = prefs['ProjectName']
     ## Session
     ses = sdf.Session("Simple TBF Run", args.session_id)
     ses.drx_beam = 1
