@@ -2251,7 +2251,7 @@ class ObserverInfo(wx.Frame):
             ucfRB.SetValue(False)
             
             nchnText.SetValue("1024")
-            nintText.SetValue("6144")
+            nintText.SetValue("768")
             linear.SetValue(True)
             stokes.SetValue(False)
         else:
@@ -2265,8 +2265,8 @@ class ObserverInfo(wx.Frame):
                 unamText.SetValue(mtch.group('username'))
             unamText.Enable()
             
-            nchnText.SetValue("32")
-            nintText.SetValue("6144")
+            nchnText.SetValue("1024")
+            nintText.SetValue("768")
             linear.SetValue(True)
             stokes.SetValue(False)
             
