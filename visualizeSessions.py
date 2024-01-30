@@ -129,7 +129,7 @@ class Visualization_GUI(object):
             self.sdf = sdfADP
             self.adp = True
         else:
-            raise ValueError("Unkown station: %s" % station)
+            raise ValueError(f"Unkown station: {station}")
             
         self.colors = ['Blue','Green','Cyan','Magenta','Yellow', 
                     'Peru', 'Moccasin', 'Orange', 'DarkOrchid']
@@ -164,7 +164,7 @@ class Visualization_GUI(object):
                     project = metabundle.get_sdf(filename)
                     dataFile = metabundle.get_session_metadata(filename)
                 except Exception as e:
-                    print("Warning: Cannot parse '%s'" % os.path.basename(filename))
+                    print(f"Warning: Cannot parse '{os.path.basename(filename)}': {str(e)}")
                     continue
                     
             pID = project.id
@@ -182,7 +182,7 @@ class Visualization_GUI(object):
             duration = sessionStop-sessionStart
             
             sessionSDFs.append(project)
-            sessionNames.append('%s_%04i' % (pID, sID))
+            sessionNames.append(f"{pID}_{sID:04d}")
             sessionBeams.append(beam)
             sessionStarts.append(sessionStart)
             sessionStops.append(sessionStop)
