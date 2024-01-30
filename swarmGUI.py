@@ -2205,7 +2205,7 @@ class AdvancedInfo(wx.Frame):
         self.Show()
         
     def initUI(self):
-        drxGain = ['%i' % i for i in range(13)]
+        drxGain = [str(i) for i in range(13)]
         drxGain.insert(0, 'MCS Decides')
         aspFilters = ['MCS Decides', 'Split', 'Full', 'Reduced', 'Off', 'Split @ 3MHz', 'Full @ 3MHz']
         
@@ -2648,7 +2648,7 @@ class RunDisplay(wx.Frame):
 
 class RunUVCoverageDisplay(wx.Frame):
     def __init__(self, parent):
-        wx.Frame.__init__(self, parent, title='Run UV Coverage', size=(800, 375))
+        wx.Frame.__init__(self, parent, title='Run (u,v) Coverage', size=(800, 375))
         
         self.parent = parent
         

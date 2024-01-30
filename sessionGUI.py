@@ -2638,9 +2638,9 @@ class AdvancedInfo(wx.Frame):
         
     def initUI(self):
         bits = ['12-bit', '4-bit']
-        tbnGain = ['%i' % i for i in range(31)]
+        tbnGain = [str(i) for i in range(31)]
         tbnGain.insert(0, 'MCS Decides')
-        drxGain = ['%i' % i for i in range(13)]
+        drxGain = [str(i) for i in range(13)]
         drxGain.insert(0, 'MCS Decides')
         if self.parent.adp:
             drxBeam = ['%i' %i for i in range(1, 4)]
@@ -2649,7 +2649,7 @@ class AdvancedInfo(wx.Frame):
         drxBeam.insert(0, 'MCS Decides')
         intervals = ['MCS Decides', 'Never', '1 minute', '5 minutes', '15 minutes', '30 minutes', '1 hour']
         aspFilters = ['MCS Decides', 'Split', 'Full', 'Reduced', 'Off', 'Split @ 3MHz', 'Full @ 3MHz']
-        aspAttn = ['%i' % i for i in range(16)]
+        aspAttn = [str(i) for i in range(16)]
         aspAttn.insert(0, 'MCS Decides')
         
         row = 0
