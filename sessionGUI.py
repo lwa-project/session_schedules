@@ -19,7 +19,7 @@ from lsl.common import stations
 from lsl.astro import deg_to_dms, deg_to_hms, MJD_OFFSET, DJD_OFFSET
 from lsl.reader.tbn import FILTER_CODES as TBNFilters
 from lsl.reader.drx import FILTER_CODES as DRXFilters
-from lsl.common import sdf, sdfADP
+from lsl.common import sdf, sdfADP, sdfNDP
 from lsl.misc import parser as aph
 
 import wx
@@ -211,10 +211,17 @@ class ObservationListCtrl(wx.ListCtrl, TextEditMixin, ChoiceMixIn, CheckListCtrl
             del kwargs['adp']
         except KeyError:
             adp = False
+        try:
+            ndp = kwargs['ndp']
+            del kwargs['ndp']
+        except KeyError:
+            ndp = False
         
         wx.ListCtrl.__init__(self, parent, style=wx.LC_REPORT, **kwargs)
         TextEditMixin.__init__(self)
-        if adp:
+        if ndp:
+            ChoiceMixIn.__init__(self, {10:['1','2','3','4','5','6','7'], 11:['No','Yes']})
+        elif adp:
             ChoiceMixIn.__init__(self, {10:['1','2','3','4','5','6','7'], 11:['No','Yes']})
         else:
             ChoiceMixIn.__init__(self, {10:['1','2','3','4','5','6','7'], 11:['No','Yes']})
@@ -534,10 +541,15 @@ class SDFCreator(wx.Frame):
         self.station = stations.lwa1
         self.sdf = sdf
         self.adp = False
+        self.ndp = False
         if args.lwasv:
             self.station = stations.lwasv
             self.sdf = sdfADP
             self.adp = True
+        if args.lwana:
+            self.station = stations.lwana
+            self.sdf = sdfNDP
+            self.ndp = True
             
         self.scriptPath = os.path.abspath(__file__)
         self.scriptPath = os.path.split(self.scriptPath)[0]
@@ -781,7 +793,7 @@ class SDFCreator(wx.Frame):
         hbox = wx.BoxSizer(wx.HORIZONTAL)
         self.panel = ScrolledPanel(self, -1)
         
-        self.listControl = ObservationListCtrl(self.panel, id=ID_LISTCTRL, adp=self.adp)
+        self.listControl = ObservationListCtrl(self.panel, id=ID_LISTCTRL, adp=self.adp, ndp=self.ndp)
         self.listControl.parent = self
         
         hbox.Add(self.listControl, 1, wx.EXPAND)
@@ -1101,6 +1113,9 @@ class SDFCreator(wx.Frame):
         current setup.
         """
         
+        if self.ndp:
+            return False
+            
         if self.adp:
             return False
             
@@ -1114,6 +1129,31 @@ class SDFCreator(wx.Frame):
         else:
             return False
             
+    def _getTBNValid(self):
+        """
+        Function that returns whether or not TBN is a valid mode for the 
+        current setup.
+        """
+        
+        if self.ndp:
+            return False
+            
+        return True
+        
+    def _getTBFValid(self):
+        """
+        Function that returns whether or not TBF is a valid mode for the 
+        current setup.
+        """
+        
+        if self.ndp:
+            return True
+            
+        if self.adp:
+            return True
+            
+        return False
+        
     def _getCurrentDateString(self):
         """
         Function to get a datetime string, in UTC, for a new observation.
@@ -1587,7 +1627,13 @@ class SDFCreator(wx.Frame):
             value = float(text)*1e6
             freq = int(round(value * 2**32 / fS))
             if freq < lowerLimit or freq > upperLimit:
-                raise ValueError("Frequency of %.6f MHz is out of the %s tuning range" % (value/1e6, 'ADP' if self.adp else 'DP'))
+                if self.ndp:
+                    dpn = 'NDP'
+                elif self.adp:
+                    dpn = 'ADP'
+                else:
+                    dpn = 'DP'
+                raise ValueError("Frequency of %.6f MHz is out of the %s tuning range" % (value/1e6, dpn))
             else:
                 return value
                 
@@ -2218,11 +2264,13 @@ class ObserverInfo(wx.Frame):
             tbnRB.SetValue(False)
             drxRB.SetValue(True)
             
-            if self.parent.adp:
+            if not self.parent._getTBWValid():
                 tbwRB.Disable()
-            else:
+            if not self.parent._getTBNValid():
+                tbnRB.Disable()
+            if not self.parent._getTBFValid():
                 tbfRB.Disable()
-            
+                
         did = wx.StaticText(panel, label='Data Return Method')
         usbRB  = wx.RadioButton(panel, -1, 'Bare Drive(s)', style=wx.RB_GROUP)
         ucfRB  = wx.RadioButton(panel, -1, 'Copy to UCF')
@@ -2304,6 +2352,8 @@ class ObserverInfo(wx.Frame):
                 linear.Disable()
                 stokes.Disable()
             elif self.parent.mode == 'TBF':
+                if not self.parent._getTBNValid():
+                    tbnRB.Disable()
                 tbwRB.Disable()
                 drsCB.Disable()
                 nchnText.Disable()
@@ -2311,9 +2361,9 @@ class ObserverInfo(wx.Frame):
                 linear.Disable()
                 stokes.Disable()
             elif self.parent.mode == 'TBN':
-                if self.parent.adp:
+                if not self.parent._getTBWValid():
                     tbwRB.Disable()
-                else:
+                if not self.parent._getTBFValid():
                     tbfRB.Disable()
                 drsCB.Disable()
                 nchnText.Disable()
@@ -2324,9 +2374,11 @@ class ObserverInfo(wx.Frame):
                 pass
                 
         else:
-            if self.parent.adp:
+            if not self.parent._getTBWValid():
                 tbwRB.Disable()
-            else:
+            if not self.parent._getTBNValid():
+                tbnRB.Disable()
+            if not self.parent._getTBFValid():
                 tbfRB.Disable()
                 
         sizer.Add(ses, pos=(row+0, 0), span=(1,6), flag=wx.ALIGN_CENTER, border=5)
@@ -2634,7 +2686,9 @@ class AdvancedInfo(wx.Frame):
         tbnGain.insert(0, 'MCS Decides')
         drxGain = ['%i' % i for i in range(13)]
         drxGain.insert(0, 'MCS Decides')
-        if self.parent.adp:
+        if self.parent.ndp:
+            drxBeam = ['%i' %i for i in range(1, 5)]
+        elif self.parent.adp:
             drxBeam = ['%i' %i for i in range(1, 4)]
         else:
             drxBeam = ['%i' %i for i in range(1, 5)]
@@ -2850,7 +2904,7 @@ class AdvancedInfo(wx.Frame):
         #
         # TBF
         #
-        if self.parent.mode == 'TBF':
+        if self.parent.mode == 'TBF' or self.parent._getTBFValid():
             tbf = wx.StaticText(panel, label='TBF-Specific Information')
             tbf.SetFont(font)
             
@@ -2886,7 +2940,7 @@ class AdvancedInfo(wx.Frame):
         # TBN
         #
         
-        if self.parent.mode == 'TBN' or self.parent._getTBWValid():
+        if self.parent.mode == 'TBN' or self.parent._getTBNValid():
             tbn = wx.StaticText(panel, label='TBN-Specific Information')
             tbn.SetFont(font)
             
@@ -3120,11 +3174,11 @@ class AdvancedInfo(wx.Frame):
             self.tbwBits = tbitsText
             self.tbwSamp = tsampText
             
-        if self.parent.mode == 'TBF':
+        if self.parent.mode == 'TBF' or self.parent._getTBFValid():
             self.tbfSamp = tsampText
             self.tbfBeam = tbeamText
             
-        if self.parent.mode == 'TBN' or (self.parent.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF):
+        if self.parent.mode == 'TBN' or self.parent._getTBNValid() or (self.parent.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF):
             self.gain = tgainText
             
         if self.parent.mode == 'DRX':
@@ -3207,7 +3261,7 @@ class AdvancedInfo(wx.Frame):
                             details='%i > 12000000' % tbwSamp, title='TBW Sample Error')
                 return False
                 
-        if self.parent.mode == 'TBF':
+        if self.parent.mode == 'TBF' or self.parent._getTBFValid():
             tbfSamp = int( self.tbfSamp.GetValue() )
             self.parent.project.sessions[0].drx_beam = self.__parseGainCombo(self.tbfBeam)
             if tbfSamp < 0:
@@ -3262,7 +3316,7 @@ class AdvancedInfo(wx.Frame):
                 self.parent.project.sessions[0].observations[i].update()
                 refresh_duration = True
                 
-        if self.parent.mode == 'TBF':
+        if self.parent.mode == 'TBF' or self.parent._getTBFValid():
             self.parent.project.sessions[0].drx_beam = self.__parseGainCombo(self.tbfBeam)
             self.parent.project.sessions[0].tbfSamples = int( self.tbfSamp.GetValue() )
             for i in range(len(self.parent.project.sessions[0].observations)):
@@ -3270,7 +3324,7 @@ class AdvancedInfo(wx.Frame):
                 self.parent.project.sessions[0].observations[i].update()
                 refresh_duration = True
                 
-        if self.parent.mode == 'TBN' or (self.parent.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF):
+        if self.parent.mode == 'TBN' or self.parent._getTBNValid() or (self.parent.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF):
             self.parent.project.sessions[0].tbnGain = self.__parseGainCombo(self.gain)
             for i in range(len(self.parent.project.sessions[0].observations)):
                 self.parent.project.sessions[0].observations[i].gain = self.__parseGainCombo(self.gain)
@@ -3286,7 +3340,7 @@ class AdvancedInfo(wx.Frame):
                 if obs.mode == 'TBW' or self.parent._getTBWValid():
                     obs.bits = self.parent.project.sessions[0].observations[i].bits
                     obs.samples = self.parent.project.sessions[0].observations[i].samples
-                elif obs.mode == 'TBN' or (self.parent.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF):
+                elif obs.mode == 'TBN' or self.parent._getTBNValid() or (self.parent.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF):
                     obs.gain = self.parent.project.sessions[0].observations[i].gain
                 else:
                     obs.gain = self.parent.project.sessions[0].observations[i].gain
@@ -4547,7 +4601,13 @@ class SteppedWindow(wx.Frame):
             value = float(text)*1e6
             freq = int(round(value * 2**32 / fS))
             if freq < 219130984 or freq > 1928352663:
-                raise ValueError("Frequency of %.6f MHz is out of the %s tuning range" % (value/1e6, 'ADP' if self.parent.adp else 'DP'))
+                if self.parent.ndp:
+                    dpn = 'NDP'
+                elif self.parent.adp:
+                    dpn = 'ADP'
+                else:
+                    dpn = 'DP'
+                raise ValueError("Frequency of %.6f MHz is out of the %s tuning range" % (value/1e6, dpn))
             else:
                 return value
                 
@@ -4680,8 +4740,11 @@ if __name__ == "__main__":
                         help='filename of SDF to edit')
     parser.add_argument('-d', '--drsu-size', type=aph.positive_int, default=sdf._DRSUCapacityTB, 
                         help='perform storage calcuations assuming the specified DRSU size in TB')
-    parser.add_argument('-s','--lwasv', action='store_true', 
+    sgroup = parser.add_mutually_exclusive_group(required=False)
+    sgroup.add_argument('-s','--lwasv', action='store_true', 
                         help='build an SDF for LWA-SV instead of LWA1')
+    sgroup.add_argument('-n','--lwana', action='store_true', 
+                        help='build an SDF for LWA-NA instead of LWA1')
     args = parser.parse_args()
     
     app = wx.App()
