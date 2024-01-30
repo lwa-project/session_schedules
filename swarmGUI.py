@@ -65,6 +65,10 @@ else:
     AppendToolItem = lambda *args, **kwds: args[0].AddLabelTool(*args[1:], **kwds)
 
 
+def pid_print(*args, **kwds):
+    print(f"[{os.getpid()}]", *args, **kwds)
+
+
 class ChoiceMixIn(wx.Control):
     def __init__(self, options={}):
         self.options = options
@@ -884,7 +888,7 @@ class IDFCreator(wx.Frame):
                     self.edited = False
                     self.setSaveButton()
                 except IOError as err:
-                    self.displayError('Error saving to %s' % self.filename, details=err, title='Save Error')
+                    self.displayError(f"Error saving to '{self.filename}'", details=err, title='Save Error')
                     
     def onSaveAs(self, event):
         """
@@ -907,7 +911,7 @@ class IDFCreator(wx.Frame):
                     self.edited = False
                     self.setSaveButton()
                 except IOError as err:
-                    self.displayError('Error saving to %s' % self.filename, details=err, title='Save Error')
+                    self.displayError(f"Error saving to '{self.filename}'", details=err, title='Save Error')
                     
             dialog.Destroy()
             
@@ -1176,7 +1180,7 @@ class IDFCreator(wx.Frame):
             self.badEdit = False
             self.badEditLocation = (-1, -1)
         except ValueError as err:
-            print('[%i] Error: %s' % (os.getpid(), str(err)))
+            pid_print(f"Error: {str(err)}")
             self.SetStatusText('Error: %s' % str(err))
             
             item = self.listControl.GetItem(obsIndex, obsAttr)
@@ -1244,7 +1248,7 @@ class IDFCreator(wx.Frame):
         # Re-number the remaining rows to keep the display clean
         for i in range(self.listControl.GetItemCount()):
             item = self.listControl.GetItem(i, 0)
-            item.SetText('%i' % (i+1))
+            item.SetText(f"{i+1}")
             self.listControl.SetItem(item)
             self.listControl.RefreshItem(item.GetId())
             
@@ -1267,7 +1271,7 @@ class IDFCreator(wx.Frame):
         i = 0
         for obs in self.project.runs[0].scans:
             for station in self.project.runs[0].stations:
-                print("[%i] Validating scan %i on %s" % (os.getpid(), i+1, station.id))
+                pid_print(f"Validating scan {i+1} on {station.id}")
                 valid = obs.validate(verbose=True)
                 for col in range(len(self.columnMap)-1):  # -1 for proper motion
                     item = self.listControl.GetItem(i, col)
@@ -1300,7 +1304,7 @@ class IDFCreator(wx.Frame):
             msg_lines = full_msg.split('\n')
             for msg in msg_lines:
                 if msg.find('Error') != -1:
-                    print(msg)
+                    pid_print(msg)
                     
             if validObs:
                 wx.MessageBox('All scans are valid, but there are errors in the run setup.  See the command standard output for details.', 'Validator Results')
@@ -1382,7 +1386,7 @@ class IDFCreator(wx.Frame):
             if dk > 7:
                 continue
             dv, du = units(dv)
-            filterInfo = "%s\n%i  %.3f %-3s" % (filterInfo, dk, dv, du)
+            filterInfo = f"{filterInfo}\n{dk}  {dv:.3f} {du:-3s}"
             
         wx.MessageBox(filterInfo, 'Filter Codes')
         
@@ -1434,7 +1438,7 @@ class IDFCreator(wx.Frame):
             """
             
             if text.lower().strip() not in ('fluxcal', 'phasecal', 'target'):
-                raise ValueError("Scan intent of '%s' is not one of 'FluxCal', 'PhaseCal', or 'Target'" % text)
+                raise ValueError(f"Scan intent of '{text}' is not one of 'FluxCal', 'PhaseCal', or 'Target'")
             return text
             
         def raConv(text):
@@ -1495,7 +1499,7 @@ class IDFCreator(wx.Frame):
             value = float(text)*1e6
             freq = int(round(value * 2**32 / fS))
             if freq < lowerLimit or freq > upperLimit:
-                raise ValueError("Frequency of %.6f MHz is out of the DP tuning range" % (value/1e6,))
+                raise ValueError(f"Frequency of {value/1e6:.6f} MHz is out of the DP tuning range")
             else:
                 return value
                 
@@ -1702,11 +1706,11 @@ class IDFCreator(wx.Frame):
         self.listControl.setCheckDependant()
         self.initIDF()
         
-        print("[%i] Parsing file '%s'" % (os.getpid(), filename))
+        pid_print(f"Parsing file '{filename}'")
         try:
             self.project = idf.parse_idf(filename)
         except Exception as e:
-            raise RuntimeError("Cannot parse provided IDF: %s" % str(e))
+            raise RuntimeError(f"Cannot parse provided IDF: {str(e)}")
         if len(self.project.runs) == 0:
             raise RuntimeError("Provided IDF does not define any runs")
         if len(self.project.runs[0].scans) == 0:
@@ -1736,13 +1740,13 @@ class IDFCreator(wx.Frame):
             title = 'An Error has Occured'
             
         if details is None:
-            print("[%i] Error: %s" % (os.getpid(), str(error)))
-            self.statusbar.SetStatusText('Error: %s' % str(error))
-            dialog = wx.MessageDialog(self, '%s' % str(error), title, style=wx.OK|wx.ICON_ERROR)
+            pid_print(f"Error: {str(error)}")
+            self.statusbar.SetStatusText(f"Error: {str(error)}")
+            dialog = wx.MessageDialog(self, str(error), title, style=wx.OK|wx.ICON_ERROR)
         else:
-            print("[%i] Error: %s" % (os.getpid(), str(details)))
-            self.statusbar.SetStatusText('Error: %s' % str(details))
-            dialog = wx.MessageDialog(self, '%s\n\nDetails:\n%s' % (str(error), str(details)), title, style=wx.OK|wx.ICON_ERROR)
+            pid_print(f"Error: {str(details)}")
+            self.statusbar.SetStatusText(f"Error: {str(details)}")
+            dialog = wx.MessageDialog(self, f"{str(error)}\n\nDetails:\n{str(details)}", title, style=wx.OK|wx.ICON_ERROR)
             
         dialog.ShowModal()
 
@@ -2166,7 +2170,7 @@ class ObserverInfo(wx.Frame):
             
         with open(os.path.join(os.path.expanduser('~'), '.sessionGUI'), 'w') as ph:
             for key in preferences:
-                ph.write("%-24s %s\n" % (key, str(preferences[key])))
+                ph.write(f"{key:-24s} {str(preferences[key])}\n")
                 
     def displayError(self, error, details=None, title=None):
         """
@@ -2177,11 +2181,11 @@ class ObserverInfo(wx.Frame):
             title = 'An Error has Occured'
             
         if details is None:
-            print("[%i] Error: %s" % (os.getpid(), str(error)))
-            dialog = wx.MessageDialog(self, '%s' % str(error), title, style=wx.OK|wx.ICON_ERROR)
+            pid_print(f"Error: {str(error)}")
+            dialog = wx.MessageDialog(self, str(error), title, style=wx.OK|wx.ICON_ERROR)
         else:
-            print("[%i] Error: %s" % (os.getpid(), str(details)))
-            dialog = wx.MessageDialog(self, '%s\n\nDetails:\n%s' % (str(error), str(details)), title, style=wx.OK|wx.ICON_ERROR)
+            pid_print(f"Error: {str(details)}")
+            dialog = wx.MessageDialog(self, f"{str(error)}\n\nDetails:\n{str(details)}", title, style=wx.OK|wx.ICON_ERROR)
             
         dialog.ShowModal()
 
@@ -2371,7 +2375,7 @@ class AdvancedInfo(wx.Frame):
                     if staCheck.GetValue():
                         new_stations.append(station)
         if len(new_stations) < 2:
-            self.displayError('Invalid Station Selection: only %i selected' % len(new_stations), details='Must be two or more', 
+            self.displayError(f"Invalid Station Selection: only {len(new_stations)} selected", details='Must be two or more', 
                               title='Interferometer Setup Error')
             return False
         self.parent.project.runs[0].stations = new_stations
@@ -2422,11 +2426,11 @@ class AdvancedInfo(wx.Frame):
             title = 'An Error has Occured'
             
         if details is None:
-            print("[%i] Error: %s" % (os.getpid(), str(error)))
-            dialog = wx.MessageDialog(self, '%s' % str(error), title, style=wx.OK|wx.ICON_ERROR)
+            pid_print(f"Error: {str(error)}")
+            dialog = wx.MessageDialog(self, str(error), title, style=wx.OK|wx.ICON_ERROR)
         else:
-            print("[%i] Error: %s" % (os.getpid(), str(details)))
-            dialog = wx.MessageDialog(self, '%s\n\nDetails:\n%s' % (str(error), str(details)), title, style=wx.OK|wx.ICON_ERROR)
+            pid_print(f"Error: {str(details)}")
+            dialog = wx.MessageDialog(self, f"{str(error)}\n\nDetails:\n{str(details)}", title, style=wx.OK|wx.ICON_ERROR)
             
         dialog.ShowModal()
 
@@ -3092,7 +3096,7 @@ class ResolveTarget(wx.Frame):
                         self.appli.Enable(False)
                 except ValueError as err:
                     success = False
-                    print('[%i] Error: %s' % (os.getpid(), str(err)))
+                    pid_print(f"Error: {str(err)}")
                     
             if success:
                 self.Close()
@@ -3285,7 +3289,7 @@ class ProperMotionWindow(wx.Frame):
                     self.parent.setSaveButton()
             except ValueError as err:
                 success = False
-                print('[%i] Error: %s' % (os.getpid(), str(err)))
+                pid_print(f"Error: {str(err)}")
                 
             if success:
                 self.Close()
@@ -3355,7 +3359,7 @@ class SearchWindow(OCS):
                             self.parent.setSaveButton()
                     except ValueError as err:
                         success = False
-                        print('[%i] Error: %s' % (os.getpid(), str(err)))
+                        pid_print(f"Error: {str(err)}")
                         
         wx.CallAfter(self.onQuit, event)
 
