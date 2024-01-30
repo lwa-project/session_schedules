@@ -2226,7 +2226,7 @@ class AdvancedInfo(wx.Frame):
         i = 0
         j = 2
         staChecks = []
-        for station in stations.get_full_stations():
+        for station in stations.get_all_stations():
             staCheck = wx.CheckBox(panel, ID_STATION_CHECKED, label=station.name)
             if station in self.parent.project.runs[0].stations:
                 staCheck.SetValue(True)
@@ -2239,7 +2239,7 @@ class AdvancedInfo(wx.Frame):
             if j >= 6:
                 j = 2
                 i += 1
-        for dummy in ('LWANA', 'OVROLWA'):
+        for dummy in ('OVROLWA',):
             staCheck = wx.CheckBox(panel, ID_STATION_CHECKED, label=dummy)
             staCheck.Enable(False)
             sizer.Add(staCheck, pos=(row+1+i,j), span=(1,2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
@@ -2365,7 +2365,7 @@ class AdvancedInfo(wx.Frame):
         
         # Stations
         new_stations = []
-        for station in stations.get_full_stations():
+        for station in stations.get_all_stations():
             for name,staCheck in self.staChecks:
                 if station.name == name:
                     if staCheck.GetValue():
