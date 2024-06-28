@@ -2487,7 +2487,7 @@ class RunDisplay(wx.Frame):
         
     def initPlot(self):
         """
-        Test function to plot source elevation for the scans.
+        Test function to plot source altitude for the scans.
         """
         
         self.obs = self.parent.project.runs[0].scans
@@ -2511,11 +2511,11 @@ class RunDisplay(wx.Frame):
             if stepSize < 30.0:
                 stepSize = 30.0
                 
-            ## Find its elevation over the course of the scan
+            ## Find its altitude over the course of the scan
             j = 0
             for station in self.parent.project.runs[0].stations:
                 t = []
-                el = []
+                alt = []
                 dt = 0.0
                 
                 ## The actual scans
@@ -2525,7 +2525,7 @@ class RunDisplay(wx.Frame):
                     observer.date = o.mjd + (o.mpm/1000.0 + dt)/3600/24.0 + MJD_OFFSET - DJD_OFFSET
                     src.compute(observer)
                     
-                    el.append( float(src.alt) * 180.0 / math.pi )
+                    alt.append( float(src.alt) * 180.0 / math.pi )
                     t.append( o.mjd + (o.mpm/1000.0 + dt) / (3600.0*24.0) - self.earliest )
                     
                     dt += stepSize
@@ -2535,14 +2535,14 @@ class RunDisplay(wx.Frame):
                 observer.date = o.mjd + (o.mpm/1000.0 + dt)/3600/24.0 + MJD_OFFSET - DJD_OFFSET
                 src.compute(observer)
                 
-                el.append( float(src.alt) * 180.0 / math.pi )
+                alt.append( float(src.alt) * 180.0 / math.pi )
                 t.append( o.mjd + (o.mpm/1000.0 + dt) / (3600.0*24.0) - self.earliest )
                 
-                ## Plot the elevation over time
+                ## Plot the altitude over time
                 try:
-                    l, = self.ax1.plot(t, el, label='%s - %s' % (o.target, station.id), color=l.get_color())
+                    l, = self.ax1.plot(t, alt, label='%s - %s' % (o.target, station.id), color=l.get_color())
                 except NameError:
-                    l, = self.ax1.plot(t, el, label='%s - %s' % (o.target, station.id))
+                    l, = self.ax1.plot(t, alt, label='%s - %s' % (o.target, station.id))
                     
                 ## Draw the scan limits
                 if j == 0:
@@ -2572,7 +2572,7 @@ class RunDisplay(wx.Frame):
         
         ## Labels
         self.ax1.set_xlabel('MJD-%i [days]' % self.earliest)
-        self.ax1.set_ylabel('Elevation [deg.]')
+        self.ax1.set_ylabel('Altitude [deg.]')
         self.ax2.set_xlabel('Run Elapsed Time [hours]')
         self.ax2.xaxis.set_label_position('top')
         
@@ -2696,7 +2696,7 @@ class RunUVCoverageDisplay(wx.Frame):
         
     def initPlot(self):
         """
-        Test function to plot source elevation for the scans.
+        Test function to plot source altitude for the scans.
         """
         
         self.obs = self.parent.project.runs[0].scans

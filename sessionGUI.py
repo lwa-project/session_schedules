@@ -3593,7 +3593,7 @@ class SessionDisplay(wx.Frame):
         
     def initPlotDRX(self):
         """
-        Test function to plot source elevation for the observations.
+        Test function to plot source altitude for the observations.
         """
         
         self.obs = self.parent.project.sessions[0].observations
@@ -3614,7 +3614,7 @@ class SessionDisplay(wx.Frame):
         i = 0
         for o in self.obs:
             t = []
-            el = []
+            alt = []
             
             if o.mode not in ('TBW', 'TBF', 'TBN', 'STEPPED'):
                 ## Get the source
@@ -3625,12 +3625,12 @@ class SessionDisplay(wx.Frame):
                 if stepSize < 30.0:
                     stepSize = 30.0
                     
-                ## Find its elevation over the course of the observation
+                ## Find its altitude over the course of the observation
                 while dt < o.dur/1000.0:
                     observer.date = o.mjd + (o.mpm/1000.0 + dt)/3600/24.0 + MJD_OFFSET - DJD_OFFSET
                     src.compute(observer)
                     
-                    el.append( float(src.alt) * 180.0 / math.pi )
+                    alt.append( float(src.alt) * 180.0 / math.pi )
                     t.append( o.mjd + (o.mpm/1000.0 + dt) / (3600.0*24.0) - self.earliest )
                     
                     dt += stepSize
@@ -3640,11 +3640,11 @@ class SessionDisplay(wx.Frame):
                 observer.date = o.mjd + (o.mpm/1000.0 + dt)/3600/24.0 + MJD_OFFSET - DJD_OFFSET
                 src.compute(observer)
                 
-                el.append( float(src.alt) * 180.0 / math.pi )
+                alt.append( float(src.alt) * 180.0 / math.pi )
                 t.append( o.mjd + (o.mpm/1000.0 + dt) / (3600.0*24.0) - self.earliest )
                 
-                ## Plot the elevation over time
-                self.ax1.plot(t, el, label='%s' % o.target)
+                ## Plot the altitude over time
+                self.ax1.plot(t, alt, label='%s' % o.target)
                 
                 ## Draw the observation limits
                 self.ax1.vlines(o.mjd + o.mpm/1000.0 / (3600.0*24.0) - self.earliest, 0, 90, linestyle=':')
@@ -3667,14 +3667,14 @@ class SessionDisplay(wx.Frame):
                     else:
                         alt = s.c2
                         
-                    el.append( alt )
+                    alt.append( alt )
                     t.append( t0 - self.earliest)
                     t0 += (s.dur/1000.0) / (3600.0*24.0)
-                    el.append( alt )
+                    alt.append( alt )
                     t.append( t0 - self.earliest )
                     
-                ## Plot the elevation over time
-                self.ax1.plot(t, el, label='%s' % o.target)
+                ## Plot the altitude over time
+                self.ax1.plot(t, alt, label='%s' % o.target)
                 
                 ## Draw the observation limits
                 self.ax1.vlines(o.mjd + o.mpm/1000.0 / (3600.0*24.0) - self.earliest, 0, 90, linestyle=':')
@@ -3703,7 +3703,7 @@ class SessionDisplay(wx.Frame):
         
         ## Labels
         self.ax1.set_xlabel('MJD-%i [days]' % self.earliest)
-        self.ax1.set_ylabel('Elevation [deg.]')
+        self.ax1.set_ylabel('Altitude [deg.]')
         self.ax2.set_xlabel('Session Elapsed Time [hours]')
         self.ax2.xaxis.set_label_position('top')
         
@@ -4532,7 +4532,7 @@ class SteppedWindow(wx.Frame):
                 
         def altConv(text):
             """
-            Special conversion functio for altitude/elevation values.
+            Special conversion functio for altitude/altitude values.
             """
             
             fields = text.split(':')
@@ -4548,7 +4548,7 @@ class SteppedWindow(wx.Frame):
             value *= sign
             
             if value < 0 or value > 90:
-                raise ValueError("Elevation values must be 0 <= dec <= 90")
+                raise ValueError("Altitude values must be 0 <= dec <= 90")
             else:
                 return value
                 
@@ -4613,7 +4613,7 @@ class SteppedWindow(wx.Frame):
             self.coerceMap.append(decConv)
         else:
             self.listControl.InsertColumn(2, 'Azimuth (Deg.)', width=150)
-            self.listControl.InsertColumn(3, 'Elevation (Deg.)', width=150)
+            self.listControl.InsertColumn(3, 'Altitude (Deg.)', width=150)
             self.columnMap.append('c1')
             self.columnMap.append('c2')
             self.coerceMap.append(azConv)
