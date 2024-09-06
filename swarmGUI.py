@@ -2503,6 +2503,7 @@ class RunDisplay(wx.Frame):
         self.ax2 = self.ax1.twiny()
         
         i = 0
+        station_colors = {}
         for o in self.obs:
             ## Get the source
             src = o.fixed_body
@@ -2540,9 +2541,10 @@ class RunDisplay(wx.Frame):
                 
                 ## Plot the altitude over time
                 try:
-                    l, = self.ax1.plot(t, alt, label='%s - %s' % (o.target, station.id), color=l.get_color())
-                except NameError:
+                    l, = self.ax1.plot(t, alt, label='%s - %s' % (o.target, station.id), color=station_colors[station])
+                except KeyError:
                     l, = self.ax1.plot(t, alt, label='%s - %s' % (o.target, station.id))
+                    station_colors[station] = l.get_color()
                     
                 ## Draw the scan limits
                 if j == 0:
