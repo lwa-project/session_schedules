@@ -6,6 +6,7 @@ import sys
 import ephem
 import numpy
 import argparse
+from functools import lru_cache
 from urllib.request import urlopen
 from urllib.parse import urlencode, quote_plus
 from tempfile import NamedTemporaryFile
@@ -26,7 +27,6 @@ from matplotlib.figure import Figure
 from matplotlib.ticker import FuncFormatter, NullFormatter, NullLocator
 
 import lsl
-from lsl.misc.lru_cache import lru_cache
 from lsl.misc import parser as aph
 
 
