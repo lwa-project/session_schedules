@@ -2563,8 +2563,8 @@ class RunDisplay(wx.Frame):
         
         ## Add a legend
         handles, labels = self.ax1.get_legend_handles_labels()
-        labels = [l.rsplit(' -', 1)[0] for l in labels]
-        self.ax1.legend(handles[::len(self.parent.project.runs[0].stations)], labels[::len(self.parent.project.runs[0].stations)], loc=0)
+        labels = [l.rsplit(' -', 1)[1] for l in labels]
+        self.ax1.legend(handles[:len(self.parent.project.runs[0].stations)], labels[:len(self.parent.project.runs[0].stations)], loc=0)
         
         ## Second set of x axes
         self.ax1.xaxis.tick_bottom()
