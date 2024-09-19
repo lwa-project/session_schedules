@@ -3224,7 +3224,7 @@ class AdvancedInfo(wx.Frame):
                 
             if tbfSamp > 196000000*3:
                 self.displayError('Number of TBF samples too large', 
-                            details=f"{tbfSampe} > 3 sec", title='TBF Sample Error')
+                            details=f"{tbfSamp} > 3 sec", title='TBF Sample Error')
                 return False
                 
         self.parent.project.sessions[0].recordMIB['ASP'] = self.__parse_timeCombo(self.mrpASP)
