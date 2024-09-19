@@ -115,11 +115,10 @@ def main(args):
     print(" -> LST at %s for this date/time is %s" % (station.name, lst))
     
     # Filenames in an easier format - output
+    outputSDF  = None
     if not args.query:
         if args.outname is not None:
             outputSDF = args.outname
-        else:
-            outputSDF  = None
             
     # Query only mode starts here...
     if args.query:
