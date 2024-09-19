@@ -35,14 +35,6 @@ _PYLINT_IGNORES = [('no-member', "Module 'wx' has no"),
                    ('no-member', "Module 'ephem' has no")]
 
 
-_SAFE_TO_IGNORE = ["Module 'ephem",
-                   "Module 'wx",
-                   "Unable to import 'wx",
-                   "Instance of 'HDUList' has no 'header' member",
-                   "Instance of 'HDUList' has no 'data' member",
-                   "Assigning to function call which doesn't return"]
-
-
 @unittest.skipUnless(run_scripts_tests, "requires the 'pylint' module")
 class scripts_tests(unittest.TestCase):
     """A unittest.TestCase collection of unit tests for the session_schedules scripts."""
