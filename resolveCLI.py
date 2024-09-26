@@ -66,9 +66,9 @@ def main(args):
     target = args.target
     ra, dec, coordsys, service, pmRA, pmDec = _resolveSource(target)
     if pmRA != '':
-        pmRA =  " (+%.1f mas/yr proper motion)" % pmRA
+        pmRA =  " (%+.1f mas/yr proper motion)" % pmRA
     if pmDec != '':
-        pmDec = " (+%.1f mas/yr proper motion)" % pmDec
+        pmDec = " (%+.1f mas/yr proper motion)" % pmDec
         
     print("Target: %s" % target)
     print("  RA:   %.4f hours%s" % (ra/15.0, pmRA))

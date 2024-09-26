@@ -136,7 +136,7 @@ class Visualization_GUI(object):
             self.adp = False
             self.ndp = True
         else:
-            raise ValueError("Unkown station: %s" % station)
+            raise ValueError(f"Unkown station: {station}")
             
         self.colors = ['Blue','Green','Cyan','Magenta','Yellow', 
                     'Peru', 'Moccasin', 'Orange', 'DarkOrchid']
@@ -171,7 +171,7 @@ class Visualization_GUI(object):
                     project = metabundle.get_sdf(filename)
                     dataFile = metabundle.get_session_metadata(filename)
                 except Exception as e:
-                    print("Warning: Cannot parse '%s'" % os.path.basename(filename))
+                    print(f"Warning: Cannot parse '{os.path.basename(filename)}': {str(e)}")
                     continue
                     
             pID = project.id
@@ -191,7 +191,7 @@ class Visualization_GUI(object):
             duration = sessionStop-sessionStart
             
             sessionSDFs.append(project)
-            sessionNames.append('%s_%04i' % (pID, sID))
+            sessionNames.append(f"{pID}_{sID:04d}")
             sessionBeams.append(beam)
             sessionStarts.append(sessionStart)
             sessionStops.append(sessionStop)
@@ -263,7 +263,7 @@ class Visualization_GUI(object):
         # Save
         self.freePeriods = freePeriods
         
-    def getSolarElevation(self, step=timedelta(seconds=900)):
+    def getSolarAltitude(self, step=timedelta(seconds=900)):
         """
         Using the time range of all loaded SDFs, return a two-element tuple of the 
         time and altitude for the Sun in 15 minute steps.
@@ -297,7 +297,7 @@ class Visualization_GUI(object):
         return numpy.array(points), numpy.array(alts)
 
 
-    def getJovianElevation(self, step=timedelta(seconds=900)):
+    def getJovianAltitude(self, step=timedelta(seconds=900)):
         """
         Using the time range of all loaded SDFs, return a two-element tuple of the 
         time and altitude for Jupiter in 15 minute steps.
@@ -369,9 +369,9 @@ class Visualization_GUI(object):
             self.ax1.barh(-0.5, d/24, left=free1, alpha=alpha, height=1.0, color='r', hatch='/')
             self.ax1.text(free1+duration/2, 0, '%i:%02i' % (int(d), int((d-int(d))*60)), size=10, horizontalalignment='center', verticalalignment='center', rotation='vertical')
             
-        # Plot Sun elevation in a way that indicates day and night (if needed)
+        # Plot Sun altitude in a way that indicates day and night (if needed)
         if self.showDayNight:
-            points, alts = self.getSolarElevation()
+            points, alts = self.getSolarAltitude()
             points = points.reshape((-1, 1, 2))
             if self.ndp:
                 points[:,:,1] = 4.75
@@ -385,9 +385,9 @@ class Visualization_GUI(object):
             lc.set_linewidth(5)
             self.ax1.add_collection(lc)
             
-        # Plot Jupiter's elevation (if needed)
+        # Plot Jupiter's altitude (if needed)
         if self.showJupiter:
-            points, alts = self.getJovianElevation()
+            points, alts = self.getJovianAltitude()
             points = points.reshape((-1, 1, 2))
             points[:,:,1] = -1.75
             segments = numpy.concatenate([points[:-1], points[1:]], axis=1)

@@ -66,6 +66,10 @@ else:
     AppendToolItem = lambda *args, **kwds: args[0].AddLabelTool(*args[1:], **kwds)
 
 
+def pid_print(*args, **kwds):
+    print(f"[{os.getpid()}]", *args, **kwds)
+
+
 class ChoiceMixIn(wx.Control):
     def __init__(self, options={}):
         self.options = options
@@ -942,7 +946,7 @@ class SDFCreator(wx.Frame):
                     self.edited = False
                     self.setSaveButton()
                 except IOError as err:
-                    self.displayError('Error saving to %s' % self.filename, details=err, title='Save Error')
+                    self.displayError(f"Error saving to '{self.filename}'", details=err, title='Save Error')
                     
     def onSaveAs(self, event):
         """
@@ -965,7 +969,7 @@ class SDFCreator(wx.Frame):
                     self.edited = False
                     self.setSaveButton()
                 except IOError as err:
-                    self.displayError('Error saving to %s' % self.filename, details=err, title='Save Error')
+                    self.displayError(f"Error saving to '{self.filename}'", details=err, title='Save Error')
                     
             dialog.Destroy()
             
@@ -1345,8 +1349,8 @@ class SDFCreator(wx.Frame):
             self.badEdit = False
             self.badEditLocation = (-1, -1)
         except ValueError as err:
-            print('[%i] Error: %s' % (os.getpid(), str(err)))
-            self.SetStatusText('Error: %s' % str(err))
+            pid_print(f"Error: {str(err)}")
+            self.SetStatusText(f"Error: {str(err)}")
             
             item = self.listControl.GetItem(obsIndex, obsAttr)
             self.listControl.SetItemTextColour(item.GetId(), wx.RED)
@@ -1396,7 +1400,7 @@ class SDFCreator(wx.Frame):
         # Re-number the remaining rows to keep the display clean
         for i in range(self.listControl.GetItemCount()):
             item = self.listControl.GetItem(i, 0)
-            item.SetText('%i' % (i+1))
+            item.SetText(f"{i+1}")
             self.listControl.SetItem(item)
             self.listControl.RefreshItem(item.GetId())
             
@@ -1418,7 +1422,7 @@ class SDFCreator(wx.Frame):
         # that we can mark bad observations
         i = 0
         for obs in self.project.sessions[0].observations:
-            print("[%i] Validating observation %i" % (os.getpid(), i+1))
+            pid_print(f"Validating observation {i+1}")
             valid = obs.validate(verbose=True)
             for col in range(len(self.columnMap)):
                 item = self.listControl.GetItem(i, col)
@@ -1451,7 +1455,7 @@ class SDFCreator(wx.Frame):
             msg_lines = full_msg.split('\n')
             for msg in msg_lines:
                 if msg.find('Error') != -1:
-                    print(msg)
+                    pid_print(msg)
                     
             if validObs:
                 wx.MessageBox('All observations are valid, but there are errors in the session setup.  See the command standard output for details.', 'Validator Results')
@@ -1514,14 +1518,14 @@ class SDFCreator(wx.Frame):
                 if tk > 7:
                     continue
                 tv, tu = units(tv)
-                filterInfo = "%s\n%i  %.3f %-3s" % (filterInfo, tk, tv, tu)
+                filterInfo = f"{filterInfo}\n{tk}  {tv:.3f} {tu:-3s}"
         elif self.mode == 'DRX' or self.mode == 'TBF':
             filterInfo = "DRX"
             for dk,dv in DRXFilters.items():
                 if dk > 7:
                     continue
                 dv, du = units(dv)
-                filterInfo = "%s\n%i  %.3f %-3s" % (filterInfo, dk, dv, du)
+                filterInfo = f"{filterInfo}\n{dk}  {dv:.3f} {du:-3s}"
         else:
             filterInfo = 'No filters defined for the current mode.'
             
@@ -1633,7 +1637,7 @@ class SDFCreator(wx.Frame):
                     dpn = 'ADP'
                 else:
                     dpn = 'DP'
-                raise ValueError("Frequency of %.6f MHz is out of the %s tuning range" % (value/1e6, dpn))
+                raise ValueError("Frequency of {value/1e6:.6f} MHz is out of the {dpn} tuning range")
             else:
                 return value
                 
@@ -1670,7 +1674,7 @@ class SDFCreator(wx.Frame):
             elif text == 'False' or text == 'No':
                 return False
             else:
-                raise ValueError("Unknown boolean conversion of '%s'" % text)
+                raise ValueError(f"Unknown boolean conversion of '{text}'")
                 
         width = 50 + 100 + 100 + 100 + 235
         self.columnMap = []
@@ -1997,11 +2001,11 @@ class SDFCreator(wx.Frame):
         self.listControl.setCheckDependant()
         self.initSDF()
         
-        print("[%i] Parsing file '%s'" % (os.getpid(), filename))
+        pid_print(f"Parsing file '{filename}'")
         try:
             self.project = self.sdf.parse_sdf(filename)
         except Exception as e:
-            raise RuntimeError("Cannot parse provided SDF: %s" % str(e))
+            raise RuntimeError(f"Cannot parse provided SDF: {str(e)}")
         if len(self.project.sessions) == 0:
             raise RuntimeError("Provided SDF does not define any sessions")
         if len(self.project.sessions[0].observations) == 0:
@@ -2048,13 +2052,13 @@ class SDFCreator(wx.Frame):
             title = 'An Error has Occured'
             
         if details is None:
-            print("[%i] Error: %s" % (os.getpid(), str(error)))
-            self.statusbar.SetStatusText('Error: %s' % str(error))
-            dialog = wx.MessageDialog(self, '%s' % str(error), title, style=wx.OK|wx.ICON_ERROR)
+            pid_print(f"Error: {str(error)}")
+            self.statusbar.SetStatusText(f"Error: {str(error)}")
+            dialog = wx.MessageDialog(self, str(error), title, style=wx.OK|wx.ICON_ERROR)
         else:
-            print("[%i] Error: %s" % (os.getpid(), str(details)))
-            self.statusbar.SetStatusText('Error: %s' % str(details))
-            dialog = wx.MessageDialog(self, '%s\n\nDetails:\n%s' % (str(error), str(details)), title, style=wx.OK|wx.ICON_ERROR)
+            pid_print(f"Error: {str(details)}")
+            self.statusbar.SetStatusText(f"Error: {str(details)}")
+            dialog = wx.MessageDialog(self, f"{str(error)}\n\nDetails:\n{str(details)}", title, style=wx.OK|wx.ICON_ERROR)
             
         dialog.ShowModal()
 
@@ -2299,7 +2303,7 @@ class ObserverInfo(wx.Frame):
             ucfRB.SetValue(False)
             
             nchnText.SetValue("1024")
-            nintText.SetValue("6144")
+            nintText.SetValue("768")
             linear.SetValue(True)
             stokes.SetValue(False)
         else:
@@ -2313,8 +2317,8 @@ class ObserverInfo(wx.Frame):
                 unamText.SetValue(mtch.group('username'))
             unamText.Enable()
             
-            nchnText.SetValue("32")
-            nintText.SetValue("6144")
+            nchnText.SetValue("1024")
+            nintText.SetValue("768")
             linear.SetValue(True)
             stokes.SetValue(False)
             
@@ -2641,7 +2645,7 @@ class ObserverInfo(wx.Frame):
             
         with open(os.path.join(os.path.expanduser('~'), '.sessionGUI'), 'w') as ph:
             for key in preferences:
-                ph.write("%-24s %s\n" % (key, str(preferences[key])))
+                ph.write(f"{key:-24s} {str(preferences[key])}\n")
                 
     def displayError(self, error, details=None, title=None):
         """
@@ -2652,11 +2656,11 @@ class ObserverInfo(wx.Frame):
             title = 'An Error has Occured'
             
         if details is None:
-            print("[%i] Error: %s" % (os.getpid(), str(error)))
-            dialog = wx.MessageDialog(self, '%s' % str(error), title, style=wx.OK|wx.ICON_ERROR)
+            pid_print(f"Error: {str(error)}")
+            dialog = wx.MessageDialog(self, str(error), title, style=wx.OK|wx.ICON_ERROR)
         else:
-            print("[%i] Error: %s" % (os.getpid(), str(details)))
-            dialog = wx.MessageDialog(self, '%s\n\nDetails:\n%s' % (str(error), str(details)), title, style=wx.OK|wx.ICON_ERROR)
+            pid_print(f"Error: {str(details)}")
+            dialog = wx.MessageDialog(self, f"{str(error)}\n\nDetails:\n{str(details)}", title, style=wx.OK|wx.ICON_ERROR)
             
         dialog.ShowModal()
 
@@ -2682,9 +2686,9 @@ class AdvancedInfo(wx.Frame):
         
     def initUI(self):
         bits = ['12-bit', '4-bit']
-        tbnGain = ['%i' % i for i in range(31)]
+        tbnGain = [str(i) for i in range(31)]
         tbnGain.insert(0, 'MCS Decides')
-        drxGain = ['%i' % i for i in range(13)]
+        drxGain = [str(i) for i in range(13)]
         drxGain.insert(0, 'MCS Decides')
         if self.parent.ndp:
             drxBeam = ['%i' %i for i in range(1, 5)]
@@ -2695,7 +2699,7 @@ class AdvancedInfo(wx.Frame):
         drxBeam.insert(0, 'MCS Decides')
         intervals = ['MCS Decides', 'Never', '1 minute', '5 minutes', '15 minutes', '30 minutes', '1 hour']
         aspFilters = ['MCS Decides', 'Split', 'Full', 'Reduced', 'Off', 'Split @ 3MHz', 'Full @ 3MHz']
-        aspAttn = ['%i' % i for i in range(16)]
+        aspAttn = [str(i) for i in range(16)]
         aspAttn.insert(0, 'MCS Decides')
         
         row = 0
@@ -3252,13 +3256,13 @@ class AdvancedInfo(wx.Frame):
                 return False
                 
             if tbwBits == 4  and tbwSamp > 36000000:
-                self.displayError('Number of TBW samples too large for a %i-bit capture' % tbwBits, 
-                            details='%i > 36000000' % tbwSamp, title='TBW Sample Error')
+                self.displayError(f"Number of TBW samples too large for a {tbwBits}-bit capture", 
+                            details=f"{tbwSamp} > 36000000", title='TBW Sample Error')
                 return False
                 
             if tbwBits == 12 and tbwSamp > 12000000:
-                self.displayError('Number of TBW samples too large for a %i-bit capture' % tbwBits, 
-                            details='%i > 12000000' % tbwSamp, title='TBW Sample Error')
+                self.displayError(f"Number of TBW samples too large for a {tbwBits}-bit capture", 
+                            details=f"{tbwSamp} > 12000000", title='TBW Sample Error')
                 return False
                 
         if self.parent.mode == 'TBF' or self.parent._getTBFValid():
@@ -3270,7 +3274,7 @@ class AdvancedInfo(wx.Frame):
                 
             if tbfSamp > 196000000*3:
                 self.displayError('Number of TBF samples too large', 
-                            details='%i > 3 sec' % tbfSamp, title='TBF Sample Error')
+                            details=f"{tbfSamp} > 3 sec", title='TBF Sample Error')
                 return False
                 
         self.parent.project.sessions[0].recordMIB['ASP'] = self.__parse_timeCombo(self.mrpASP)
@@ -3352,8 +3356,9 @@ class AdvancedInfo(wx.Frame):
                     realStand = int(self.bdmDipoleText.GetValue())
                     maxStand = max([ant.stand.id for ant in self.parent.station.antennas])
                     if realStand < 0 or realStand > maxStand:
-                        self.displayError('Invalid stand number: %i' % realStand, details='0 < stand <= %i' % (maxStand), 
-                                        title='Beam-Dipole Setup Error')
+                        self.displayError(f"Invalid stand number: {realStand}",
+                                          details=f"0 < stand <= {maxStand}", 
+                                          title='Beam-Dipole Setup Error')
                         return False
                         
                     ## Make sure the stand is working according to the SSMIF
@@ -3368,36 +3373,40 @@ class AdvancedInfo(wx.Frame):
                         if realStandX is not None and realStandY is not None:
                             break
                     if realStandX.combined_status != 33 or realStandY.combined_status != 33:
-                        self.displayError('Stand #%i is not fully functional' % realStand, 
-                                        details='X pol. status: %i\nY pol. status: %i' % (realStandX.combined_status, realStandY.combined_status), 
-                                        title='Beam-Dipole Setup Error')
+                        self.displayError(f"Stand #{realStand} is not fully functional",
+                                          details=f"X pol. status: {realStandX.combined_status}\nY pol. status: {realStandY.combined_status}", 
+                                          title='Beam-Dipole Setup Error')
                         return False
                         
                 except ValueError:
-                    self.displayError('Invalid stand number: %s' % self.bdmDipoleText, details='Not an integer', 
+                    self.displayError(f"Invalid stand number: {self.bdmDipoleText}", details='Not an integer', 
                                     title='Beam-Dipole Setup Error')
                     return False
                     
                 try:
                     dipoleGain = float(self.bdmDGainText.GetValue())
                     if dipoleGain < 0.0 or dipoleGain > 1.0:
-                        self.displayError('Invalid dipole gain value: %.4f' % dipoleGain, details='0 <= gain <= 1', 
-                                        title='Beam-Dipole Setup Error')
+                        self.displayError(f"Invalid dipole gain value: {dipoleGain:.4f}",
+                                          details='0 <= gain <= 1', 
+                                          title='Beam-Dipole Setup Error')
                         return False
                 except ValueError:
-                    self.displayError('Invalid dipole gain value: %s' % self.bdmDGainText.GetValue(), details='Not a float', 
-                                    title='Beam-Dipole Setup Error')
+                    self.displayError(f"Invalid dipole gain value: {self.bdmDGainText.GetValue()}",
+                                      details='Not a float', 
+                                      title='Beam-Dipole Setup Error')
                     return False
                     
                 try:
                     beamGain = float(self.bdmBGainText.GetValue())
                     if beamGain < 0.0 or beamGain > 1.0:
-                        self.displayError('Invalid beam gain value: %.4f' % beamGain, details='0 <= gain <= 1', 
-                                        title='Beam-Dipole Setup Error')
+                        self.displayError(f"Invalid beam gain value: {beamGain:%.4f}",
+                                          details='0 <= gain <= 1', 
+                                          title='Beam-Dipole Setup Error')
                         return False
                 except ValueError:
-                    self.displayError('Invalid beam gain value: %s' % self.bdmBGainText.GetValue(), details='Not a float', 
-                                    title='Beam-Dipole Setup Error')
+                    self.displayError(f"Invalid beam gain value: {self.bdmBGainText.GetValue()}",
+                                      details='Not a float', 
+                                      title='Beam-Dipole Setup Error')
                     return False
                     
                 outputPol = 'X' if self.bdmPolX.GetValue() else 'Y'
@@ -3515,11 +3524,11 @@ class AdvancedInfo(wx.Frame):
             title = 'An Error has Occured'
             
         if details is None:
-            print("[%i] Error: %s" % (os.getpid(), str(error)))
-            dialog = wx.MessageDialog(self, '%s' % str(error), title, style=wx.OK|wx.ICON_ERROR)
+            pid_print(f"Error: {str(error)}")
+            dialog = wx.MessageDialog(self, str(error), title, style=wx.OK|wx.ICON_ERROR)
         else:
-            print("[%i] Error: %s" % (os.getpid(), str(details)))
-            dialog = wx.MessageDialog(self, '%s\n\nDetails:\n%s' % (str(error), str(details)), title, style=wx.OK|wx.ICON_ERROR)
+            pid_print(f"Error: {str(details)}")
+            dialog = wx.MessageDialog(self, f"{str(error)}\n\nDetails:\n{str(details)}", title, style=wx.OK|wx.ICON_ERROR)
             
         dialog.ShowModal()
 
@@ -3634,7 +3643,7 @@ class SessionDisplay(wx.Frame):
         
     def initPlotDRX(self):
         """
-        Test function to plot source elevation for the observations.
+        Test function to plot source altitude for the observations.
         """
         
         self.obs = self.parent.project.sessions[0].observations
@@ -3655,7 +3664,7 @@ class SessionDisplay(wx.Frame):
         i = 0
         for o in self.obs:
             t = []
-            el = []
+            alt = []
             
             if o.mode not in ('TBW', 'TBF', 'TBN', 'STEPPED'):
                 ## Get the source
@@ -3666,12 +3675,12 @@ class SessionDisplay(wx.Frame):
                 if stepSize < 30.0:
                     stepSize = 30.0
                     
-                ## Find its elevation over the course of the observation
+                ## Find its altitude over the course of the observation
                 while dt < o.dur/1000.0:
                     observer.date = o.mjd + (o.mpm/1000.0 + dt)/3600/24.0 + MJD_OFFSET - DJD_OFFSET
                     src.compute(observer)
                     
-                    el.append( float(src.alt) * 180.0 / math.pi )
+                    alt.append( float(src.alt) * 180.0 / math.pi )
                     t.append( o.mjd + (o.mpm/1000.0 + dt) / (3600.0*24.0) - self.earliest )
                     
                     dt += stepSize
@@ -3681,11 +3690,11 @@ class SessionDisplay(wx.Frame):
                 observer.date = o.mjd + (o.mpm/1000.0 + dt)/3600/24.0 + MJD_OFFSET - DJD_OFFSET
                 src.compute(observer)
                 
-                el.append( float(src.alt) * 180.0 / math.pi )
+                alt.append( float(src.alt) * 180.0 / math.pi )
                 t.append( o.mjd + (o.mpm/1000.0 + dt) / (3600.0*24.0) - self.earliest )
                 
-                ## Plot the elevation over time
-                self.ax1.plot(t, el, label='%s' % o.target)
+                ## Plot the altitude over time
+                self.ax1.plot(t, alt, label='%s' % o.target)
                 
                 ## Draw the observation limits
                 self.ax1.vlines(o.mjd + o.mpm/1000.0 / (3600.0*24.0) - self.earliest, 0, 90, linestyle=':')
@@ -3708,14 +3717,14 @@ class SessionDisplay(wx.Frame):
                     else:
                         alt = s.c2
                         
-                    el.append( alt )
+                    alt.append( alt )
                     t.append( t0 - self.earliest)
                     t0 += (s.dur/1000.0) / (3600.0*24.0)
-                    el.append( alt )
+                    alt.append( alt )
                     t.append( t0 - self.earliest )
                     
-                ## Plot the elevation over time
-                self.ax1.plot(t, el, label='%s' % o.target)
+                ## Plot the altitude over time
+                self.ax1.plot(t, alt, label='%s' % o.target)
                 
                 ## Draw the observation limits
                 self.ax1.vlines(o.mjd + o.mpm/1000.0 / (3600.0*24.0) - self.earliest, 0, 90, linestyle=':')
@@ -3744,7 +3753,7 @@ class SessionDisplay(wx.Frame):
         
         ## Labels
         self.ax1.set_xlabel('MJD-%i [days]' % self.earliest)
-        self.ax1.set_ylabel('Elevation [deg.]')
+        self.ax1.set_ylabel('Altitude [deg.]')
         self.ax2.set_xlabel('Session Elapsed Time [hours]')
         self.ax2.xaxis.set_label_position('top')
         
@@ -4061,7 +4070,7 @@ class ResolveTarget(wx.Frame):
                         self.appli.Enable(False)
                 except ValueError as err:
                     success = False
-                    print('[%i] Error: %s' % (os.getpid(), str(err)))
+                    pid_print(f"Error: {str(err)}")
                     
             if success:
                 self.Close()
@@ -4354,7 +4363,7 @@ class SteppedWindow(wx.Frame):
         # Re-number the remaining rows to keep the display clean
         for i in range(self.listControl.GetItemCount()):
             item = self.listControl.GetItem(i, 0)
-            item.SetText('%i' % (i+1))
+            item.SetText(f"{i+1}")
             self.listControl.SetItem(item)
             self.listControl.RefreshItem(item.GetId())
             
@@ -4380,7 +4389,7 @@ class SteppedWindow(wx.Frame):
         # Re-number the remaining rows to keep the display clean
         for i in range(self.listControl.GetItemCount()):
             item = self.listControl.GetItem(i, 0)
-            item.SetText('%i' % (i+1))
+            item.SetText(f"{i+1}")
             self.listControl.SetItem(item)
             self.listControl.RefreshItem(item.GetId())
             
@@ -4443,8 +4452,8 @@ class SteppedWindow(wx.Frame):
             self.badEdit = False
             self.badEditLocation = (-1, -1)
         except ValueError as err:
-            print('[%i] Error: %s' % (os.getpid(), str(err)))
-            self.SetStatusText('Error: %s' % str(err))
+            pid_print(f"Error: {str(err)}")
+            self.SetStatusText(f"Error: {str(err)}")
             
             item = self.listControl.GetItem(obsIndex, obsAttr)
             self.listControl.SetItemTextColour(item.GetId(), wx.RED)
@@ -4488,7 +4497,7 @@ class SteppedWindow(wx.Frame):
         # Re-number the remaining rows to keep the display clean
         for i in range(self.listControl.GetItemCount()):
             item = self.listControl.GetItem(i, 0)
-            item.SetText('%i' % (i+1))
+            item.SetText(f"{i+1}")
             self.listControl.SetItem(item)
             self.listControl.RefreshItem(item.GetId())
             
@@ -4573,7 +4582,7 @@ class SteppedWindow(wx.Frame):
                 
         def altConv(text):
             """
-            Special conversion functio for altitude/elevation values.
+            Special conversion functio for altitude/altitude values.
             """
             
             fields = text.split(':')
@@ -4589,7 +4598,7 @@ class SteppedWindow(wx.Frame):
             value *= sign
             
             if value < 0 or value > 90:
-                raise ValueError("Elevation values must be 0 <= dec <= 90")
+                raise ValueError("Altitude values must be 0 <= dec <= 90")
             else:
                 return value
                 
@@ -4601,13 +4610,13 @@ class SteppedWindow(wx.Frame):
             value = float(text)*1e6
             freq = int(round(value * 2**32 / fS))
             if freq < 219130984 or freq > 1928352663:
-                if self.parent.ndp:
+               if self.parent.ndp:
                     dpn = 'NDP'
                 elif self.parent.adp:
                     dpn = 'ADP'
                 else:
                     dpn = 'DP'
-                raise ValueError("Frequency of %.6f MHz is out of the %s tuning range" % (value/1e6, dpn))
+                raise ValueError(f"Frequency of {value/1e6:.6f} MHz is out of the {dpn} tuning range")
             else:
                 return value
                 
@@ -4633,7 +4642,7 @@ class SteppedWindow(wx.Frame):
             elif text == 'False' or text == 'No':
                 return False
             else:
-                raise ValueError("Unknown boolean conversion of '%s'" % text)
+                raise ValueError(f"Unknown boolean conversion of '{text}'")
                 
         width = 50 + 125
         self.columnMap = []
@@ -4656,7 +4665,7 @@ class SteppedWindow(wx.Frame):
             self.coerceMap.append(decConv)
         else:
             self.listControl.InsertColumn(2, 'Azimuth (Deg.)', width=150)
-            self.listControl.InsertColumn(3, 'Elevation (Deg.)', width=150)
+            self.listControl.InsertColumn(3, 'Altitude (Deg.)', width=150)
             self.columnMap.append('c1')
             self.columnMap.append('c2')
             self.coerceMap.append(azConv)

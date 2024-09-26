@@ -6,6 +6,7 @@ import sys
 import ephem
 import numpy
 import argparse
+from functools import lru_cache
 from urllib.request import urlopen
 from urllib.parse import urlencode, quote_plus
 from tempfile import NamedTemporaryFile
@@ -26,7 +27,6 @@ from matplotlib.figure import Figure
 from matplotlib.ticker import FuncFormatter, NullFormatter, NullLocator
 
 import lsl
-from lsl.misc.lru_cache import lru_cache
 from lsl.misc import parser as aph
 
 
@@ -305,7 +305,7 @@ class CalibratorSearch(wx.Frame):
         
         if source != '':
             try:
-                result = urlopen('https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oxp/SNV?%s' % quote_plus(source))
+                result = urlopen(f"https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oxp/SNV?{quote_plus(source)}")
                 tree = ElementTree.fromstring(result.read())
                 target = tree.find('Target')
                 service = target.find('Resolver')
@@ -320,7 +320,7 @@ class CalibratorSearch(wx.Frame):
                 self._clearCandidates()
                 
             except (IOError, IndexError, AttributeError, ElementTree.ParseError) as error:
-                self.statusbar.SetStatusText('Error resolving source: %s' % str(error), 0)
+                self.statusbar.SetStatusText(f"Error resolving source: {str(error)}", 0)
                 self.raText.SetValue("HH:MM:SS.SS")
                 self.decText.SetValue("sDD:MM:SS.S")
                 
@@ -356,7 +356,7 @@ class CalibratorSearch(wx.Frame):
                     final_name = SIMBAD_REF_RE.sub('', entry['MAIN_ID'])
                     rank = entry_rank
         except (IOError, ValueError, AttributeError, ElementTree.ParseError) as error:
-            self.statusbar.SetStatusText('Error during name lookup: %s' % str(error), 0)
+            self.statusbar.SetStatusText(f"Error during name lookup: {str(error)}", 0)
             
         if final_name == '---':
             # Try with a bigger search area
@@ -380,7 +380,7 @@ class CalibratorSearch(wx.Frame):
                     rank = preferred_order[catalog]
                     
         try:
-            result = urlopen('https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oxpI/SNV?%s' % quote_plus(name))
+            result = urlopen(f"https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oxpI/SNV?{quote_plus(name)}")
             tree = ElementTree.fromstring(result.read())
             target = tree.find('Target')
             service = target.find('Resolver')
@@ -391,7 +391,7 @@ class CalibratorSearch(wx.Frame):
                             final_name = alias.text
                             rank = preferred_order[catalog]
         except (IOError, ValueError, AttributeError, ElementTree.ParseError) as error:
-            self.statusbar.SetStatusText('Error during radio name lookup: %s' % str(error), 0)
+            self.statusbar.SetStatusText(f"Error during radio name lookup: {str(error)}", 0)
             
         return final_name
         
@@ -417,7 +417,7 @@ class CalibratorSearch(wx.Frame):
         if max_dist > 10.0:
             ### Limit ourselves to a 10 degree search
             max_dist = 10.0
-            self.udText.SetValue('%.1f' % max_dist)
+            self.udText.SetValue(f"{max_dist:.1f}")
             self.udText.Refresh()
             
         wx.BeginBusyCursor()
@@ -463,13 +463,13 @@ class CalibratorSearch(wx.Frame):
                     candidates.append( (name,ra,dec,sep,flux,maj,min,pa) )
                     
         except (IOError, ValueError, RuntimeError) as error:
-            self.statusbar.SetStatusText('Error during search: %s' % str(error), 0)
+            self.statusbar.SetStatusText(f"Error during search: {str(error)}", 0)
             
         ## Update the status bar
         if len(candidates) == 0:
             self.statusbar.SetStatusText('No candidates found matching the search criteria', 0)
         else:
-            self.statusbar.SetStatusText("Found %i candidates matching the search criteria" % len(candidates), 0)
+            self.statusbar.SetStatusText(f"Found {len(candidates)} candidates matching the search criteria", 0)
             
         ## Sort by distance from the target
         candidates.sort(key=lambda x:x[3])
@@ -490,9 +490,9 @@ class CalibratorSearch(wx.Frame):
             
             SetListItem(self.listControl, index, 1, ra)
             SetListItem(self.listControl, index, 2, dec)
-            SetListItem(self.listControl, index, 3, "%.1f" % sep)
-            SetListItem(self.listControl, index, 4, "%.1f" % flux)
-            SetListItem(self.listControl, index, 5, "%s\" by %s\" @ %s" % (maj, min, pa))
+            SetListItem(self.listControl, index, 3, f"{sep:.1f}")
+            SetListItem(self.listControl, index, 4, f"{flux:.1f}")
+            SetListItem(self.listControl, index, 5, f"{maj}\" by {min}\" @ {pa}")
             
             ## Flag things that look like they might be too far away
             if sep >= 3.5:
@@ -555,7 +555,7 @@ class CalibratorSearch(wx.Frame):
                 image = hdulist[0].data[0,0,:,:]
                 hdulist.close()
             except (IOError, ValueError, RuntimeError) as error:
-                self.statusbar.SetStatusText('Error loading image: %s' % str(error), 0)
+                self.statusbar.SetStatusText(f"Error loading image: {str(error)}", 0)
                 
         return header, image
         
@@ -577,7 +577,7 @@ class CalibratorSearch(wx.Frame):
             try:
                 sz = float(sz)
             except ValueError as error:
-                self.statusbar.SetStatusText('Error displaying image: %s' % str(error), 0)
+                self.statusbar.SetStatusText(f"Error displaying image: {str(error)}", 0)
                 sz = 0.5
             
             wx.BeginBusyCursor()
@@ -762,7 +762,7 @@ class ImageViewer(wx.Frame):
         self.ax1.yaxis.set_major_formatter(FuncFormatter(self._dec_ticks))
         self.ax1.set_xlabel('RA (J2000)')
         self.ax1.set_ylabel('Dec. (J2000)')
-        self.ax1.set_title("%s\nPeak: %.1f Jy/beam" % (self.name, peak))
+        self.ax1.set_title(f"{self.name}\nPeak: {peak:.1f} Jy/beam")
         cb = self.figure.colorbar(c, ax=self.ax1)
         cb.set_label('Jy/beam')
         self.figure.tight_layout()
@@ -848,4 +848,3 @@ if __name__ == "__main__":
     app = wx.App()
     CalibratorSearch(None, title='VLSSr Calibrator Search', target=args.target, ra=args.ra, dec=args.dec)
     app.MainLoop()
-    

@@ -71,18 +71,18 @@ def main(args):
         dataSize = tlen*tunes*products*4
         dataRate = (headerSize+dataSize)/(1.0*tlen*icount/sample_rate)
     else:
-        print("Unsupported mode: %s" % mode)
+        print(f"Unsupported mode: {mode}")
         sys.exit(1)
         
     # Display the final answer
-    print("%s: filter code %i (%i samples/s)" % (mode, filterCode, sample_rate))
+    print(f"{mode}: filter code {filterCode} ({sample_rate} samples/s)")
     if mode[0:3] == 'SPC':
-        print("  Channel Count: %i" % tlen)
-        print("  Resolution Bandwidth: %.3f Hz" % (1.0*sample_rate/tlen,))
-        print("  Integration Count: %i" % icount)
-        print("  Integration Time: %.3f s" % (1.0*tlen*icount/sample_rate,))
-        print("  Polarization Products: %i" % products)
-    print("  Data rate: %.2f MB/s" % (dataRate/1024**2,))
+        print(f"  Channel Count: {tlen}")
+        print(f"  Resolution Bandwidth: {sample_rate/tlen:.3f} Hz")
+        print(f"  Integration Count: {icount}")
+        print(f"  Integration Time: {tlen*icount/sample_rate:.3f} s")
+        print(f"  Polarization Products: {products}")
+    print(f"  Data rate: {dataRate/1024**2:.2f} MB/s")
     print("  Data volume for %02i:%02i:%06.3f is %.2f GB" % (hour, minute, second, dataRate*duration/1024**3))
 
 

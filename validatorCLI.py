@@ -25,8 +25,10 @@ _tpss_base = os.path.join(os.path.dirname(__file__), 'tpss')
 
 def main(args):
     # Set the TPSS and SDF versions to use
+    _tpss = f"{_tpss_base}-lwa1"
+    _sdf = sdf
     if args.lwasv:
-        _tpss = '%s-lwasv' % _tpss_base
+        _tpss = f"{_tpss_base}-lwasv"
         _sdf = sdfADP
     elif args.lwana:
         _tpss = '%s-lwana' % _tpss_base
@@ -127,7 +129,7 @@ def main(args):
     else:
         print("There are 1 or more errors in your SDF file.")
         for err in tpss['errors']:
-            print("On line %i: %s" % (err['line'], err['message']))
+            print(f"On line {err['line']}: {err['message']}")
     print(" ")
     
     print("Summary:")

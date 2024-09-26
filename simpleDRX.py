@@ -120,9 +120,6 @@ def main(args):
     args.start_time = time(int(h,10), int(m,10), s, us)
     tSDF = datetime.combine(args.start_date, args.start_time, tzinfo=_UTC)
     
-    # Resolve the target to coordinates
-    ra, dec = resolve(args.target)
-    
     # Load in the preferences
     prefs = load_preferences()
     
@@ -139,7 +136,16 @@ def main(args):
     ses = sdf.Session("Simple DRX Run", args.session_id)
     ses.drx_beam = args.beam
     ## Observation
-    drx = sdf.DRX('DRX', args.target, tSDF, args.duration, ra, dec, args.frequency1, args.frequency2, 7, gain=args.gain)
+    if args.target.lower() == 'sun':
+        drx = sdf.Solar('DRX', args.target, tSDF, args.duration, args.frequency1, args.frequency2, 7, gain=args.gain)
+    elif args.target.lower() == 'jupiter':
+        drx = sdf.Jovian('DRX', args.target, tSDF, args.duration, args.frequency1, args.frequency2, 7, gain=args.gain)
+    elif args.target.lower() == 'moon':
+        drx = sdf.Lunar('DRX', args.target, tSDF, args.duration, args.frequency1, args.frequency2, 7, gain=args.gain)
+    else:
+        ### Resolve the target to coordinates
+        ra, dec = resolve(args.target)
+        drx = sdf.DRX('DRX', args.target, tSDF, args.duration, ra, dec, args.frequency1, args.frequency2, 7, gain=args.gain)
     ses.append(drx)
     proj.append(ses)
     
