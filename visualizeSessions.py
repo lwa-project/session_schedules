@@ -428,7 +428,7 @@ class Visualization_GUI(object):
             upper = -1.5
         self.ax1.set_ylim((lower, upper))
         if self.ndp:
-            self.ax1.set_yticks([5, 4.75 4, 3, 2, 1, 0, -1, -1.75, -2])
+            self.ax1.set_yticks([5, 4.75, 4, 3, 2, 1, 0, -1, -1.75, -2])
             self.ax1.set_yticklabels(['', 'Day/Night', 'Beam 4', 'Beam 3', 'Beam 2', 'Beam 1', 'Unassigned', 'MCS Decides', 'Jupiter', ''])
         elif self.adp:
             self.ax1.set_yticks([4, 3.75, 3, 2, 1, 0, -1, -1.75, -2])
