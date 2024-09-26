@@ -39,6 +39,7 @@ jobs:
               libfftw3-dev \
               libhdf5-dev \
               libgdbm-dev \
+              libgsl-dev \
               libgtk-3-dev \
               pkg-config
         - name: "Software Install - MacOS"
@@ -46,6 +47,7 @@ jobs:
           run: |
             brew install \
               fftw \
+              gsl \
               hdf5 \
               pkg-config 
         - uses: actions/setup-python@v5.0.0
