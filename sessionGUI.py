@@ -4610,7 +4610,7 @@ class SteppedWindow(wx.Frame):
             value = float(text)*1e6
             freq = int(round(value * 2**32 / fS))
             if freq < 219130984 or freq > 1928352663:
-               if self.parent.ndp:
+                if self.parent.ndp:
                     dpn = 'NDP'
                 elif self.parent.adp:
                     dpn = 'ADP'
