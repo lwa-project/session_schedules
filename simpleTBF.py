@@ -11,6 +11,7 @@ from datetime import date, time, datetime, timedelta
 
 from lsl.common.adp import fS
 from lsl.common import sdfADP as sdf
+from lsl.common._sdf_utils import render_file_size as _render_file_size
 from lsl.misc import parser as aph
 
 

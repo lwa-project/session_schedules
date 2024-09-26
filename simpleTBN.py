@@ -10,6 +10,7 @@ import subprocess
 from datetime import date, time, datetime, timedelta
 
 from lsl.common import sdfADP as sdf
+from lsl.common._sdf_utils import render_file_size as _render_file_size
 from lsl.misc import parser as aph
 
 
