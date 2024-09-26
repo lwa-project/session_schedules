@@ -25,11 +25,11 @@ from lsl import astro
 from lsl.common import stations
 from lsl.transform import Time
 from lsl.astro import utcjd_to_unix, MJD_OFFSET
-from lsl.common import sdf, sdfADP
+from lsl.common import sdf, sdfADP, sdfNDP
 from lsl.misc import parser as aph
 
 
-__version__ = "0.4"
+__version__ = "0.5"
 
 # Date/time manipulation
 _UTC = pytz.utc
@@ -83,13 +83,23 @@ def main(args):
         station = stations.lwa1
         project = sdf.parse_sdf(inputSDF)
         adp = False
+        ndp = False
     except Exception as e:
-        ## LWA-SV
-        ### Try again
-        station = stations.lwasv
-        project = sdfADP.parse_sdf(inputSDF)
-        adp = True
-        
+        try:
+            ## LWA-SV
+            ### Try again
+            station = stations.lwasv
+            project = sdfADP.parse_sdf(inputSDF)
+            adp = True
+            ndp = False
+        except Exception as e:
+            ## LWA-NA
+            ### Try again
+            station = stations.lwana
+            project = sdfNDP.parse_sdf(inputSDF)
+            adp = False
+            ndp = True
+            
     # Load the station and objects to find the Sun and Jupiter
     observer = station.get_observer()
     Sun = ephem.Sun()
@@ -382,7 +392,10 @@ def main(args):
                 except Exception as e:
                     print("Error: %s" % str(e))
                     sys.exit(1)
-                if adp:
+                if ndp:
+                    raise RuntimeError("No TBW or TBN for NDP")
+                    
+                elif adp:
                     if newBeam not in (1,):
                         print("Error: beam '%i' is out of range" % newBeam)
                         sys.exit(1)

@@ -15,7 +15,7 @@ import argparse
 import tempfile
 import subprocess
 
-from lsl.common import sdf, sdfADP
+from lsl.common import sdf, sdfADP, sdfNDP
 from lsl.common.stations import lwa1
 from lsl.astro import utcjd_to_unix, MJD_OFFSET
 
@@ -30,6 +30,12 @@ def main(args):
     if args.lwasv:
         _tpss = f"{_tpss_base}-lwasv"
         _sdf = sdfADP
+    elif args.lwana:
+        _tpss = '%s-lwana' % _tpss_base
+        _sdf = sdfNDP
+    else:
+        _tpss = '%s-lwa1' % _tpss_base
+        _sdf = sdf
         
     # Read the contents of the temporary SD file into a list so that we can examine
     # the file independently of the parser
@@ -164,8 +170,11 @@ if __name__ == "__main__":
         )
     parser.add_argument('filename', type=str, 
                         help='SDF file to validate')
-    parser.add_argument('-s', '--lwasv', action='store_true', 
+    sgroup = parser.add_mutually_exclusive_group(required=False)
+    sgroup.add_argument('-s', '--lwasv', action='store_true', 
                         help='validate for LWA-SV instead of LWA1')
+    sgroup.add_argument('-n', '--lwana', action='store_true', 
+                        help='validate for LWA-NA instead of LWA1')
     args = parser.parse_args()
     main(args)
     

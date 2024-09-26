@@ -9,7 +9,7 @@ import numpy
 import argparse
 from datetime import datetime, timedelta
 
-from lsl.common import sdf, metabundle, sdfADP, metabundleADP
+from lsl.common import sdf, metabundle, sdfADP, metabundleADP, sdfNDP, metabundleNDP
 from lsl.common import stations
 from lsl.astro import utcjd_to_unix, MJD_OFFSET
 
@@ -27,7 +27,7 @@ import matplotlib.dates
 from matplotlib import pyplot as plt
 from matplotlib.collections import LineCollection
 
-__version__ = "0.2"
+__version__ = "0.3"
 __author__ = "Jayce Dowell"
 
 # Date/time manipulation
@@ -124,10 +124,17 @@ class Visualization_GUI(object):
             self.observer = stations.lwa1
             self.sdf = sdf
             self.adp = False
+            self.ndp = False
         elif station == 'lwasv':
             self.observer = stations.lwasv
             self.sdf = sdfADP
             self.adp = True
+            self.ndp = False
+        elif station == 'lwana':
+            self.observer = stations.lwana
+            self.sdf = sdfNDP
+            self.adp = False
+            self.ndp = True
         else:
             raise ValueError(f"Unkown station: {station}")
             
@@ -171,7 +178,9 @@ class Visualization_GUI(object):
             sID = project.sessions[0].id
             
             if project.sessions[0].observations[0].mode in ('TBW', 'TBN'):
-                if self.adp:
+                if self.ndp:
+                    raise RuntimeError("No TBW or TBN for NDP")
+                elif self.adp:
                     beam = 3
                 else:
                     beam = 5
@@ -364,7 +373,9 @@ class Visualization_GUI(object):
         if self.showDayNight:
             points, alts = self.getSolarAltitude()
             points = points.reshape((-1, 1, 2))
-            if self.adp:
+            if self.ndp:
+                points[:,:,1] = 4.75
+            elif self.adp:
                 points[:,:,1] = 3.75
             else:
                 points[:,:,1] = 5.75
@@ -398,12 +409,16 @@ class Visualization_GUI(object):
         
         # Fix the y axis labels to use beams, free time, etc.
         if self.showDayNight:
-            if self.adp:
+            if self.ndp:
+                lower = 5
+            elif self.adp:
                 lower = 4
             else:
                 lower = 6
         else:
-            if self.adp:
+            if self.ndp:
+                lower = 4.5
+            elif self.adp:
                 lower = 3.5
             else:
                 lower = 5.5
@@ -412,7 +427,10 @@ class Visualization_GUI(object):
         else:
             upper = -1.5
         self.ax1.set_ylim((lower, upper))
-        if self.adp:
+        if self.ndp:
+            self.ax1.set_yticks([5, 4.75, 4, 3, 2, 1, 0, -1, -1.75, -2])
+            self.ax1.set_yticklabels(['', 'Day/Night', 'Beam 4', 'Beam 3', 'Beam 2', 'Beam 1', 'Unassigned', 'MCS Decides', 'Jupiter', ''])
+        elif self.adp:
             self.ax1.set_yticks([4, 3.75, 3, 2, 1, 0, -1, -1.75, -2])
             self.ax1.set_yticklabels(['', 'Day/Night', 'TBN', 'Beam 2', 'Beam 1', 'Unassigned', 'MCS Decides', 'Jupiter', ''])
         else:
@@ -866,7 +884,14 @@ def main(args):
     if args.filename is not None:
         frame.filenames = args.filename
         
-        frame.data = Visualization_GUI(frame, station='lwasv' if args.lwasv else 'lwa1')
+        if args.lwasv:
+            station = 'lwasv'
+        elif args.lwana:
+            station = 'lwana'
+        else:
+            station = 'lwa1'
+        
+        frame.data = Visualization_GUI(frame, station=station)
         frame.data.loadFiles()
         frame.data.draw()
         
@@ -880,8 +905,11 @@ if __name__ == "__main__":
         )
     parser.add_argument('filename', type=str, nargs='+', 
                         help='SDF file to examine')
-    parser.add_argument('-s', '--lwasv', action='store_true', 
+    sgroup = parser.add_mutually_exclusive_group(required=False)
+    sgroup.add_argument('-s', '--lwasv', action='store_true', 
                         help='files are for LWA-SV instead of LWA1')
+    sgroup.add_argument('-n', '--lwana', action='store_true', 
+                        help='files are for LWA-NA instead of LWA1')
     args = parser.parse_args()
     main(args)
     

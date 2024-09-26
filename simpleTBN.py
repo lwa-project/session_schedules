@@ -10,6 +10,7 @@ import subprocess
 from datetime import date, time, datetime, timedelta
 
 from lsl.common import sdfADP as sdf
+from lsl.common._sdf_utils import render_file_size as _render_file_size
 from lsl.misc import parser as aph
 
 
@@ -85,7 +86,7 @@ def main(args):
         
     print('################################################################')
     print('# Be sure to fill in your observer and title information below #')
-    print("# -> Estimated data volume is %-32s #" % proj._render_file_size(proj.sessions[0].observations[0].dataVolume))
+    print("# -> Estimated data volume is %-32s #" % _render_file_size(proj.sessions[0].observations[0].dataVolume))
     print('################################################################')
     print(filecontents)
 
