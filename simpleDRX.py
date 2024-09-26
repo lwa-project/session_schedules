@@ -160,7 +160,7 @@ def main(args):
         
     print('################################################################')
     print('# Be sure to fill in your observer and title information below #')
-    print("# -> Estimated data volume is %-32s #" % proj._render_file_size(proj.sessions[0].observations[0].dataVolume))
+    print("# -> Estimated data volume is %-32s #" % _render_file_size(proj.sessions[0].observations[0].dataVolume))
     print('################################################################')
     print(filecontents)
 
