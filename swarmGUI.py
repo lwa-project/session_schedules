@@ -2547,10 +2547,12 @@ class RunDisplay(wx.Frame):
                     l, = self.ax1.plot(t, alt, label='%s - %s' % (o.target, station.id))
                     station_colors[station] = l.get_color()
                     
-                ## Draw the scan limits
+                ## Draw the scan limits and label the source
                 if j == 0:
                     self.ax1.vlines(o.mjd + o.mpm/1000.0 / (3600.0*24.0) - self.earliest, 0, 90, linestyle=':')
                     self.ax1.vlines(o.mjd + (o.mpm/1000.0 + o.dur/1000.0) / (3600.0*24.0) - self.earliest, 0, 90, linestyle=':')
+                    
+                    self.ax1.text(o.mjd + o.mpm/1000.0 / (3600.0*24.0) - self.earliest + o.dur/1000/3600/24.0*0.02, 2+10*(i%2), o.target, rotation='vertical')
                     
                 j += 1
                 
