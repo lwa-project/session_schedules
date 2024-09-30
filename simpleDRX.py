@@ -7,11 +7,9 @@ import pytz
 import time
 import argparse
 import subprocess
-from xml.etree import ElementTree
-from urllib.request import urlopen
-from urllib.parse import urlencode, quote_plus
 from datetime import date, time, datetime, timedelta
 
+from lsl import astro
 from lsl.common import sdfADP as sdf
 from lsl.common._sdf_utils import render_file_size as _render_file_size
 from lsl.misc import parser as aph
@@ -63,22 +61,6 @@ def dec_conv(text):
         raise ValueError("Dec values must be -90 <= dec <= 90")
     else:
         return value
-
-
-def resolve(target_name):
-    try:
-        result = urlopen('https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oxp/SNV?%s' % quote_plus(target_name))
-        tree = ElementTree.fromstring(result.read())
-        target = tree.find('Target')
-        service = target.find('Resolver')
-        coords = service.find('jpos')
-        
-        service = service.attrib['name'].split('=', 1)[1]
-        raS, decS = coords.text.split(None, 1)
-    except (IOError, ValueError, AttributeError, RuntimeError):
-        raise RuntimeError("Failed to resolve '%s'" % target_name)
-        
-    return ra_conv(raS), dec_conv(decS)
 
 
 def load_preferences():
@@ -145,8 +127,8 @@ def main(args):
         drx = sdf.Lunar('DRX', args.target, tSDF, args.duration, args.frequency1, args.frequency2, 7, gain=args.gain)
     else:
         ### Resolve the target to coordinates
-        ra, dec = resolve(args.target)
-        drx = sdf.DRX('DRX', args.target, tSDF, args.duration, ra, dec, args.frequency1, args.frequency2, 7, gain=args.gain)
+        posn = astro.resolve_name(args.target)
+        drx = sdf.DRX('DRX', args.target, tSDF, args.duration, posn.ra/15, posn.dec, args.frequency1, args.frequency2, 7, gain=args.gain)
     ses.append(drx)
     proj.append(ses)
     

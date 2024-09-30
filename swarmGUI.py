@@ -15,6 +15,7 @@ from xml.etree import ElementTree
 import conflict
 
 import lsl
+from lsl import astro
 from lsl.common.dp import fS
 from lsl.common import stations, idf
 from lsl.astro import deg_to_dms, deg_to_hms, MJD_OFFSET, DJD_OFFSET
@@ -3022,44 +3023,23 @@ class ResolveTarget(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.onCancel, id=ID_RESOLVE_CANCEL)
         
     def onResolve(self, event):
-        from urllib.request import urlopen
-        from urllib.parse import urlencode, quote_plus
-        
         self.source = self.srcText.GetValue()
         try:
-            result = urlopen('https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oxp/SNV?%s' % quote_plus(self.source))
-            tree = ElementTree.fromstring(result.read())
-            target = tree.find('Target')
-            service = target.find('Resolver')
-            coords = service.find('jpos')
-            try:
-                pm = service.find('pm')
-            except Exception as e:
-                pm = None
-                
-            service = service.attrib['name'].split('=', 1)[1]
-            raS, decS = coords.text.split(None, 1)
-            if self.inclPM.IsChecked():
-                if pm is not None:
-                    pmRAS = pm.find('pmRA').text
-                    pmDecS = pm.find('pmDE').text
-                else:
-                    pmRAS = "---"
-                    pmDecS = "---"
-            else:
-                pmRAS = "---"
-                pmDecS = "---"
-                
-            self.raText.SetValue(raS)
-            self.decText.SetValue(decS)
-            self.prText.SetValue(pmRAS)
-            self.pdText.SetValue(pmDecS)
-            self.srvText.SetValue(service)
+            posn = astro.resolve_name(self.source)
+            self.raText.SetValue(str(astro.deg_to_hms(posn.ra)).replace(' ', ':'))
+            self.decText.SetValue(str(astro.deg_to_dms(posn.dec)).replace(' ', ':'))
+            self.prText.SetValue('---')
+            self.pdText.SetValue('---')
+            self.srvText.SetValue(posn.resolved_by)
             
+            if self.inclPM.IsChecked():
+                if posn.pm_ra is not None:
+                    self.prText.SetValue(f"{posn.pm_ra:.2f}")
+                    self.pdText.SetValue(f"{posn.pm_dec:.2f}")
+                    
             if self.scanID != -1:
                 self.appli.Enable(True)
-                
-        except (IOError, ValueError, AttributeError, RuntimeError):
+        except RuntimeError:
             self.raText.SetValue("---")
             self.decText.SetValue("---")
             self.prText.SetValue("---")

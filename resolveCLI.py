@@ -10,65 +10,34 @@ Returns an XML file with the coordinates of the target or an error.
 
 import os
 import sys
-import math
-import ephem
-from urllib.request import urlopen
-from urllib.parse import urlencode, quote_plus
 import argparse
-from xml.etree import ElementTree
+
+from lsl import astro
 
 
 __version__ = "0.2"
 __author__ = "Jayce Dowell"
 
 
-def _resolveSource(name):
-    """
-    Resolve a source into a RA, dec pair.
-    """
-    
-    try:
-        result = urlopen('https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oxp/SNV?%s' % quote_plus(name))
-        tree = ElementTree.fromstring(result.read())
-        target = tree.find('Target')
-        service = target.find('Resolver')
-        coords = service.find('jpos')
-        try:
-            pm = service.find('pm')
-        except Exception as e:
-            pm = None
-            
-        service = service.attrib['name'].split('=', 1)[1]
-        raS, decS = coords.text.split(None, 1)
-        coordsys = 'J2000'
-        if pm is not None:
-            pmRA = float(pm.find('pmRA').text)
-            pmDec = float(pm.find('pmDE').text)
-        else:
-            pmRA = ''
-            pmDec = ''
-            
-        ra = ephem.hours(raS) * 180/math.pi
-        dec = ephem.degrees(decS) * 180/math.pi
-        
-    except (IOError, ValueError, RuntimeError) as e:
-        service = "Error: %s" % str(e)
-        coordsys = 'NA'
-        ra = -99.99
-        dec = -99.99
-        pmRA = ''
-        pmDec = ''
-            
-    return ra, dec, coordsys, service, pmRA, pmDec
-
-
 def main(args):
     target = args.target
-    ra, dec, coordsys, service, pmRA, pmDec = _resolveSource(target)
-    if pmRA != '':
-        pmRA =  " (%+.1f mas/yr proper motion)" % pmRA
-    if pmDec != '':
-        pmDec = " (%+.1f mas/yr proper motion)" % pmDec
+    try:
+        posn = astro.resolve_name(target)
+        ra = posn.ra
+        pmRA = ''
+        if posn.pm_ra is not None:
+            pmRA =  " (%+.1f mas/yr proper motion)" % posn.pm_ra
+        dec = posn.dec
+        pmDec = ''
+        if posn.pm_dec is not None:
+            pmDec = " (%+.1f mas/yr proper motion)" % posn.pm_dec
+        coordsys = 'J2000'
+        service = posn.resolved_by
+    except RuntimeError as e:
+        ra = dec = -99
+        pmRA = pmDec = ''
+        coordsys = 'NA'
+        service = f"Error: {str(e)}"
         
     print("Target: %s" % target)
     print("  RA:   %.4f hours%s" % (ra/15.0, pmRA))

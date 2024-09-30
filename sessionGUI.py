@@ -14,6 +14,7 @@ from xml.etree import ElementTree
 import conflict
 
 import lsl
+from lsl import astro
 from lsl.common.dp import fS
 from lsl.common import stations
 from lsl.astro import deg_to_dms, deg_to_hms, MJD_OFFSET, DJD_OFFSET
@@ -4021,23 +4022,15 @@ class ResolveTarget(wx.Frame):
         
         self.source = self.srcText.GetValue()
         try:
-            result = urlopen('https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oxp/SNV?%s' % quote_plus(self.source))
-            tree = ElementTree.fromstring(result.read())
-            target = tree.find('Target')
-            service = target.find('Resolver')
-            coords = service.find('jpos')
-            
-            service = service.attrib['name'].split('=', 1)[1]
-            raS, decS = coords.text.split(None, 1)
-            
-            self.raText.SetValue(raS)
-            self.decText.SetValue(decS)
-            self.srvText.SetValue(service)
+            posn = astro.resolve_name(self.source)
+            self.raText.SetValue(str(astro.deg_to_hms(posn.ra)).replace(' ', ':'))
+            self.decText.SetValue(str(astro.deg_to_dms(posn.dec)).replace(' ', ':'))
+            self.srvText.SetValue(posn.resolved_by)
             
             if self.observationID != -1:
                 self.appli.Enable(True)
                 
-        except (IOError, ValueError, AttributeError, RuntimeError):
+        except RuntimeError:
             self.raText.SetValue("---")
             self.decText.SetValue("---")
             self.srvText.SetValue("Error resolving target")

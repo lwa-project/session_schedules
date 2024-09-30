@@ -27,6 +27,7 @@ from matplotlib.figure import Figure
 from matplotlib.ticker import FuncFormatter, NullFormatter, NullLocator
 
 import lsl
+from lsl import astro
 from lsl.misc import parser as aph
 
 
@@ -305,21 +306,13 @@ class CalibratorSearch(wx.Frame):
         
         if source != '':
             try:
-                result = urlopen(f"https://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oxp/SNV?{quote_plus(source)}")
-                tree = ElementTree.fromstring(result.read())
-                target = tree.find('Target')
-                service = target.find('Resolver')
-                coords = service.find('jpos')
-                
-                service = service.attrib['name'].split('=', 1)[1]
-                raS, decS = coords.text.split(None, 1)
-                
-                self.raText.SetValue(raS)
-                self.decText.SetValue(decS)
+                posn = astro.resolve_name(source)
+                self.raText.SetValue(str(astro.deg_to_hms(posn.ra)).replace(' ', ':'))
+                self.decText.SetValue(str(astro.deg_to_dms(posn.dec)).replace(' ', ':'))
                 
                 self._clearCandidates()
                 
-            except (IOError, IndexError, AttributeError, ElementTree.ParseError) as error:
+            except RuntimeError as error:
                 self.statusbar.SetStatusText(f"Error resolving source: {str(error)}", 0)
                 self.raText.SetValue("HH:MM:SS.SS")
                 self.decText.SetValue("sDD:MM:SS.S")
