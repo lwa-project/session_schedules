@@ -125,6 +125,14 @@ def main(args):
         drx = sdf.Jovian('DRX', args.target, tSDF, args.duration, args.frequency1, args.frequency2, 7, gain=args.gain)
     elif args.target.lower() == 'moon':
         drx = sdf.Lunar('DRX', args.target, tSDF, args.duration, args.frequency1, args.frequency2, 7, gain=args.gain)
+    elif args.target.startswith('topo_'):
+        try:
+            _, az, alt = args.target.split('_', 2)
+            az, alt = float(az), float(alt)
+        except (IndexError, ValueError) as e:
+            raise RuntimeError(f"Failed to interpret '{args.target}' as a topocentric coordinate designator: {str(e)}")
+        drx = sdf.Stepped('Stepped', args.target, tSDF, 7, is_radec=False, gain=args.gain)
+        drx.append( sdf.BeamStep(az, alt, args.duration, args.frequency1, args.frequency2, is_radec=False) )
     else:
         ### Resolve the target to coordinates
         posn = astro.resolve_name(args.target)
@@ -161,7 +169,7 @@ if __name__ == "__main__":
     parser.add_argument('start_time', type=aph.time,
                         help='observation UTC start time; HH:MM:SS[.sss]')
     parser.add_argument('target', type=str,
-                        help='target name to observe')
+                        help='target name to observe or "topo_<azimuth>_<elevation>" for a fixed topocentric pointing')
     parser.add_argument('-b', '--beam', type=aph.positive_int, default=1,
                         help='Beam to use')
     parser.add_argument('-1', '--frequency1', type=aph.frequency, default='38.1MHz',
