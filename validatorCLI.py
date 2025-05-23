@@ -46,8 +46,11 @@ def main(args):
     # to level to to make sure that the file is valid.  If the exit status is not '2', 
     # the file is taken to be invalid.
     try:
-        validator = subprocess.Popen([_tpss, args.filename, '2', '0'], bufsize=-1, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        validator = subprocess.Popen([_tpss, args.filename, '2', '0'],
+                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                     text=True)
         stdout, stderr = validator.communicate()
+        stdout = stdout.replace('\r', '')
         status = validator.wait()
     except OSError as e:
         stdout, stderr = 'TPSS not used', ''
@@ -143,9 +146,9 @@ def main(args):
         print("Source List:")
         for obs in project.sessions[0].observations:
             if obs.mode == 'TRK_RADEC':
-                print("%s at RA: %.3f hours, Dec.: %+.3f degrees is visible for %i%% of the observation" % (obs.target, obs.ra, obs.dec, obs.computeVisibility() * 100))
+                print("%s at RA: %.3f hours, Dec.: %+.3f degrees is visible for %i%% of the observation" % (obs.target, obs.ra, obs.dec, obs.target_visibility * 100))
             if obs.mode == 'TRK_SOL':
-                print("Sun is visible for %i%% of the observation" % (obs.computeVisibility() * 100,))
+                print("Sun is visible for %i%% of the observation" % (obs.compute_visibility() * 100,))
             if obs.mode == 'TRK_JOV':
                 print("Jupiter is visible for %i%% of the observation" % (obs.computeVisibility() * 100,))
             if obs.mode == 'STEPPED':
@@ -155,7 +158,7 @@ def main(args):
                         print("  RA: %.3f hours, Dec.: %+.3f degrees" % (step.c1, step.c2))
                     else:
                         print(" azimuth: %.3f degrees, elevation: %.3f degrees" % (step.c1, step.c2))
-                print("Combined visibility for all steps is %i%%." % (obs.computeVisibility() * 100,))
+                print("Combined visibility for all steps is %i%%." % (obs.target_visibility * 100,))
         print(" ")
         
     print("Validator Output:")
