@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 
+"""
+Display VLSSr sources for calibration in an interactive GUI.
+"""
+
 import os
 import re
 import sys
 import ephem
-import numpy
+import numpy as np
 import argparse
 from functools import lru_cache
 from urllib.request import urlopen
@@ -13,16 +17,13 @@ from tempfile import NamedTemporaryFile
 from xml.etree import ElementTree
 import astropy.io.fits as astrofits
 
-import wx
-import wx.html as html
-from wx.lib.scrolledpanel import ScrolledPanel
-from wx.lib.mixins.listctrl import TextEditMixin
+import tkinter as tk
+from tkinter import ttk, filedialog, messagebox
+from PIL import Image, ImageTk
 
 import matplotlib
-matplotlib.use('WXAgg')
-matplotlib.interactive(True)
-
-from matplotlib.backends.backend_wxagg import NavigationToolbar2WxAgg, FigureCanvasWxAgg
+matplotlib.use('TkAgg')
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.figure import Figure
 from matplotlib.ticker import FuncFormatter, NullFormatter, NullLocator
 
@@ -30,294 +31,265 @@ import lsl
 from lsl import astro
 from lsl.misc import parser as aph
 
-
-__version__ = "0.1"
+__version__ = "0.2"
 __author__ = "Jayce Dowell"
-
-
-# Deal with the different wxPython versions
-if 'phoenix' in wx.PlatformInfo:
-    AppendMenuItem = lambda x, y: x.Append(y)
-    AppendMenuMenu = lambda *args, **kwds: args[0].Append(*args[1:], **kwds)
-    InsertListItem = lambda *args, **kwds: args[0].InsertItem(*args[1:], **kwds)
-    SetListItem    = lambda *args, **kwds: args[0].SetItem(*args[1:], **kwds)
-    ## This one is a little trickier
-    def AppendToolItem(*args, **kwds):
-        return args[0].AddTool(*args[1:], 
-                               kind=kwds['kind'] if 'kind' in kwds else wx.ITEM_NORMAL,
-                               clientData=kwds['clientData'] if 'clientData' in kwds else None,
-                               shortHelp=kwds['shortHelp'] if 'shortHelp' in kwds else '',
-                               longHelp=kwds['longHelp'] if 'longHelp' in kwds else '')
-else:
-    AppendMenuItem = lambda x, y: x.AppendItem(y)
-    AppendMenuMenu = lambda *args, **kwds: args[0].AppendMenu(*args[1:], **kwds)
-    InsertListItem = lambda *args, **kwds: args[0].InsertStringItem(*args[1:], **kwds)
-    SetListItem    = lambda *args, **kwds: args[0].SetStringItem(*args[1:], **kwds)
-    AppendToolItem = lambda *args, **kwds: args[0].AddLabelTool(*args[1:], **kwds)
-
-
-ORANGE = wx.Colour(0xFF, 0xA5, 0x00)
 
 
 SIMBAD_REF_RE = re.compile('^(\[(?P<ref>[A-Za-z0-9]+)\]\s*)')
 
 
-ID_QUIT = 101
-ID_RESOLVE = 201
-ID_SEARCH = 202
-ID_LISTCTRL = 203
-ID_DISPLAY = 204
-ID_ABOUT = 301
-
-class CalibratorSearch(wx.Frame):
-    def __init__(self, parent, title, target=None, ra=None, dec=None):
-        wx.Frame.__init__(self, parent, title=title, size=(725, 575))
+class CalibratorSearch(tk.Tk):
+    def __init__(self, target=None, ra=None, dec=None):
+        super().__init__()
+        
+        self.title('VLSSr Calibrator Search')
+        self.geometry('725x575')
         
         self.scriptPath = os.path.abspath(__file__)
         self.scriptPath = os.path.split(self.scriptPath)[0]
         
-        self.initUI()
-        self.initEvents()
-        self.Show()
+        # Create the menu
+        self.create_menu()
         
-        if target is not None:
-            # Set the target name
-            self.nameText.SetValue(target)
-            if ra is None or dec is None:
-                ## If RA/Dec is not defined, try to resolve
-                self.onResolve(None)
-        if ra is not None and dec is not None:
-            # Set the RA/Dec
-            self.raText.SetValue(ra)
-            self.decText.SetValue(dec)
-            ## Search
-            #self.onSearch(None)
-            
-    def initUI(self):
-        """
-        Start the user interface.
-        """
-        
-        # Menu bar
-        menubar = wx.MenuBar()
-        
-        fileMenu = wx.Menu()
-        helpMenu = wx.Menu()
-        
-        # File menu items
-        quit = wx.MenuItem(fileMenu, ID_QUIT, '&Quit')
-        AppendMenuItem(fileMenu, quit)
-        
-        # Help menu items
-        about = wx.MenuItem(helpMenu, ID_ABOUT, '&About')
-        AppendMenuItem(helpMenu, about)
-        
-        menubar.Append(fileMenu, '&File')
-        menubar.Append(helpMenu, '&Help')
-        self.SetMenuBar(menubar)
+        # Create the main interface
+        self.create_widgets()
         
         # Status bar
-        self.statusbar = self.CreateStatusBar()
+        self.statusbar = tk.Label(self, text="", bd=1, relief=tk.SUNKEN, anchor=tk.W)
+        self.statusbar.pack(side=tk.BOTTOM, fill=tk.X)
         
-        font = wx.SystemSettings.GetFont(wx.SYS_SYSTEM_FONT)
-        font.SetPointSize(font.GetPointSize()+2)
-        
-        row = 0
-        panel = wx.Panel(self)
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        
-        # Target name/search
-        panel1 = wx.Panel(panel)
-        sizer1 = wx.GridBagSizer(0, 0)
-        ## Name
-        lbl = wx.StaticText(panel1, label='Target Parameters')
-        lbl.SetFont(font)
-        
-        src = wx.StaticText(panel1, label='Name:')
-        srcText = wx.TextCtrl(panel1, size=(150,-1))
-        srcText.SetValue('')
-        sizer1.Add(lbl, pos=(row+0, 0), span=(1, 7), flag=wx.ALIGN_CENTER, border=5)
-        sizer1.Add(src, pos=(row+1, 0), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer1.Add(srcText, pos=(row+1, 1), span=(1, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        
-        ## Coordinates
-        lbl = wx.StaticText(panel1, label=' - or - ')
-        ra = wx.StaticText(panel1, label='RA:')
-        raText = wx.TextCtrl(panel1, size=(150,-1))
-        raText.SetValue('HH:MM:SS.SS')
-        dec = wx.StaticText(panel1, label='Dec:')
-        decText = wx.TextCtrl(panel1, size=(150,-1))
-        decText.SetValue('sDD:MM:SS.S')
-        sizer1.Add(lbl, pos=(row+1, 3), span=(1, 1), flag=wx.ALIGN_CENTER, border=5)
-        sizer1.Add(ra, pos=(row+1, 4), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer1.Add(raText, pos=(row+1, 5), span=(1, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer1.Add(dec, pos=(row+2, 4), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer1.Add(decText, pos=(row+2, 5), span=(1, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        
-        ## Control button
-        resolve = wx.Button(panel1, ID_RESOLVE, 'Resolve', size=(90, 28))
-        sizer1.Add(resolve, pos=(row+2, 1), span=(1,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        
-        line = wx.StaticLine(panel1)
-        sizer1.Add(line, pos=(row+3, 0), span=(1, 7), flag=wx.EXPAND|wx.BOTTOM, border=10)
-        
-        panel1.SetSizer(sizer1)
-        sizer.Add(panel1, flag=wx.ALIGN_CENTER)
-        
-        # Search control
-        ## Setup
-        panel2 = wx.Panel(panel)
-        sizer2 = wx.GridBagSizer(0, 0)
-        lbl = wx.StaticText(panel2, label='VLSSr Search Parameters')
-        lbl.SetFont(font)
-        
-        ## Distance
-        dist = wx.StaticText(panel2, label='Search Radius')
-        ld = wx.StaticText(panel2, label='Min:')
-        ldText = wx.TextCtrl(panel2)
-        ldText.SetValue('0.0')
-        ldUnit = wx.StaticText(panel2, label='deg')
-        ud = wx.StaticText(panel2, label='Max:')
-        udText = wx.TextCtrl(panel2)
-        udText.SetValue('3.0')
-        udUnit = wx.StaticText(panel2, label='deg')
-        sizer2.Add(lbl, pos=(row+0, 0), span=(1, 7), flag=wx.ALIGN_CENTER, border=5)
-        sizer2.Add(dist, pos=(row+1, 0), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer2.Add(ld, pos=(row+1, 1), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer2.Add(ldText, pos=(row+1, 2), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer2.Add(ldUnit, pos=(row+1, 3), span=(1, 1), flag=wx.EXPAND|wx.ALIGN_LEFT, border=5)
-        sizer2.Add(ud, pos=(row+1, 4), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer2.Add(udText, pos=(row+1, 5), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer2.Add(udUnit, pos=(row+1, 6), span=(1, 1), flag=wx.EXPAND|wx.ALIGN_LEFT, border=5)
-        
-        ## Flux density
-        fd = wx.StaticText(panel2, label='Flux Density')
-        mdLabl = wx.StaticText(panel2, label='Min:')
-        fdText = wx.TextCtrl(panel2)
-        fdText.SetValue('10.0')
-        fdUnit = wx.StaticText(panel2, label='Jy')
-        sizer2.Add(fd, pos=(row+2, 0), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer2.Add(mdLabl, pos=(row+2, 1), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer2.Add(fdText, pos=(row+2, 2), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer2.Add(fdUnit, pos=(row+2, 3), span=(1, 1), flag=wx.EXPAND|wx.ALIGN_LEFT, border=5)
-        
-        ## Control button
-        search = wx.Button(panel2, ID_SEARCH, 'Search', size=(90, 28))
-        sizer2.Add(search, pos=(row+2, 5), span=(1,1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        
-        line = wx.StaticLine(panel2)
-        sizer2.Add(line, pos=(row+3, 0), span=(1, 7), flag=wx.EXPAND|wx.BOTTOM, border=10)
-        
-        panel2.SetSizer(sizer2)
-        sizer.Add(panel2, flag=wx.ALIGN_CENTER)
-        
-        # Candidate list
-        ## Setup
-        panel3 = wx.Panel(panel)
-        sizer3 = wx.GridBagSizer(0, 0)
-        lbl = wx.StaticText(panel3, label='Candidates')
-        lbl.SetFont(font)
-        
-        ## Listing
-        self.listControl = wx.ListCtrl(panel3, id=ID_LISTCTRL, style=wx.LC_REPORT)
-        self.listControl.InsertColumn(0, 'Name', width=125)
-        self.listControl.InsertColumn(1, 'RA (J2000)', width=100)
-        self.listControl.InsertColumn(2, 'Dec (J2000)', width=100)
-        self.listControl.InsertColumn(3, 'Dist. (deg)', width=100)
-        self.listControl.InsertColumn(4, 'Flux (Jy)', width=100)
-        self.listControl.InsertColumn(5, 'Size', width=200)
-        size = self.listControl.GetSize()
-        size[0] = 725
-        size[1] = 225
-        self.listControl.SetMinSize(size)
-        self.listControl.Fit()
-        sizer3.Add(lbl, pos=(row+0, 0), span=(1, 7), flag=wx.ALIGN_CENTER, border=5)
-        sizer3.Add(self.listControl, pos=(row+1, 0), span=(8,7), flag=wx.EXPAND|wx.ALIGN_CENTER, border=5)
-        
-        ## Controls
-        sz = wx.StaticText(panel3, label='Image Size:')
-        szText = wx.TextCtrl(panel3)
-        szText.SetValue('1.0')
-        szUnit = wx.StaticText(panel3, label='deg')
-        sizer3.Add(sz, pos=(row+9, 0), span=(1, 1), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer3.Add(szText, pos=(row+9, 1), span=(1, 2), flag=wx.EXPAND|wx.LEFT|wx.RIGHT, border=5)
-        sizer3.Add(szUnit, pos=(row+9, 3), span=(1, 1), flag=wx.EXPAND|wx.ALIGN_LEFT, border=5)
-        display = wx.Button(panel3, ID_DISPLAY, 'Display Selected', size=(120, 28))
-        sizer3.Add(display, pos=(row+9, 6), span=(1, 1), flag=wx.EXPAND|wx.ALIGN_CENTER, border=5)
-        
-        panel3.SetSizer(sizer3)
-        sizer.Add(panel3, flag=wx.EXPAND|wx.LEFT|wx.RIGHT)
-        
-        panel.SetSizer(sizer)
-        sizer.Fit(self)
-        
-        # Save
-        self.nameText = srcText
-        self.raText = raText
-        self.decText = decText
-        self.fdText = fdText
-        self.ldText = ldText
-        self.udText = udText
-        self.szText = szText
-        
-        # For embedding purposes
-        self.row = row
-        self.panel = panel
-        self.sizer = sizer
-        self.panel3 = panel3
-        self.sizer3 = sizer3
-        
-    def initEvents(self):
-        """
-        Bind the various events need to make the GUI run.
-        """
+        # Apply initial values if provided
+        if target is not None:
+            self.nameText.insert(0, target)
+            if ra is None or dec is None:
+                self.on_resolve()
+        if ra is not None and dec is not None:
+            self.raText.delete(0, tk.END)
+            self.raText.insert(0, ra)
+            self.decText.delete(0, tk.END)
+            self.decText.insert(0, dec)
     
-        # File menu events
-        self.Bind(wx.EVT_MENU, self.onQuit, id=ID_QUIT)
+    def create_menu(self):
+        menubar = tk.Menu(self)
         
-        # Help menu events
-        self.Bind(wx.EVT_MENU, self.onAbout, id=ID_ABOUT)
+        # File menu
+        filemenu = tk.Menu(menubar, tearoff=0)
+        filemenu.add_command(label="Quit", command=self.on_quit)
+        menubar.add_cascade(label="File", menu=filemenu)
         
-        # Window manager close
-        self.Bind(wx.EVT_CLOSE, self.onQuit)
+        # Help menu
+        helpmenu = tk.Menu(menubar, tearoff=0)
+        helpmenu.add_command(label="About", command=self.on_about)
+        menubar.add_cascade(label="Help", menu=helpmenu)
         
-        # Buttons
-        self.Bind(wx.EVT_BUTTON, self.onResolve, id=ID_RESOLVE)
-        self.Bind(wx.EVT_BUTTON, self.onSearch, id=ID_SEARCH)
-        self.Bind(wx.EVT_BUTTON, self.onDisplay, id=ID_DISPLAY)
+        self.config(menu=menubar)
+    
+    def create_widgets(self):
+        main_frame = tk.Frame(self)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
-        # Keyboard
-        self.nameText.Bind(wx.EVT_KEY_UP, self.onKeyPress)
+        # Target name/search section
+        target_frame = tk.LabelFrame(main_frame, text="Target Parameters")
+        target_frame.pack(fill=tk.X, padx=5, pady=5)
         
-    def _clearCandidates(self):
-        """
-        Clear everything out of the candidates list.
-        """
+        # Name input
+        name_frame = tk.Frame(target_frame)
+        name_frame.pack(fill=tk.X, padx=5, pady=5)
         
-        for i in range(self.listControl.GetItemCount()):
-            self.listControl.DeleteItem(0)
-            
-    def onResolve(self, event):
-        """
-        Resolve the target name into a set of coordinates and update the display.
-        """
+        name_label = tk.Label(name_frame, text="Name:")
+        name_label.pack(side=tk.LEFT, padx=5)
         
-        source = self.nameText.GetValue()
+        self.nameText = tk.Entry(name_frame, width=20)
+        self.nameText.pack(side=tk.LEFT, padx=5, expand=True, fill=tk.X)
+        
+        self.raText = tk.Entry(name_frame, width=20)
+        self.raText.insert(0, "HH:MM:SS.SS")
+        self.raText.pack(side=tk.RIGHT, padx=5, expand=True, fill=tk.X)
+        
+        ra_label = tk.Label(name_frame, text=" RA:")
+        ra_label.pack(side=tk.RIGHT, padx=5)
+        
+        separator = tk.Label(name_frame, text=" - or - ")
+        separator.pack(side=tk.RIGHT, padx=10)
+        
+        # Dec input
+        dec_frame = tk.Frame(target_frame)
+        dec_frame.pack(fill=tk.X, padx=5, pady=5)
+        
+        # Add padding to align with name field
+        padding = tk.Label(dec_frame, text="     ")
+        padding.pack(side=tk.LEFT, padx=5)
+        
+        resolve_button = tk.Button(dec_frame, text="Resolve", width=20, command=self.on_resolve)
+        resolve_button.pack(side=tk.LEFT, padx=5, expand=True, fill=tk.X)
+        
+        self.decText = tk.Entry(dec_frame, width=20)
+        self.decText.insert(0, "sDD:MM:SS.S")
+        self.decText.pack(side=tk.RIGHT, padx=5, expand=True, fill=tk.X)
+        
+        dec_label = tk.Label(dec_frame, text="Dec:")
+        dec_label.pack(side=tk.RIGHT, padx=5)
+        
+        separator = tk.Label(dec_frame, text="        ")
+        separator.pack(side=tk.RIGHT, padx=10)
+        
+        # Search parameters
+        search_frame = tk.LabelFrame(main_frame, text="VLSSr Search Parameters")
+        search_frame.pack(fill=tk.X, padx=5, pady=5)
+        
+        # Search radius
+        radius_frame = tk.Frame(search_frame)
+        radius_frame.pack(fill=tk.X, padx=5, pady=5)
+        
+        radius_label = tk.Label(radius_frame, text="Search Radius")
+        radius_label.pack(side=tk.LEFT, padx=5)
+        
+        min_label = tk.Label(radius_frame, text="Min:")
+        min_label.pack(side=tk.LEFT, padx=5)
+        
+        self.ldText = tk.Entry(radius_frame, width=10)
+        self.ldText.insert(0, "0.0")
+        self.ldText.pack(side=tk.LEFT, padx=5)
+        
+        min_unit = tk.Label(radius_frame, text="deg")
+        min_unit.pack(side=tk.LEFT)
+        
+        max_label = tk.Label(radius_frame, text="Max:")
+        max_label.pack(side=tk.LEFT, padx=5)
+        
+        self.udText = tk.Entry(radius_frame, width=10)
+        self.udText.insert(0, "3.0")
+        self.udText.pack(side=tk.LEFT, padx=5)
+        
+        max_unit = tk.Label(radius_frame, text="deg")
+        max_unit.pack(side=tk.LEFT)
+        
+        # Flux density
+        flux_frame = tk.Frame(search_frame)
+        flux_frame.pack(fill=tk.X, padx=5, pady=5)
+        
+        flux_label = tk.Label(flux_frame, text="Flux Density")
+        flux_label.pack(side=tk.LEFT, padx=5)
+        
+        min_flux_label = tk.Label(flux_frame, text="Min:")
+        min_flux_label.pack(side=tk.LEFT, padx=5)
+        
+        self.fdText = tk.Entry(flux_frame, width=10)
+        self.fdText.insert(0, "10.0")
+        self.fdText.pack(side=tk.LEFT, padx=5)
+        
+        flux_unit = tk.Label(flux_frame, text="Jy")
+        flux_unit.pack(side=tk.LEFT)
+        
+        search_button = tk.Button(flux_frame, text="Search", command=self.on_search)
+        search_button.pack(side=tk.RIGHT, padx=5)
+        
+        # Candidates list
+        candidates_frame = tk.LabelFrame(main_frame, text="Candidates")
+        candidates_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # Create Treeview for candidates
+        columns = ('name', 'ra', 'dec', 'dist', 'flux', 'size')
+        self.listControl = ttk.Treeview(candidates_frame, columns=columns, show='headings')
+        
+        # Configure column headings
+        self.listControl.heading('name', text='Name')
+        self.listControl.heading('ra', text='RA (J2000)')
+        self.listControl.heading('dec', text='Dec (J2000)')
+        self.listControl.heading('dist', text='Dist. (deg)')
+        self.listControl.heading('flux', text='Flux (Jy)')
+        self.listControl.heading('size', text='Size')
+        
+        # Configure column widths
+        self.listControl.column('name', width=125)
+        self.listControl.column('ra', width=100)
+        self.listControl.column('dec', width=100)
+        self.listControl.column('dist', width=75)
+        self.listControl.column('flux', width=100)
+        self.listControl.column('size', width=200)
+        
+        # Add scrollbars
+        scrollbar_y = ttk.Scrollbar(candidates_frame, orient=tk.VERTICAL, command=self.listControl.yview)
+        self.listControl.configure(yscrollcommand=scrollbar_y.set)
+        
+        scrollbar_x = ttk.Scrollbar(candidates_frame, orient=tk.HORIZONTAL, command=self.listControl.xview)
+        self.listControl.configure(xscrollcommand=scrollbar_x.set)
+        
+        # Grid layout for the treeview and scrollbars
+        self.listControl.grid(row=0, column=0, sticky='nsew')
+        scrollbar_y.grid(row=0, column=1, sticky='ns')
+        scrollbar_x.grid(row=1, column=0, sticky='ew')
+        
+        # Configure grid weights
+        candidates_frame.grid_rowconfigure(0, weight=1)
+        candidates_frame.grid_columnconfigure(0, weight=1)
+        
+        # Controls below the list
+        controls_frame = tk.Frame(candidates_frame)
+        controls_frame.grid(row=2, column=0, columnspan=2, sticky='ew', padx=5, pady=5)
+        
+        size_label = tk.Label(controls_frame, text="Image Size:")
+        size_label.pack(side=tk.LEFT, padx=5)
+        
+        self.szText = tk.Entry(controls_frame, width=10)
+        self.szText.insert(0, "1.0")
+        self.szText.pack(side=tk.LEFT, padx=5)
+        
+        size_unit = tk.Label(controls_frame, text="deg")
+        size_unit.pack(side=tk.LEFT)
+        
+        display_button = tk.Button(controls_frame, text="Display Selected", command=self.on_display)
+        display_button.pack(side=tk.RIGHT, padx=5)
+        
+        # Bind keyboard events
+        self.nameText.bind("<KeyRelease>", self.on_key_press)
+        
+        # Bind selection event to the treeview
+        self.listControl.bind('<<TreeviewSelect>>', self.on_select_item)
+        
+    def on_key_press(self, event):
+        if event.keysym == 'Return':
+            self.on_resolve()
+    
+    def on_select_item(self, event):
+        # Get selected item
+        selection = self.listControl.selection()
+        if selection:
+            # Enable the display button
+            pass
+    
+    def _clear_candidates(self):
+        """Clear everything out of the candidates list."""
+        for item in self.listControl.get_children():
+            self.listControl.delete(item)
+    
+    def on_resolve(self, event=None):
+        """Resolve the target name into coordinates and update the display."""
+        source = self.nameText.get()
         
         if source != '':
             try:
                 posn = astro.resolve_name(source)
-                self.raText.SetValue(str(astro.deg_to_hms(posn.ra)).replace(' ', ':'))
-                self.decText.SetValue(str(astro.deg_to_dms(posn.dec)).replace(' ', ':'))
                 
-                self._clearCandidates()
+                # Update RA/Dec fields
+                ra_str = str(astro.deg_to_hms(posn.ra)).replace(' ', ':')
+                dec_str = str(astro.deg_to_dms(posn.dec)).replace(' ', ':')
+                
+                self.raText.delete(0, tk.END)
+                self.raText.insert(0, ra_str)
+                self.decText.delete(0, tk.END)
+                self.decText.insert(0, dec_str)
+                
+                self._clear_candidates()
                 
             except RuntimeError as error:
-                self.statusbar.SetStatusText(f"Error resolving source: {str(error)}", 0)
-                self.raText.SetValue("HH:MM:SS.SS")
-                self.decText.SetValue("sDD:MM:SS.S")
+                self.statusbar.config(text=f"Error resolving source: {str(error)}")
+                self.raText.delete(0, tk.END)
+                self.raText.insert(0, "HH:MM:SS.SS")
+                self.decText.delete(0, tk.END)
+                self.decText.insert(0, "sDD:MM:SS.S")
                 
-    def _reverseNameLookup(self, ra, dec, radius_arcsec=15.0):
+    def _reverse_name_lookup(self, ra, dec, radius_arcsec=15.0):
         """
         Perform a reverse name lookup (coordinates to name) via Simbad and return 
         the name of the source.  Returns '---' if no name can be found.
@@ -353,15 +325,15 @@ class CalibratorSearch(wx.Frame):
             
         if final_name == '---':
             # Try with a bigger search area
-            final_name = self._reverseNameLookup(ra, dec, radius_arcsec=2*radius_arcsec)
+            final_name = self._reverse_name_lookup(ra, dec, radius_arcsec=2*radius_arcsec)
         else:
             # Try to get a "better" name for the source
-            final_name = self._radioNameQuery(final_name)
+            final_name = self._radio_name_query(final_name)
             
         return final_name
         
     @lru_cache(maxsize=64)
-    def _radioNameQuery(self, name):
+    def _radio_name_query(self, name):
         final_name = name
         
         preferred_order = {'3C':5, '4C':4, 'TXS':3, 'VLSS':2, 'NVSS': 1}
@@ -388,43 +360,46 @@ class CalibratorSearch(wx.Frame):
             
         return final_name
         
-    def onSearch(self, event):
+    def on_search(self, event=None):
         """
-        Search for VLSSr sources around the target position using the constrains 
+        Search for VLSSr sources around the target position using the constraints
         provided, and update the candidate list.
         """
-        
         # Load in the values
-        ## Coodinates
-        ra = self.raText.GetValue()
-        dec = self.decText.GetValue()
+        ## Coordinates
+        ra = self.raText.get()
+        dec = self.decText.get()
         try:
             ephem.hours(str(ra))
             ephem.degrees(str(dec))
         except (ValueError, TypeError):
             return False
-        ## Search criteria
-        flux = float(self.fdText.GetValue())
-        min_dist = float(self.ldText.GetValue())
-        max_dist = float(self.udText.GetValue())
-        if max_dist > 10.0:
-            ### Limit ourselves to a 10 degree search
-            max_dist = 10.0
-            self.udText.SetValue(f"{max_dist:.1f}")
-            self.udText.Refresh()
             
-        wx.BeginBusyCursor()
+        ## Search criteria
+        flux = float(self.fdText.get())
+        min_dist = float(self.ldText.get())
+        max_dist = float(self.udText.get())
         
-        # Find the candidates
+        if max_dist > 10.0:
+            ### Limit to 10 degree search
+            max_dist = 10.0
+            self.udText.delete(0, tk.END)
+            self.udText.insert(0, f"{max_dist:.1f}")
+        
+        # Show busy cursor
+        self.config(cursor="wait")
+        self.update()
+        
+        # Find candidates
         ## Query the candidates
-        data = urlencode({'Equinox': 3, 
-                          'DecFit': 0, 
-                          'FluxDensity': flux,  
-                          'ObjName': '', 
-                          'RA': ra.replace(':', ' '), 
-                          'Dec': dec.replace(':', ' '), 
-                          'searchrad': max_dist*3600, 
-                          'verhalf': 12*60, 
+        data = urlencode({'Equinox': 3,
+                          'DecFit': 0,
+                          'FluxDensity': flux,
+                          'ObjName': '',
+                          'RA': ra.replace(':', ' '),
+                          'Dec': dec.replace(':', ' '),
+                          'searchrad': max_dist*3600,
+                          'verhalf': 12*60,
                           'poslist': ''})
         
         candidates = []
@@ -452,72 +427,49 @@ class CalibratorSearch(wx.Frame):
                     maj, min, pa = fields[8], fields[9], fields[10]
                     if sep < min_dist:
                         continue
-                    name = self._reverseNameLookup(ra, dec)
-                    candidates.append( (name,ra,dec,sep,flux,maj,min,pa) )
-                    
+                    name = self._reverse_name_lookup(ra, dec)
+                    candidates.append((name, ra, dec, sep, flux, maj, min, pa))
+        
         except (IOError, ValueError, RuntimeError) as error:
-            self.statusbar.SetStatusText(f"Error during search: {str(error)}", 0)
+            self.statusbar.config(text=f"Error during search: {str(error)}")
             
         ## Update the status bar
         if len(candidates) == 0:
-            self.statusbar.SetStatusText('No candidates found matching the search criteria', 0)
+            self.statusbar.config(text='No candidates found matching the search criteria')
         else:
-            self.statusbar.SetStatusText(f"Found {len(candidates)} candidates matching the search criteria", 0)
+            self.statusbar.config(text=f"Found {len(candidates)} candidates matching the search criteria")
             
         ## Sort by distance from the target
-        candidates.sort(key=lambda x:x[3])
+        candidates.sort(key=lambda x: x[3])
         
-        wx.EndBusyCursor()
+        # Restore normal cursor
+        self.config(cursor="")
         
-        fontW = wx.SystemSettings.GetFont(wx.SYS_SYSTEM_FONT)
-        fontW.SetStyle(wx.ITALIC)
-        fontE = wx.SystemSettings.GetFont(wx.SYS_SYSTEM_FONT)
-        fontE.SetStyle(wx.ITALIC)
-        fontE.SetWeight(wx.BOLD)
+        # Create styles for formatting different rows
+        style = ttk.Style()
+        style.configure("Warning.Treeview.Item", foreground="#FFA500")
+        style.configure("Error.Treeview.Item", foreground="red")
         
         # Update the candidate list in the window
-        self._clearCandidates()
-        for i,candidate in enumerate(candidates):
-            name,ra,dec,sep,flux,maj,min,pa = candidate
-            index = InsertListItem(self.listControl, i, name)
+        self._clear_candidates()
+        for i, candidate in enumerate(candidates):
+            name, ra, dec, sep, flux, maj, min, pa = candidate
+            item_id = self.listControl.insert('', 'end', values=(
+                name, ra, dec, f"{sep:.1f}", f"{flux:.1f}", f"{maj}\" by {min}\" @ {pa}")
+            )
             
-            SetListItem(self.listControl, index, 1, ra)
-            SetListItem(self.listControl, index, 2, dec)
-            SetListItem(self.listControl, index, 3, f"{sep:.1f}")
-            SetListItem(self.listControl, index, 4, f"{flux:.1f}")
-            SetListItem(self.listControl, index, 5, f"{maj}\" by {min}\" @ {pa}")
-            
-            ## Flag things that look like they might be too far away
+            # Flag items that look like they might be too far away
             if sep >= 3.5:
-                item = self.listControl.GetItem(index, 3)
-                self.listControl.SetItemTextColour(item.GetId(), wx.RED)
-                self.listControl.SetItemFont(item.GetId(), fontE)
-                self.listControl.RefreshItem(item.GetId())
+                self.listControl.item(item_id, tags=('error',))
             elif sep > 3.0:
-                item = self.listControl.GetItem(index, 3)
-                self.listControl.SetItemTextColour(item.GetId(), ORANGE)
-                self.listControl.SetItemFont(item.GetId(), fontW)
-                self.listControl.RefreshItem(item.GetId())
+                self.listControl.item(item_id, tags=('warning',))
                 
-            ## Flag things that look like they might be too faint
-            if flux < 5.0:
-                item = self.listControl.GetItem(index, 4)
-                self.listControl.SetItemFont(item.GetId(), fontE)
-                self.listControl.RefreshItem(item.GetId())
-                
-            ## Flag things that look like they might be too large
-            try:
-                maj = float(maj)
-                if maj >= 40.0:
-                    item = self.listControl.GetItem(index, 5)
-                    self.listControl.SetItemTextColour(item.GetId(), wx.RED)
-                    self.listControl.SetItemFont(item.GetId(), fontE)
-                    self.listControl.RefreshItem(item.GetId())
-            except ValueError:
-                pass
-                
+            # Apply the styles
+            self.listControl.tag_configure('warning', foreground="#FFA500")
+            self.listControl.tag_configure('error', foreground='red')
+            
     @lru_cache(maxsize=4)
-    def _loadVLSSrImage(self, ra, dec, size=0.5):
+    def _load_vlssr_image(self, ra, dec, size=0.5):
         """
         Given an RA and declination string, query the VLSSr postage stamp server
         and return a header/image for those coordinates.
@@ -552,68 +504,118 @@ class CalibratorSearch(wx.Frame):
                 
         return header, image
         
-    def onDisplay(self, event):
+    def on_display(self, event=None):
         """
         Load the VLSSr image of the selected candidate and show it.
         """
         
-        index = self.listControl.GetNextSelected(-1)
-        if index != -1:
-            name = self.listControl.GetItem(index, 0)
-            name = name.GetText()
-            ra = self.listControl.GetItem(index, 1)
-            ra = ra.GetText()
-            dec = self.listControl.GetItem(index, 2)
-            dec = dec.GetText()
+        # Get selected item from Treeview
+        selected_items = self.listControl.selection()
+        if selected_items:  # Check if anything is selected
+            index = selected_items[0]  # Get the first selected item
             
-            sz = self.szText.GetValue()
+            # Get values from the selected row in the Treeview
+            item_values = self.listControl.item(index, "values")
+            name = item_values[0]  # Assuming name is the first column
+            ra = item_values[1]    # Assuming RA is the second column
+            dec = item_values[2]   # Assuming Dec is the third column
+            
+            # Get size value from text entry
+            sz = self.szText.get()  # In Tkinter, use get() instead of GetValue()
             try:
                 sz = float(sz)
             except ValueError as error:
-                self.statusbar.SetStatusText(f"Error displaying image: {str(error)}", 0)
+                # Update status bar with error
+                self.statusbar.config(text=f"Error displaying image: {str(error)}")  # Tkinter way to update status
                 sz = 0.5
             
-            wx.BeginBusyCursor()
-            header, image = self._loadVLSSrImage(ra, dec, size=sz)
-            wx.EndBusyCursor()
+            # Show busy cursor
+            self.config(cursor="watch")
+            self.update()  # Force update to show the cursor change
             
+            # Load the image
+            header, image = self._load_vlssr_image(ra, dec, size=sz)
+            
+            # Restore cursor
+            self.config(cursor="")
+            
+            # Display the image using your ImageViewer class
             ImageViewer(self, name, ra, dec, header, image)
             
-    def onKeyPress(self, event):
-        if event.GetKeyCode() == wx.WXK_RETURN:
-            self.onResolve(event)
-            
-    def onAbout(self, event):
+    def on_about(self, event=None):
         """
         Display a very very very brief 'about' window.
         """
+        # Create a custom toplevel window
+        about_window = tk.Toplevel(self)
+        about_window.title("About VLSSr Calibrator Search")
+        about_window.geometry("400x450")
+        about_window.resizable(False, False)
         
-        dialog = wx.AboutDialogInfo()
+        # Try to load the icon
+        try:
+            icon_path = os.path.join(self.scriptPath, 'icons', 'lwa.png')
+            if os.path.exists(icon_path):
+                img = Image.open(icon_path)
+                icon = ImageTk.PhotoImage(img)
+                about_window.iconphoto(False, icon)
+                
+                # Also display the icon in the window
+                icon_label = tk.Label(about_window, image=icon)
+                icon_label.image = icon  # Keep a reference
+                icon_label.pack(pady=10)
+        except Exception as e:
+            print(f"Could not load icon: {e}")
         
-        dialog.SetIcon(wx.Icon(os.path.join(self.scriptPath, 'icons', 'lwa.png'), wx.BITMAP_TYPE_PNG))
-        dialog.SetName('VLSSr Calibrator Search')
-        dialog.SetVersion(__version__)
-        dialog.SetDescription("""GUI for searching the VLSSr (Lane et al., 2012 Radio Science v. 47, RS0K04) to find sources suitable for phase calibrators for the LWA single baseline interferometer.\n\nLSL Version: %s""" % lsl.version.version)
-        dialog.SetWebSite('http://lwa.unm.edu')
-        dialog.AddDeveloper(__author__)
+        # Add name and version
+        tk.Label(about_window, text="VLSSr Calibrator Search", font=("Arial", 14, "bold")).pack(pady=5)
+        tk.Label(about_window, text=f"Version: {__version__}").pack()
         
-        # Debuggers/testers
-        dialog.AddDocWriter(__author__)
-        dialog.AddDocWriter('Ivey Davis')
+        # Description
+        description = """GUI for searching the VLSSr (Lane et al., 2012 Radio Science v. 47, RS0K04) to find sources 
+suitable for phase calibrators for the LWA single baseline interferometer.
+
+LSL Version: {}""".format(lsl.version.version)
         
-        wx.AboutBox(dialog)
+        desc_label = tk.Label(about_window, text=description, justify=tk.CENTER, wraplength=350)
+        desc_label.pack(pady=10, padx=20)
         
-    def onQuit(self, event):
+        # Website
+        website_frame = tk.Frame(about_window)
+        website_frame.pack(pady=5)
+        tk.Label(website_frame, text="Website: ").pack(side=tk.LEFT)
+        website_link = tk.Label(website_frame, text="http://lwa.unm.edu", fg="blue", cursor="hand2")
+        website_link.pack(side=tk.LEFT)
+        website_link.bind("<Button-1>", lambda e: self.open_website("http://lwa.unm.edu"))
+        
+        # Developers and Doc Writers
+        tk.Label(about_window, text=f"Developer: {__author__}").pack(pady=2)
+        tk.Label(about_window, text=f"Documentation: {__author__}, Ivey Davis").pack(pady=2)
+        
+        # Close button
+        tk.Button(about_window, text="Close", command=about_window.destroy).pack(pady=10)
+
+    def open_website(self, url):
+        """
+        Open a website URL in the default browser
+        """
+        import webbrowser
+        webbrowser.open(url)
+    
+    def on_quit(self, event=None):
         """
         Quit the main window.
         """
         
-        self.Destroy()
+        self.destroy()
 
 
-class ImageViewer(wx.Frame):
+class ImageViewer(tk.Toplevel):
     def __init__(self, parent, name, ra, dec, header, image):
-        wx.Frame.__init__(self, parent, title='VLSSr Field', size=(800, 375))
+        super().__init__(parent)
+        
+        self.title('VLSSr Field')
+        self.geometry('500x400')
         
         self.parent = parent
         self.name = name
@@ -622,67 +624,51 @@ class ImageViewer(wx.Frame):
         self.header = header
         self.image = image
         
-        self.initUI()
-        self.initEvents()
-        self.Show()
-        
+        self.create_widgets()
         self._state = {}
-        self.initPlot()
-            
-    def initUI(self):
-        """
-        Start the user interface.
-        """
+        self.init_plot()
         
-        self.statusbar = self.CreateStatusBar()
+    def create_widgets(self):
+        # Create the main frame
+        main_frame = tk.Frame(self)
+        main_frame.pack(fill=tk.BOTH, expand=True)
         
-        hbox = wx.BoxSizer(wx.HORIZONTAL)
+        # Create matplotlib figure and canvas
+        self.figure = Figure(figsize=(8, 6), dpi=100)
+        self.canvas = FigureCanvasTkAgg(self.figure, main_frame)
+        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         
-        # Add plots to panel 1
-        panel = wx.Panel(self, -1)
-        vbox1 = wx.BoxSizer(wx.VERTICAL)
-        self.figure = Figure()
-        self.canvas = FigureCanvasWxAgg(panel, -1, self.figure)
-        self.toolbar = NavigationToolbar2WxAgg(self.canvas)
-        self.toolbar.Realize()
-        vbox1.Add(self.canvas,  1, wx.ALIGN_LEFT | wx.EXPAND)
-        vbox1.Add(self.toolbar, 0, wx.ALIGN_LEFT)
-        panel.SetSizer(vbox1)
-        hbox.Add(panel, 1, wx.EXPAND)
+        # Add navigation toolbar
+        self.toolbar = NavigationToolbar2Tk(self.canvas, main_frame)
+        self.toolbar.update()
+        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         
-        # Use some sizers to see layout options
-        self.SetSizer(hbox)
-        self.SetAutoLayout(1)
-        hbox.Fit(self)
+        # Status bar
+        self.statusbar = tk.Label(self, text="", bd=1, relief=tk.SUNKEN, anchor=tk.W)
+        self.statusbar.pack(side=tk.BOTTOM, fill=tk.X)
         
-    def initEvents(self):
-        """
-        Bind the various events needed to make the GUI run.
-        """
-        
-        # Make the images resizable
-        self.Bind(wx.EVT_PAINT, self.resizePlots)
+        # Bind resize event
+        self.bind("<Configure>", self.resizePlots)
         
     def _sin_px_to_sky(self, x, y):
         """
         Convert pixel coordinates to sky coordinates for a simple SIN projection.
         """
     
-        x = (x - (self.header['CRPIX1']-1))*self.header['CDELT1'] * numpy.pi/180
-        y = (y - (self.header['CRPIX2']-1))*self.header['CDELT2'] * numpy.pi/180
-        rho = numpy.sqrt(x*x + y*y)
-        c = numpy.arcsin(rho)
-        sc = numpy.sin(c)
-        cc = numpy.cos(c)
-        ra0 = self.header['CRVAL1'] * numpy.pi/180
-        dec0 = self.header['CRVAL2'] * numpy.pi/180
-        ra = ra0 \
-             + numpy.arctan2(x*sc, rho*cc*numpy.cos(dec0) - y*sc*numpy.sin(dec0))
+        x = (x - (self.header['CRPIX1']-1))*self.header['CDELT1'] * np.pi/180
+        y = (y - (self.header['CRPIX2']-1))*self.header['CDELT2'] * np.pi/180
+        rho = np.sqrt(x*x + y*y)
+        c = np.arcsin(rho)
+        sc = np.sin(c)
+        cc = np.cos(c)
+        ra0 = self.header['CRVAL1'] * np.pi/180
+        dec0 = self.header['CRVAL2'] * np.pi/180
+        ra = ra0 + np.arctan2(x*sc, rho*cc*np.cos(dec0) - y*sc*np.sin(dec0))
         if rho > 1e-10:
-            dec = numpy.arcsin(cc*numpy.sin(dec0) + y*sc*numpy.cos(dec0)/rho)
+            dec = np.arcsin(cc*np.sin(dec0) + y*sc*np.cos(dec0)/rho)
         else:
             dec = dec0
-        return ra*180/numpy.pi, dec*180/numpy.pi
+        return ra*180/np.pi, dec*180/np.pi
         
     def _ra_ticks(self, t, tick_number):
         try:
@@ -737,7 +723,7 @@ class ImageViewer(wx.Frame):
         
         return label
         
-    def initPlot(self):
+    def init_plot(self):
         """
         Setup the image.
         """
@@ -768,11 +754,11 @@ class ImageViewer(wx.Frame):
         Connect to all the events we need to interact with the plots.
         """
         
-        self.cidmotion  = self.figure.canvas.mpl_connect('motion_notify_event', self.on_motion)
+        self.cidmotion = self.canvas.mpl_connect('motion_notify_event', self.on_motion)
         
     def on_motion(self, event):
         """
-        Deal with motion events in the stand field window.  This involves 
+        Deal with motion events in the stand field window. This involves 
         setting the status bar with the current x and y coordinates as well
         as the stand number of the selected stand (if any).
         """
@@ -780,8 +766,8 @@ class ImageViewer(wx.Frame):
         if event.inaxes:
             clickX = event.xdata
             clickY = event.ydata
-            clickX = numpy.clip(int(round(clickX)), 0, self.image.shape[1]-1)
-            clickY = numpy.clip(int(round(clickY)), 0, self.image.shape[0]-1)
+            clickX = np.clip(int(round(clickX)), 0, self.image.shape[1]-1)
+            clickY = np.clip(int(round(clickY)), 0, self.image.shape[0]-1)
             
             ra, dec = self._sin_px_to_sky(clickX, clickY)
             
@@ -790,40 +776,53 @@ class ImageViewer(wx.Frame):
             rm = int((ra - rh)*60) % 60
             rs = (ra*3600) % 60.0
             
-            dg =  '-' if dec < 0 else '+'
+            dg = '-' if dec < 0 else '+'
             dec = abs(dec)
             dd = int(dec)
             dm = int((dec - dd)*60) % 60
             ds = (dec*3600) % 60.0
             
-            self.statusbar.SetStatusText("%i:%02i:%05.2f, %s%i:%02i:%04.1f @ %4.1f Jy" % (rh, rm, rs, dg, dd, dm, ds, self.image[clickY, clickX]))
+            status_text = "%i:%02i:%05.2f, %s%i:%02i:%04.1f @ %4.1f Jy" % (
+                rh, rm, rs, dg, dd, dm, ds, self.image[clickY, clickX])
+            self.statusbar.config(text=status_text)
         else:
-            self.statusbar.SetStatusText("")
+            self.statusbar.config(text="")
             
     def disconnect(self):
         """
         Disconnect all the stored connection ids.
         """
         
-        self.figure.canvas.mpl_disconnect(self.cidmotion)
+        self.canvas.mpl_disconnect(self.cidmotion)
         
     def resizePlots(self, event):
-        # Get the current size of the window and the navigation toolbar
-        w, h = self.GetClientSize()
-        wt, ht = self.toolbar.GetSize()
+        """
+        Handle window resize events.
+        """
+        # Skip if this is not for our window or if the window is not ready
+        if event.widget != self or not hasattr(self, 'figure'):
+            return
+            
+        # Get toolbar height
+        toolbar_height = self.toolbar.winfo_height()
         
-        dpi = self.figure.get_dpi()
-        newW = 1.0*w/dpi
-        newH = 1.0*(h-ht)/dpi
-        self.figure.set_size_inches((newW, newH))
-        self.figure.tight_layout()
-        self.figure.canvas.draw()
+        # Get window dimensions
+        width = self.winfo_width()
+        height = self.winfo_height() - toolbar_height - self.statusbar.winfo_height()
         
-    def GetToolBar(self):
-        # You will need to override GetToolBar if you are using an 
-        # unmanaged toolbar in your frame
-        return self.toolbar
-        
+        if width > 1 and height > 1:  # Avoid invalid dimensions
+            dpi = self.figure.get_dpi()
+            new_width = width / dpi
+            new_height = height / dpi
+            
+            # Only update if changed significantly to avoid constant redrawing
+            curr_size = self.figure.get_size_inches()
+            if (abs(curr_size[0] - new_width) > 0.1 or 
+                abs(curr_size[1] - new_height) > 0.1):
+                self.figure.set_size_inches(new_width, new_height)
+                self.figure.tight_layout()
+                self.canvas.draw_idle()  # Use draw_idle for better performance
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -838,6 +837,5 @@ if __name__ == "__main__":
                         help='target declination; sDD:MM:SS.S format, J2000')
     args = parser.parse_args()
     
-    app = wx.App()
-    CalibratorSearch(None, title='VLSSr Calibrator Search', target=args.target, ra=args.ra, dec=args.dec)
-    app.MainLoop()
+    app = CalibratorSearch(target=args.target, ra=args.ra, dec=args.dec)
+    app.mainloop()
