@@ -321,7 +321,7 @@ class CalibratorSearch(tk.Tk):
                     final_name = SIMBAD_REF_RE.sub('', entry['MAIN_ID'])
                     rank = entry_rank
         except (IOError, ValueError, AttributeError, ElementTree.ParseError) as error:
-            self.statusbar.SetStatusText(f"Error during name lookup: {str(error)}", 0)
+            self.statusbar.config(text=f"Error during name lookup: {str(error)}")
             
         if final_name == '---':
             # Try with a bigger search area
@@ -356,7 +356,7 @@ class CalibratorSearch(tk.Tk):
                             final_name = alias.text
                             rank = preferred_order[catalog]
         except (IOError, ValueError, AttributeError, ElementTree.ParseError) as error:
-            self.statusbar.SetStatusText(f"Error during radio name lookup: {str(error)}", 0)
+            self.statusbar.config(text=f"Error during radio name lookup: {str(error)}")
             
         return final_name
         
@@ -500,7 +500,7 @@ class CalibratorSearch(tk.Tk):
                 image = hdulist[0].data[0,0,:,:]
                 hdulist.close()
             except (IOError, ValueError, RuntimeError) as error:
-                self.statusbar.SetStatusText(f"Error loading image: {str(error)}", 0)
+                parent.statusbar.config(text=f"Error loading image: {str(error)}")
                 
         return header, image
         
