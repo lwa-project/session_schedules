@@ -1752,8 +1752,6 @@ class ObserverInfo(tk.Toplevel):
         tk.Toplevel.__init__(self, parent)
         self.title("Observer/Project/Session Information")
         self.parent = parent
-        self.geometry("700x600")
-        self.minsize(600, 500)
 
         self.create_widgets()
         self.load_data()
@@ -1761,6 +1759,9 @@ class ObserverInfo(tk.Toplevel):
         # Make it modal
         self.transient(parent)
         self.grab_set()
+
+        # Compute and set window size based on content
+        self._compute_window_size()
 
     def create_widgets(self):
         """Create the dialog widgets."""
@@ -2204,6 +2205,30 @@ class ObserverInfo(tk.Toplevel):
         """Close without saving."""
         self.destroy()
 
+    def _compute_window_size(self):
+        """Compute and set appropriate window size based on content."""
+        self.update_idletasks()
+
+        # Get the required width and height
+        req_width = self.winfo_reqwidth()
+        req_height = self.winfo_reqheight()
+
+        # Get screen dimensions
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+
+        # Add some padding and cap at screen size
+        width = min(req_width + 40, int(screen_width * 0.8))
+        height = min(req_height + 40, int(screen_height * 0.85))
+
+        # Set minimum size (60% of calculated or absolute minimum)
+        min_width = max(int(width * 0.6), 500)
+        min_height = max(int(height * 0.6), 400)
+
+        # Apply sizes
+        self.geometry(f"{width}x{height}")
+        self.minsize(min_width, min_height)
+
 
 class AdvancedInfo(tk.Toplevel):
     """Dialog for advanced settings."""
@@ -2212,8 +2237,6 @@ class AdvancedInfo(tk.Toplevel):
         tk.Toplevel.__init__(self, parent)
         self.title("Advanced Settings")
         self.parent = parent
-        self.geometry("800x650")
-        self.minsize(700, 550)
 
         self.create_widgets()
         self.load_data()
@@ -2221,6 +2244,9 @@ class AdvancedInfo(tk.Toplevel):
         # Make it modal
         self.transient(parent)
         self.grab_set()
+
+        # Compute and set window size based on content
+        self._compute_window_size()
 
     def create_widgets(self):
         """Create the dialog widgets."""
@@ -2643,6 +2669,30 @@ class AdvancedInfo(tk.Toplevel):
     def on_cancel(self):
         """Close without saving."""
         self.destroy()
+
+    def _compute_window_size(self):
+        """Compute and set appropriate window size based on content."""
+        self.update_idletasks()
+
+        # Get the required width and height
+        req_width = self.winfo_reqwidth()
+        req_height = self.winfo_reqheight()
+
+        # Get screen dimensions
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+
+        # Add some padding and cap at screen size
+        width = min(req_width + 40, int(screen_width * 0.8))
+        height = min(req_height + 40, int(screen_height * 0.85))
+
+        # Set minimum size (60% of calculated or absolute minimum)
+        min_width = max(int(width * 0.6), 600)
+        min_height = max(int(height * 0.6), 450)
+
+        # Apply sizes
+        self.geometry(f"{width}x{height}")
+        self.minsize(min_width, min_height)
 
 
 class SessionDisplay(tk.Toplevel):
