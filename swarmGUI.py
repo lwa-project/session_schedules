@@ -306,6 +306,8 @@ class IDFCreator(tk.Tk):
         self.savemenu = None
         self.editmenu = {}
         self.obsmenu = {}
+        self.editMenu = None
+        self.scansMenu = None
 
         self.buffer = None
 
@@ -363,13 +365,13 @@ class IDFCreator(tk.Tk):
         fileMenu.add_command(label="Quit", command=self.onQuit, accelerator="Ctrl+Q")
 
         # Edit menu
-        editMenu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="Edit", menu=editMenu)
-        editMenu.add_command(label="Cut Selected Scan", command=self.onCut, state=tk.DISABLED)
-        editMenu.add_command(label="Copy Selected Scan", command=self.onCopy, state=tk.DISABLED)
-        editMenu.add_command(label="Paste Before Selected", command=self.onPasteBefore, state=tk.DISABLED)
-        editMenu.add_command(label="Paste After Selected", command=self.onPasteAfter, state=tk.DISABLED)
-        editMenu.add_command(label="Paste at End of List", command=self.onPasteEnd, state=tk.DISABLED)
+        self.editMenu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Edit", menu=self.editMenu)
+        self.editMenu.add_command(label="Cut Selected Scan", command=self.onCut, state=tk.DISABLED)
+        self.editMenu.add_command(label="Copy Selected Scan", command=self.onCopy, state=tk.DISABLED)
+        self.editMenu.add_command(label="Paste Before Selected", command=self.onPasteBefore, state=tk.DISABLED)
+        self.editMenu.add_command(label="Paste After Selected", command=self.onPasteAfter, state=tk.DISABLED)
+        self.editMenu.add_command(label="Paste at End of List", command=self.onPasteEnd, state=tk.DISABLED)
 
         self.editmenu['cut'] = 0
         self.editmenu['copy'] = 1
@@ -378,35 +380,35 @@ class IDFCreator(tk.Tk):
         self.editmenu['pasteEnd'] = 4
 
         # Scans menu
-        scansMenu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="Scans", menu=scansMenu)
-        scansMenu.add_command(label="Observer/Project Info.", command=self.onInfo)
-        scansMenu.add_command(label="Scheduling", command=self.onSchedule)
-        scansMenu.add_separator()
+        self.scansMenu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Scans", menu=self.scansMenu)
+        self.scansMenu.add_command(label="Observer/Project Info.", command=self.onInfo)
+        self.scansMenu.add_command(label="Scheduling", command=self.onSchedule)
+        self.scansMenu.add_separator()
 
-        addMenu = tk.Menu(scansMenu, tearoff=0)
-        scansMenu.add_cascade(label="Add", menu=addMenu)
+        addMenu = tk.Menu(self.scansMenu, tearoff=0)
+        self.scansMenu.add_cascade(label="Add", menu=addMenu)
         addMenu.add_command(label="DRX - RA/Dec", command=self.onAddDRXR)
         addMenu.add_command(label="DRX - Solar", command=self.onAddDRXS)
         addMenu.add_command(label="DRX - Jovian", command=self.onAddDRXJ)
 
-        scansMenu.add_command(label="Proper Motion", command=self.onProperMotion, state=tk.DISABLED)
-        scansMenu.add_command(label="Remove Selected", command=self.onRemove, state=tk.DISABLED)
-        scansMenu.add_command(label="Validate All\tF5", command=self.onValidate, accelerator="F5")
-        scansMenu.add_separator()
-        scansMenu.add_command(label="Resolve Selected\tF3", command=self.onResolve, state=tk.DISABLED, accelerator="F3")
-        scansMenu.add_command(label="Calibrator Search\tF4", command=self.onSearch, accelerator="F4")
-        scansMenu.add_separator()
-        scansMenu.add_command(label="Run at a Glance", command=self.onTimeseries)
-        scansMenu.add_command(label="UV Coverage", command=self.onUVCoverage)
-        scansMenu.add_command(label="Advanced Settings", command=self.onAdvanced)
+        self.scansMenu.add_command(label="Proper Motion", command=self.onProperMotion, state=tk.DISABLED)
+        self.scansMenu.add_command(label="Remove Selected", command=self.onRemove, state=tk.DISABLED)
+        self.scansMenu.add_command(label="Validate All\tF5", command=self.onValidate, accelerator="F5")
+        self.scansMenu.add_separator()
+        self.scansMenu.add_command(label="Resolve Selected\tF3", command=self.onResolve, state=tk.DISABLED, accelerator="F3")
+        self.scansMenu.add_command(label="Calibrator Search\tF4", command=self.onSearch, accelerator="F4")
+        self.scansMenu.add_separator()
+        self.scansMenu.add_command(label="Run at a Glance", command=self.onTimeseries)
+        self.scansMenu.add_command(label="UV Coverage", command=self.onUVCoverage)
+        self.scansMenu.add_command(label="Advanced Settings", command=self.onAdvanced)
 
         self.obsmenu['drx-radec'] = (addMenu, 0)
         self.obsmenu['drx-solar'] = (addMenu, 1)
         self.obsmenu['drx-jovian'] = (addMenu, 2)
-        self.obsmenu['pmotion'] = (scansMenu, 3)
-        self.obsmenu['remove'] = (scansMenu, 4)
-        self.obsmenu['resolve'] = (scansMenu, 7)
+        self.obsmenu['pmotion'] = (self.scansMenu, 3)
+        self.obsmenu['remove'] = (self.scansMenu, 4)
+        self.obsmenu['resolve'] = (self.scansMenu, 7)
 
         # Data menu
         dataMenu = tk.Menu(menubar, tearoff=0)
@@ -569,54 +571,39 @@ class IDFCreator(tk.Tk):
         # Update menu and toolbar states
         if selected_count == 0:
             # Edit menu - disabled
-            editMenu = self.nametowidget(self.cget('menu')).nametowidget('!menu')
-            try:
-                editMenu.entryconfig(self.editmenu['cut'], state=tk.DISABLED)
-                editMenu.entryconfig(self.editmenu['copy'], state=tk.DISABLED)
-            except:
-                pass
+            self.editMenu.entryconfig(self.editmenu['cut'], state=tk.DISABLED)
+            self.editMenu.entryconfig(self.editmenu['copy'], state=tk.DISABLED)
 
             # Remove and resolve - disabled
-            scansMenu = self.nametowidget(self.cget('menu')).nametowidget('!menu2')
-            scansMenu.entryconfig(self.obsmenu['pmotion'][1], state=tk.DISABLED)
-            scansMenu.entryconfig(self.obsmenu['remove'][1], state=tk.DISABLED)
-            scansMenu.entryconfig(self.obsmenu['resolve'][1], state=tk.DISABLED)
+            self.scansMenu.entryconfig(self.obsmenu['pmotion'][1], state=tk.DISABLED)
+            self.scansMenu.entryconfig(self.obsmenu['remove'][1], state=tk.DISABLED)
+            self.scansMenu.entryconfig(self.obsmenu['resolve'][1], state=tk.DISABLED)
 
             self.toolbar_buttons['pmotion'].config(state=tk.DISABLED)
             self.toolbar_buttons['remove'].config(state=tk.DISABLED)
 
         elif selected_count == 1:
             # Edit menu - enabled
-            editMenu = self.nametowidget(self.cget('menu')).nametowidget('!menu')
-            try:
-                editMenu.entryconfig(self.editmenu['cut'], state=tk.NORMAL)
-                editMenu.entryconfig(self.editmenu['copy'], state=tk.NORMAL)
-            except:
-                pass
+            self.editMenu.entryconfig(self.editmenu['cut'], state=tk.NORMAL)
+            self.editMenu.entryconfig(self.editmenu['copy'], state=tk.NORMAL)
 
             # Remove and resolve - enabled
-            scansMenu = self.nametowidget(self.cget('menu')).nametowidget('!menu2')
-            scansMenu.entryconfig(self.obsmenu['pmotion'][1], state=tk.NORMAL)
-            scansMenu.entryconfig(self.obsmenu['remove'][1], state=tk.NORMAL)
-            scansMenu.entryconfig(self.obsmenu['resolve'][1], state=tk.NORMAL)
+            self.scansMenu.entryconfig(self.obsmenu['pmotion'][1], state=tk.NORMAL)
+            self.scansMenu.entryconfig(self.obsmenu['remove'][1], state=tk.NORMAL)
+            self.scansMenu.entryconfig(self.obsmenu['resolve'][1], state=tk.NORMAL)
 
             self.toolbar_buttons['pmotion'].config(state=tk.NORMAL)
             self.toolbar_buttons['remove'].config(state=tk.NORMAL)
 
         else:
             # Edit menu - enabled
-            editMenu = self.nametowidget(self.cget('menu')).nametowidget('!menu')
-            try:
-                editMenu.entryconfig(self.editmenu['cut'], state=tk.NORMAL)
-                editMenu.entryconfig(self.editmenu['copy'], state=tk.NORMAL)
-            except:
-                pass
+            self.editMenu.entryconfig(self.editmenu['cut'], state=tk.NORMAL)
+            self.editMenu.entryconfig(self.editmenu['copy'], state=tk.NORMAL)
 
             # Motion and resolve - disabled, remove - enabled
-            scansMenu = self.nametowidget(self.cget('menu')).nametowidget('!menu2')
-            scansMenu.entryconfig(self.obsmenu['pmotion'][1], state=tk.DISABLED)
-            scansMenu.entryconfig(self.obsmenu['remove'][1], state=tk.NORMAL)
-            scansMenu.entryconfig(self.obsmenu['resolve'][1], state=tk.DISABLED)
+            self.scansMenu.entryconfig(self.obsmenu['pmotion'][1], state=tk.DISABLED)
+            self.scansMenu.entryconfig(self.obsmenu['remove'][1], state=tk.NORMAL)
+            self.scansMenu.entryconfig(self.obsmenu['resolve'][1], state=tk.DISABLED)
 
             self.toolbar_buttons['pmotion'].config(state=tk.DISABLED)
             self.toolbar_buttons['remove'].config(state=tk.NORMAL)
