@@ -390,6 +390,10 @@ class SDFCreator(tk.Tk):
         self.project = project
         self.mode = ''
 
+        self.project.sessions[0].tbwBits = 12
+        self.project.sessions[0].tbwSamples = 12000000
+        self.project.sessions[0].tbfSamples = 12000000
+        self.project.sessions[0].tbnGain = -1
         self.project.sessions[0].drxGain = -1
 
     def initUI(self):
@@ -2418,25 +2422,27 @@ class AdvancedInfo(tk.Toplevel):
         if len(self.parent.project.sessions) > 0:
             session = self.parent.project.sessions[0]
 
-            # Load MIB recording periods
-            self.mib_rec_asp.set(self._time_to_combo(session.recordMIB.get('ASP', -1)))
-            self.mib_rec_dp.set(self._time_to_combo(session.recordMIB.get('DP_', -1)))
-            self.mib_rec_dr.set(self._time_to_combo(session.recordMIB.get('DR1', -1)))
-            self.mib_rec_shl.set(self._time_to_combo(session.recordMIB.get('SHL', -1)))
-            self.mib_rec_mcs.set(self._time_to_combo(session.recordMIB.get('MCS', -1)))
+            # Load MIB recording periods (with safe defaults if attributes don't exist)
+            recordMIB = getattr(session, 'recordMIB', {})
+            self.mib_rec_asp.set(self._time_to_combo(recordMIB.get('ASP', -1)))
+            self.mib_rec_dp.set(self._time_to_combo(recordMIB.get('DP_', -1)))
+            self.mib_rec_dr.set(self._time_to_combo(recordMIB.get('DR1', -1)))
+            self.mib_rec_shl.set(self._time_to_combo(recordMIB.get('SHL', -1)))
+            self.mib_rec_mcs.set(self._time_to_combo(recordMIB.get('MCS', -1)))
 
-            # Load MIB update periods
-            self.mib_upd_asp.set(self._time_to_combo(session.updateMIB.get('ASP', -1)))
-            self.mib_upd_dp.set(self._time_to_combo(session.updateMIB.get('DP_', -1)))
-            self.mib_upd_dr.set(self._time_to_combo(session.updateMIB.get('DR1', -1)))
-            self.mib_upd_shl.set(self._time_to_combo(session.updateMIB.get('SHL', -1)))
-            self.mib_upd_mcs.set(self._time_to_combo(session.updateMIB.get('MCS', -1)))
+            # Load MIB update periods (with safe defaults if attributes don't exist)
+            updateMIB = getattr(session, 'updateMIB', {})
+            self.mib_upd_asp.set(self._time_to_combo(updateMIB.get('ASP', -1)))
+            self.mib_upd_dp.set(self._time_to_combo(updateMIB.get('DP_', -1)))
+            self.mib_upd_dr.set(self._time_to_combo(updateMIB.get('DR1', -1)))
+            self.mib_upd_shl.set(self._time_to_combo(updateMIB.get('SHL', -1)))
+            self.mib_upd_mcs.set(self._time_to_combo(updateMIB.get('MCS', -1)))
 
-            # Load log and station data options
-            self.include_sch_log.set(session.include_mcssch_log)
-            self.include_exe_log.set(session.include_mcsexe_log)
-            self.include_smib.set(session.include_station_smib)
-            self.include_design.set(session.include_station_design)
+            # Load log and station data options (with safe defaults)
+            self.include_sch_log.set(getattr(session, 'include_mcssch_log', False))
+            self.include_exe_log.set(getattr(session, 'include_mcsexe_log', False))
+            self.include_smib.set(getattr(session, 'include_station_smib', False))
+            self.include_design.set(getattr(session, 'include_station_design', False))
 
             # Load ASP settings
             if len(session.observations) > 0:
@@ -2500,6 +2506,12 @@ class AdvancedInfo(tk.Toplevel):
         try:
             if len(self.parent.project.sessions) > 0:
                 session = self.parent.project.sessions[0]
+
+                # Ensure MIB dictionaries exist
+                if not hasattr(session, 'recordMIB'):
+                    session.recordMIB = {}
+                if not hasattr(session, 'updateMIB'):
+                    session.updateMIB = {}
 
                 # Save MIB recording periods
                 session.recordMIB['ASP'] = self._parse_time_combo(self.mib_rec_asp.get())
