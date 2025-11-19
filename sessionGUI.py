@@ -1733,28 +1733,30 @@ class SDFCreator(tk.Tk):
 
         # Set up mapping based on mode
         # Columns now follow wxPython order: ID (0), Name (1), Target (2), Comments (3), Start (UTC) (4), then mode-specific
+        # NOTE: columnMap and coerceMap have extra element at start because on_edit() uses col+1 indexing
         if mode == 'TBW':
             # TBW mode: all mode-specific columns are NOT editable per wxPython behavior (line 351)
-            self.columnMap = [None, 'name', 'target', 'comments', 'start', None, None, None]
-            self.coerceMap = [None, str, str, str, str, None, None, None]
+            # Columns: ID (0), Name (1), Target (2), Comments (3), Start (4), Duration (5), Frequency (6), Filter (7)
+            self.columnMap = [None, None, 'name', 'target', 'comments', 'start', None, None, None]
+            self.coerceMap = [None, None, str, str, str, str, None, None, None]
             self.listControl.editable_columns = [False, True, True, True, True, False, False, False]
 
         elif mode == 'TBN':
-            # TBN: ID, Name, Target, Comments, Start, Duration (5), Frequency (6), Filter (7)
-            self.columnMap = [None, 'name', 'target', 'comments', 'start', 'duration', 'frequency1', 'filter']
-            self.coerceMap = [None, str, str, str, str, str, lambda x: freqConv(x, tbn=True), filterConv]
+            # TBN: ID (0), Name (1), Target (2), Comments (3), Start (4), Duration (5), Frequency (6), Filter (7)
+            self.columnMap = [None, None, 'name', 'target', 'comments', 'start', 'duration', 'frequency1', 'filter']
+            self.coerceMap = [None, None, str, str, str, str, str, lambda x: freqConv(x, tbn=True), filterConv]
             self.listControl.editable_columns = [False, True, True, True, True, True, True, True]
 
         elif mode == 'TBF':
-            # TBF: ID, Name, Target, Comments, Start, Duration (5), Tuning 1 (6), Tuning 2 (7), Filter (8)
-            self.columnMap = [None, 'name', 'target', 'comments', 'start', 'duration', 'frequency1', 'frequency2', 'filter']
-            self.coerceMap = [None, str, str, str, str, str, freqConv, freqConv, filterConv]
+            # TBF: ID (0), Name (1), Target (2), Comments (3), Start (4), Duration (5), Tuning 1 (6), Tuning 2 (7), Filter (8)
+            self.columnMap = [None, None, 'name', 'target', 'comments', 'start', 'duration', 'frequency1', 'frequency2', 'filter']
+            self.coerceMap = [None, None, str, str, str, str, str, freqConv, freqConv, filterConv]
             self.listControl.editable_columns = [False, True, True, True, True, True, True, True, True]
 
         elif mode in ['TRK_RADEC', 'TRK_SOL', 'TRK_JOV', 'TRK_LUN', 'DRX']:
-            # DRX: ID, Name, Target, Comments, Start, Duration (5), RA (6), Dec (7), Tuning 1 (8), Tuning 2 (9), Filter (10), Max S/N (11)
-            self.columnMap = [None, 'name', 'target', 'comments', 'start', 'duration', 'ra', 'dec', 'frequency1', 'frequency2', 'filter', 'max_snr']
-            self.coerceMap = [None, str, str, str, str, str, raConv, decConv, freqConv, freqConv, filterConv, snrConv]
+            # DRX: ID (0), Name (1), Target (2), Comments (3), Start (4), Duration (5), RA (6), Dec (7), Tuning 1 (8), Tuning 2 (9), Filter (10), Max S/N (11)
+            self.columnMap = [None, None, 'name', 'target', 'comments', 'start', 'duration', 'ra', 'dec', 'frequency1', 'frequency2', 'filter', 'max_snr']
+            self.coerceMap = [None, None, str, str, str, str, str, raConv, decConv, freqConv, freqConv, filterConv, snrConv]
             if mode == 'TRK_RADEC':
                 # TRK_RADEC: all columns editable
                 self.listControl.editable_columns = [False, True, True, True, True, True, True, True, True, True, True, True]
@@ -1764,10 +1766,10 @@ class SDFCreator(tk.Tk):
             self.listControl.column_options = {11: ['Yes', 'No']}
 
         elif mode == 'STEPPED':
-            # STEPPED uses DRX layout: ID, Name, Target, Comments, Start, Duration (5), RA (6), Dec (7), Tuning 1 (8), Tuning 2 (9), Filter (10), Max S/N (11)
+            # STEPPED uses DRX layout: ID (0), Name (1), Target (2), Comments (3), Start (4), Duration (5), RA (6), Dec (7), Tuning 1 (8), Tuning 2 (9), Filter (10), Max S/N (11)
             # Only common columns and filter are editable (wxPython line 355: 5,6,7,8,9,11 not editable)
-            self.columnMap = [None, 'name', 'target', 'comments', 'start', None, None, None, None, None, 'filter', None]
-            self.coerceMap = [None, str, str, str, str, None, None, None, None, None, filterConv, None]
+            self.columnMap = [None, None, 'name', 'target', 'comments', 'start', None, None, None, None, None, 'filter', None]
+            self.coerceMap = [None, None, str, str, str, str, None, None, None, None, None, filterConv, None]
             self.listControl.editable_columns = [False, True, True, True, True, False, False, False, False, False, True, False]
 
         else:
