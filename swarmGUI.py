@@ -9,7 +9,7 @@ import ephem
 import numpy
 import argparse
 from io import StringIO
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from xml.etree import ElementTree
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
@@ -306,6 +306,8 @@ class IDFCreator(tk.Tk):
         self.savemenu = None
         self.editmenu = {}
         self.obsmenu = {}
+        self.editMenu = None
+        self.scansMenu = None
 
         self.buffer = None
 
@@ -363,13 +365,13 @@ class IDFCreator(tk.Tk):
         fileMenu.add_command(label="Quit", command=self.onQuit, accelerator="Ctrl+Q")
 
         # Edit menu
-        editMenu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="Edit", menu=editMenu)
-        editMenu.add_command(label="Cut Selected Scan", command=self.onCut, state=tk.DISABLED)
-        editMenu.add_command(label="Copy Selected Scan", command=self.onCopy, state=tk.DISABLED)
-        editMenu.add_command(label="Paste Before Selected", command=self.onPasteBefore, state=tk.DISABLED)
-        editMenu.add_command(label="Paste After Selected", command=self.onPasteAfter, state=tk.DISABLED)
-        editMenu.add_command(label="Paste at End of List", command=self.onPasteEnd, state=tk.DISABLED)
+        self.editMenu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Edit", menu=self.editMenu)
+        self.editMenu.add_command(label="Cut Selected Scan", command=self.onCut, state=tk.DISABLED)
+        self.editMenu.add_command(label="Copy Selected Scan", command=self.onCopy, state=tk.DISABLED)
+        self.editMenu.add_command(label="Paste Before Selected", command=self.onPasteBefore, state=tk.DISABLED)
+        self.editMenu.add_command(label="Paste After Selected", command=self.onPasteAfter, state=tk.DISABLED)
+        self.editMenu.add_command(label="Paste at End of List", command=self.onPasteEnd, state=tk.DISABLED)
 
         self.editmenu['cut'] = 0
         self.editmenu['copy'] = 1
@@ -378,35 +380,35 @@ class IDFCreator(tk.Tk):
         self.editmenu['pasteEnd'] = 4
 
         # Scans menu
-        scansMenu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="Scans", menu=scansMenu)
-        scansMenu.add_command(label="Observer/Project Info.", command=self.onInfo)
-        scansMenu.add_command(label="Scheduling", command=self.onSchedule)
-        scansMenu.add_separator()
+        self.scansMenu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Scans", menu=self.scansMenu)
+        self.scansMenu.add_command(label="Observer/Project Info.", command=self.onInfo)
+        self.scansMenu.add_command(label="Scheduling", command=self.onSchedule)
+        self.scansMenu.add_separator()
 
-        addMenu = tk.Menu(scansMenu, tearoff=0)
-        scansMenu.add_cascade(label="Add", menu=addMenu)
+        addMenu = tk.Menu(self.scansMenu, tearoff=0)
+        self.scansMenu.add_cascade(label="Add", menu=addMenu)
         addMenu.add_command(label="DRX - RA/Dec", command=self.onAddDRXR)
         addMenu.add_command(label="DRX - Solar", command=self.onAddDRXS)
         addMenu.add_command(label="DRX - Jovian", command=self.onAddDRXJ)
 
-        scansMenu.add_command(label="Proper Motion", command=self.onProperMotion, state=tk.DISABLED)
-        scansMenu.add_command(label="Remove Selected", command=self.onRemove, state=tk.DISABLED)
-        scansMenu.add_command(label="Validate All\tF5", command=self.onValidate, accelerator="F5")
-        scansMenu.add_separator()
-        scansMenu.add_command(label="Resolve Selected\tF3", command=self.onResolve, state=tk.DISABLED, accelerator="F3")
-        scansMenu.add_command(label="Calibrator Search\tF4", command=self.onSearch, accelerator="F4")
-        scansMenu.add_separator()
-        scansMenu.add_command(label="Run at a Glance", command=self.onTimeseries)
-        scansMenu.add_command(label="UV Coverage", command=self.onUVCoverage)
-        scansMenu.add_command(label="Advanced Settings", command=self.onAdvanced)
+        self.scansMenu.add_command(label="Proper Motion", command=self.onProperMotion, state=tk.DISABLED)
+        self.scansMenu.add_command(label="Remove Selected", command=self.onRemove, state=tk.DISABLED)
+        self.scansMenu.add_command(label="Validate All\tF5", command=self.onValidate, accelerator="F5")
+        self.scansMenu.add_separator()
+        self.scansMenu.add_command(label="Resolve Selected\tF3", command=self.onResolve, state=tk.DISABLED, accelerator="F3")
+        self.scansMenu.add_command(label="Calibrator Search\tF4", command=self.onSearch, accelerator="F4")
+        self.scansMenu.add_separator()
+        self.scansMenu.add_command(label="Run at a Glance", command=self.onTimeseries)
+        self.scansMenu.add_command(label="UV Coverage", command=self.onUVCoverage)
+        self.scansMenu.add_command(label="Advanced Settings", command=self.onAdvanced)
 
         self.obsmenu['drx-radec'] = (addMenu, 0)
         self.obsmenu['drx-solar'] = (addMenu, 1)
         self.obsmenu['drx-jovian'] = (addMenu, 2)
-        self.obsmenu['pmotion'] = (scansMenu, 3)
-        self.obsmenu['remove'] = (scansMenu, 4)
-        self.obsmenu['resolve'] = (scansMenu, 7)
+        self.obsmenu['pmotion'] = (self.scansMenu, 4)
+        self.obsmenu['remove'] = (self.scansMenu, 5)
+        self.obsmenu['resolve'] = (self.scansMenu, 8)
 
         # Data menu
         dataMenu = tk.Menu(menubar, tearoff=0)
@@ -441,62 +443,62 @@ class IDFCreator(tk.Tk):
         # Create toolbar buttons
         self.toolbar_buttons = {}
 
-        btn = tk.Button(toolbar_frame, text="New", command=self.onNew)
+        btn = tk.Button(toolbar_frame, image=self.icons.get('new'), command=self.onNew) if 'new' in self.icons else tk.Button(toolbar_frame, text="New", command=self.onNew)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['new'] = btn
 
-        btn = tk.Button(toolbar_frame, text="Open", command=self.onLoad)
+        btn = tk.Button(toolbar_frame, image=self.icons.get('open'), command=self.onLoad) if 'open' in self.icons else tk.Button(toolbar_frame, text="Open", command=self.onLoad)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['open'] = btn
 
-        btn = tk.Button(toolbar_frame, text="Save", command=self.onSave, state=tk.DISABLED)
+        btn = tk.Button(toolbar_frame, image=self.icons.get('save'), command=self.onSave, state=tk.DISABLED) if 'save' in self.icons else tk.Button(toolbar_frame, text="Save", command=self.onSave, state=tk.DISABLED)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['save'] = btn
         self.savemenu = btn
 
-        btn = tk.Button(toolbar_frame, text="Save As", command=self.onSaveAs)
+        btn = tk.Button(toolbar_frame, image=self.icons.get('save-as'), command=self.onSaveAs) if 'save-as' in self.icons else tk.Button(toolbar_frame, text="Save As", command=self.onSaveAs)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['saveas'] = btn
 
-        btn = tk.Button(toolbar_frame, text="Quit", command=self.onQuit)
+        btn = tk.Button(toolbar_frame, image=self.icons.get('exit'), command=self.onQuit) if 'exit' in self.icons else tk.Button(toolbar_frame, text="Quit", command=self.onQuit)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['quit'] = btn
 
         ttk.Separator(toolbar_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=5)
 
-        btn = tk.Button(toolbar_frame, text="DRX-RA/Dec", command=self.onAddDRXR)
+        btn = tk.Button(toolbar_frame, image=self.icons.get('drx-radec'), command=self.onAddDRXR) if 'drx-radec' in self.icons else tk.Button(toolbar_frame, text="DRX-RA/Dec", command=self.onAddDRXR)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['drx-radec'] = btn
 
-        btn = tk.Button(toolbar_frame, text="DRX-Solar", command=self.onAddDRXS)
+        btn = tk.Button(toolbar_frame, image=self.icons.get('drx-solar'), command=self.onAddDRXS) if 'drx-solar' in self.icons else tk.Button(toolbar_frame, text="DRX-Solar", command=self.onAddDRXS)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['drx-solar'] = btn
 
-        btn = tk.Button(toolbar_frame, text="DRX-Jovian", command=self.onAddDRXJ)
+        btn = tk.Button(toolbar_frame, image=self.icons.get('drx-jovian'), command=self.onAddDRXJ) if 'drx-jovian' in self.icons else tk.Button(toolbar_frame, text="DRX-Jovian", command=self.onAddDRXJ)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['drx-jovian'] = btn
 
-        btn = tk.Button(toolbar_frame, text="PM", command=self.onProperMotion, state=tk.DISABLED)
+        btn = tk.Button(toolbar_frame, image=self.icons.get('proper-motion'), command=self.onProperMotion, state=tk.DISABLED) if 'proper-motion' in self.icons else tk.Button(toolbar_frame, text="PM", command=self.onProperMotion, state=tk.DISABLED)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['pmotion'] = btn
 
-        btn = tk.Button(toolbar_frame, text="Remove", command=self.onRemove, state=tk.DISABLED)
+        btn = tk.Button(toolbar_frame, image=self.icons.get('remove'), command=self.onRemove, state=tk.DISABLED) if 'remove' in self.icons else tk.Button(toolbar_frame, text="Remove", command=self.onRemove, state=tk.DISABLED)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['remove'] = btn
 
-        btn = tk.Button(toolbar_frame, text="Validate", command=self.onValidate)
+        btn = tk.Button(toolbar_frame, image=self.icons.get('validate'), command=self.onValidate) if 'validate' in self.icons else tk.Button(toolbar_frame, text="Validate", command=self.onValidate)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['validate'] = btn
 
         ttk.Separator(toolbar_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=5)
 
-        btn = tk.Button(toolbar_frame, text="Search", command=self.onSearch)
+        btn = tk.Button(toolbar_frame, image=self.icons.get('search'), command=self.onSearch) if 'search' in self.icons else tk.Button(toolbar_frame, text="Search", command=self.onSearch)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['search'] = btn
 
         ttk.Separator(toolbar_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=5)
 
-        btn = tk.Button(toolbar_frame, text="Help", command=self.onHelp)
+        btn = tk.Button(toolbar_frame, image=self.icons.get('help'), command=self.onHelp) if 'help' in self.icons else tk.Button(toolbar_frame, text="Help", command=self.onHelp)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['help'] = btn
 
@@ -569,54 +571,39 @@ class IDFCreator(tk.Tk):
         # Update menu and toolbar states
         if selected_count == 0:
             # Edit menu - disabled
-            editMenu = self.nametowidget(self.cget('menu')).nametowidget('!menu')
-            try:
-                editMenu.entryconfig(self.editmenu['cut'], state=tk.DISABLED)
-                editMenu.entryconfig(self.editmenu['copy'], state=tk.DISABLED)
-            except:
-                pass
+            self.editMenu.entryconfig(self.editmenu['cut'], state=tk.DISABLED)
+            self.editMenu.entryconfig(self.editmenu['copy'], state=tk.DISABLED)
 
             # Remove and resolve - disabled
-            scansMenu = self.nametowidget(self.cget('menu')).nametowidget('!menu2')
-            scansMenu.entryconfig(self.obsmenu['pmotion'][1], state=tk.DISABLED)
-            scansMenu.entryconfig(self.obsmenu['remove'][1], state=tk.DISABLED)
-            scansMenu.entryconfig(self.obsmenu['resolve'][1], state=tk.DISABLED)
+            self.scansMenu.entryconfig(self.obsmenu['pmotion'][1], state=tk.DISABLED)
+            self.scansMenu.entryconfig(self.obsmenu['remove'][1], state=tk.DISABLED)
+            self.scansMenu.entryconfig(self.obsmenu['resolve'][1], state=tk.DISABLED)
 
             self.toolbar_buttons['pmotion'].config(state=tk.DISABLED)
             self.toolbar_buttons['remove'].config(state=tk.DISABLED)
 
         elif selected_count == 1:
             # Edit menu - enabled
-            editMenu = self.nametowidget(self.cget('menu')).nametowidget('!menu')
-            try:
-                editMenu.entryconfig(self.editmenu['cut'], state=tk.NORMAL)
-                editMenu.entryconfig(self.editmenu['copy'], state=tk.NORMAL)
-            except:
-                pass
+            self.editMenu.entryconfig(self.editmenu['cut'], state=tk.NORMAL)
+            self.editMenu.entryconfig(self.editmenu['copy'], state=tk.NORMAL)
 
             # Remove and resolve - enabled
-            scansMenu = self.nametowidget(self.cget('menu')).nametowidget('!menu2')
-            scansMenu.entryconfig(self.obsmenu['pmotion'][1], state=tk.NORMAL)
-            scansMenu.entryconfig(self.obsmenu['remove'][1], state=tk.NORMAL)
-            scansMenu.entryconfig(self.obsmenu['resolve'][1], state=tk.NORMAL)
+            self.scansMenu.entryconfig(self.obsmenu['pmotion'][1], state=tk.NORMAL)
+            self.scansMenu.entryconfig(self.obsmenu['remove'][1], state=tk.NORMAL)
+            self.scansMenu.entryconfig(self.obsmenu['resolve'][1], state=tk.NORMAL)
 
             self.toolbar_buttons['pmotion'].config(state=tk.NORMAL)
             self.toolbar_buttons['remove'].config(state=tk.NORMAL)
 
         else:
             # Edit menu - enabled
-            editMenu = self.nametowidget(self.cget('menu')).nametowidget('!menu')
-            try:
-                editMenu.entryconfig(self.editmenu['cut'], state=tk.NORMAL)
-                editMenu.entryconfig(self.editmenu['copy'], state=tk.NORMAL)
-            except:
-                pass
+            self.editMenu.entryconfig(self.editmenu['cut'], state=tk.NORMAL)
+            self.editMenu.entryconfig(self.editmenu['copy'], state=tk.NORMAL)
 
             # Motion and resolve - disabled, remove - enabled
-            scansMenu = self.nametowidget(self.cget('menu')).nametowidget('!menu2')
-            scansMenu.entryconfig(self.obsmenu['pmotion'][1], state=tk.DISABLED)
-            scansMenu.entryconfig(self.obsmenu['remove'][1], state=tk.NORMAL)
-            scansMenu.entryconfig(self.obsmenu['resolve'][1], state=tk.DISABLED)
+            self.scansMenu.entryconfig(self.obsmenu['pmotion'][1], state=tk.DISABLED)
+            self.scansMenu.entryconfig(self.obsmenu['remove'][1], state=tk.NORMAL)
+            self.scansMenu.entryconfig(self.obsmenu['resolve'][1], state=tk.DISABLED)
 
             self.toolbar_buttons['pmotion'].config(state=tk.DISABLED)
             self.toolbar_buttons['remove'].config(state=tk.NORMAL)
@@ -880,7 +867,7 @@ class IDFCreator(tk.Tk):
 
     def onAddDRXR(self, event=None):
         """Add DRX RA/Dec scan."""
-        tStart = datetime.now()
+        tStart = datetime.now(timezone.utc)
         tStart += timedelta(days=1)
 
         # Create new scan
@@ -895,7 +882,7 @@ class IDFCreator(tk.Tk):
 
     def onAddDRXS(self, event=None):
         """Add DRX Solar scan."""
-        tStart = datetime.now()
+        tStart = datetime.now(timezone.utc)
         tStart += timedelta(days=1)
 
         # Create new scan
@@ -909,7 +896,7 @@ class IDFCreator(tk.Tk):
 
     def onAddDRXJ(self, event=None):
         """Add DRX Jovian scan."""
-        tStart = datetime.now()
+        tStart = datetime.now(timezone.utc)
         tStart += timedelta(days=1)
 
         # Create new scan
@@ -1048,9 +1035,17 @@ A GUI for creating interferometer definition files (IDFs) for LWA swarm mode obs
 
         def intentConv(text):
             """Special conversion function for dealing with intents."""
-            if text not in ['FluxCal', 'PhaseCal', 'Target']:
+            # Case-insensitive mapping to proper capitalization
+            intent_map = {
+                'target': 'Target',
+                'fluxcal': 'FluxCal',
+                'phasecal': 'PhaseCal'
+            }
+            # Normalize to lowercase for lookup, return proper case
+            normalized = intent_map.get(text.lower())
+            if normalized is None:
                 raise ValueError("Intent must be one of: FluxCal, PhaseCal, Target")
-            return text
+            return normalized
 
         def raConv(text):
             """Special conversion function for dealing with RA."""
@@ -1137,11 +1132,11 @@ A GUI for creating interferometer definition files (IDFs) for LWA swarm mode obs
         # Configure the tree columns
         self.listControl['columns'] = [col[0] for col in columns[1:]]  # First column is tree column
         self.listControl.heading('#0', text=columns[0][0])
-        self.listControl.column('#0', width=columns[0][1], anchor=tk.W)
+        self.listControl.column('#0', width=columns[0][1], minwidth=columns[0][1], stretch=False, anchor=tk.W)
 
         for i, (name, width) in enumerate(columns[1:]):
             self.listControl.heading(i, text=name)
-            self.listControl.column(i, width=width, anchor=tk.W)
+            self.listControl.column(i, width=width, minwidth=width, stretch=False, anchor=tk.W)
 
         # Column mapping
         self.columnMap = []
@@ -1173,8 +1168,8 @@ A GUI for creating interferometer definition files (IDFs) for LWA swarm mode obs
         self.coerceMap.append(filterConv)
         self.coerceMap.append(pmConv)  # For proper motion
 
-        # Set editable columns (all except ID)
-        self.listControl.editable_columns = [False] + [True] * 10
+        # Set editable columns (all 10 value columns; ID in tree column is not editable)
+        self.listControl.editable_columns = [True] * 10
 
         # Set column options for dropdowns
         self.listControl.column_options = {
@@ -1269,10 +1264,10 @@ A GUI for creating interferometer definition files (IDFs) for LWA swarm mode obs
         else:
             state = tk.DISABLED
 
-        # Update menu items
-        addMenu = self.nametowidget(self.cget('menu')).nametowidget('!menu2').nametowidget('!menu')
-        for i in range(3):
-            addMenu.entryconfig(i, state=state)
+        # Update menu items using stored references
+        for key in ['drx-radec', 'drx-solar', 'drx-jovian']:
+            menu, index = self.obsmenu[key]
+            menu.entryconfig(index, state=state)
 
         # Update toolbar buttons
         self.toolbar_buttons['drx-radec'].config(state=state)
