@@ -1035,9 +1035,17 @@ A GUI for creating interferometer definition files (IDFs) for LWA swarm mode obs
 
         def intentConv(text):
             """Special conversion function for dealing with intents."""
-            if text not in ['FluxCal', 'PhaseCal', 'Target']:
+            # Case-insensitive mapping to proper capitalization
+            intent_map = {
+                'target': 'Target',
+                'fluxcal': 'FluxCal',
+                'phasecal': 'PhaseCal'
+            }
+            # Normalize to lowercase for lookup, return proper case
+            normalized = intent_map.get(text.lower())
+            if normalized is None:
                 raise ValueError("Intent must be one of: FluxCal, PhaseCal, Target")
-            return text
+            return normalized
 
         def raConv(text):
             """Special conversion function for dealing with RA."""
