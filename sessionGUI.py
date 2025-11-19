@@ -2153,8 +2153,6 @@ class ObserverInfo(tk.Toplevel):
                     self.parent.mode = 'DRX'
 
                 self.parent.setMenuButtons(self.parent.mode)
-                if self.parent.listControl.get_children() == ():
-                    self.parent.addColumns()
 
                 # Cleanup the comments
                 project.comments = _cleanup0RE.sub(';;', project.comments)
