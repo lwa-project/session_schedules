@@ -1520,44 +1520,43 @@ class SDFCreator(tk.Tk):
         dur_sec = obs.dur / 1000.0
         dur_str = f"{int(dur_sec//3600):02d}:{int((dur_sec%3600)//60):02d}:{dur_sec%60:06.3f}"
 
-        # Build the row based on mode
+        # Build the row based on mode matching wxPython column order:
+        # Common columns: ID, Name, Target, Comments, Start (UTC), then mode-specific
+        obs_name = getattr(obs, 'name', obs.target)
+        obs_comments = getattr(obs, 'comments', 'None provided') or 'None provided'
+
         if mode == 'TBW':
-            # TBW: ID, Target, RA, Dec, Start, Duration, Filter, Comments, Alt1, Alt2
+            # TBW: ID, Name, Target, Comments, Start, Duration, Frequency (MHz), Filter Code
+            freq_mhz = obs.freq1 * fS / 2**32 / 1e6 if hasattr(obs, 'freq1') else 0.0
             values = [
                 str(index + 1),
+                obs_name,
                 obs.target,
-                '',
-                '',
+                obs_comments,
                 start_str,
                 dur_str,
-                str(obs.filter),
-                obs.comments if hasattr(obs, 'comments') else '',
-                obs.alt1 if hasattr(obs, 'alt1') else '',
-                obs.alt2 if hasattr(obs, 'alt2') else ''
+                f"{freq_mhz:.6f}" if freq_mhz > 0 else "--",
+                str(obs.filter)
             ]
-            columns = ['ID', 'Target', 'RA', 'Dec', 'Start', 'Duration', 'Filter', 'Comments', 'Alt 1', 'Alt 2']
+            columns = ['ID', 'Name', 'Target', 'Comments', 'Start (UTC)', 'Duration', 'Frequency (MHz)', 'Filter Code']
 
         elif mode == 'TBN':
-            # TBN: ID, Target, RA, Dec, Start, Duration, Freq, Filter, Max SNR, Comments, Alt1, Alt2
-            freq_mhz = obs.freq * fS / 2**32 / 1e6
+            # TBN: ID, Name, Target, Comments, Start, Duration, Frequency (MHz), Filter Code
+            freq_mhz = obs.freq1 * fS / 2**32 / 1e6
             values = [
                 str(index + 1),
+                obs_name,
                 obs.target,
-                '',
-                '',
+                obs_comments,
                 start_str,
                 dur_str,
-                f"{freq_mhz:.3f}",
-                str(obs.filter),
-                'Yes' if obs.max_snr else 'No',
-                obs.comments if hasattr(obs, 'comments') else '',
-                obs.alt1 if hasattr(obs, 'alt1') else '',
-                obs.alt2 if hasattr(obs, 'alt2') else ''
+                f"{freq_mhz:.6f}",
+                str(obs.filter)
             ]
-            columns = ['ID', 'Target', 'RA', 'Dec', 'Start', 'Duration', 'Freq (MHz)', 'Filter', 'Max SNR', 'Comments', 'Alt 1', 'Alt 2']
+            columns = ['ID', 'Name', 'Target', 'Comments', 'Start (UTC)', 'Duration', 'Frequency (MHz)', 'Filter Code']
 
         elif mode in ['TRK_RADEC', 'TRK_SOL', 'TRK_JOV', 'TRK_LUN']:
-            # DRX: ID, Target, RA, Dec, Start, Duration, Freq1, Freq2, Filter, Max SNR, Comments, Alt1, Alt2
+            # DRX: ID, Name, Target, Comments, Start, Duration, RA, Dec, Tuning 1, Tuning 2, Filter, Max S/N Beam?
             if mode == 'TRK_RADEC':
                 ra_str = str(deg_to_hms(obs.ra)).replace(' ', ':')
                 dec_str = str(deg_to_dms(obs.dec)).replace(' ', ':')
@@ -1570,36 +1569,55 @@ class SDFCreator(tk.Tk):
 
             values = [
                 str(index + 1),
+                obs_name,
                 obs.target,
+                obs_comments,
+                start_str,
+                dur_str,
                 ra_str,
                 dec_str,
-                start_str,
-                dur_str,
-                f"{freq1_mhz:.3f}",
-                f"{freq2_mhz:.3f}",
+                f"{freq1_mhz:.6f}",
+                f"{freq2_mhz:.6f}",
                 str(obs.filter),
-                'Yes' if obs.max_snr else 'No',
-                obs.comments if hasattr(obs, 'comments') else '',
-                obs.alt1 if hasattr(obs, 'alt1') else '',
-                obs.alt2 if hasattr(obs, 'alt2') else ''
+                'Yes' if obs.max_snr else 'No'
             ]
-            columns = ['ID', 'Target', 'RA', 'Dec', 'Start', 'Duration', 'Freq 1 (MHz)', 'Freq 2 (MHz)', 'Filter', 'Max SNR', 'Comments', 'Alt 1', 'Alt 2']
+            columns = ['ID', 'Name', 'Target', 'Comments', 'Start (UTC)', 'Duration', 'RA (Hour J2000)', 'Dec (Deg. J2000)', 'Tuning 1 (MHz)', 'Tuning 2 (MHz)', 'Filter Code', 'Max S/N Beam?']
 
-        elif mode == 'STEPPED':
-            # STEPPED: ID, Target, Comments, Start, Duration, Steps, C1?, RA/Dec?, Alt1, Alt2
+        elif mode == 'TBF':
+            # TBF: ID, Name, Target, Comments, Start, Duration, Tuning 1 (MHz), Tuning 2 (MHz), Filter Code
+            freq1_mhz = obs.freq1 * fS / 2**32 / 1e6
+            freq2_mhz = obs.freq2 * fS / 2**32 / 1e6
             values = [
                 str(index + 1),
+                obs_name,
                 obs.target,
-                obs.comments if hasattr(obs, 'comments') else '',
+                obs_comments,
                 start_str,
                 dur_str,
-                str(len(obs.steps)) if hasattr(obs, 'steps') else '0',
-                'Yes' if obs.is_c1 else 'No',
-                'Yes' if obs.is_radec else 'No',
-                obs.alt1 if hasattr(obs, 'alt1') else '',
-                obs.alt2 if hasattr(obs, 'alt2') else ''
+                f"{freq1_mhz:.6f}",
+                f"{freq2_mhz:.6f}",
+                str(obs.filter)
             ]
-            columns = ['ID', 'Target', 'Comments', 'Start', 'Duration', 'Steps', 'C1?', 'RA/Dec?', 'Alt 1', 'Alt 2']
+            columns = ['ID', 'Name', 'Target', 'Comments', 'Start (UTC)', 'Duration', 'Tuning 1 (MHz)', 'Tuning 2 (MHz)', 'Filter Code']
+
+        elif mode == 'STEPPED':
+            # STEPPED uses DRX column layout: ID, Name, Target, Comments, Start, Duration, RA, Dec, Tuning 1, Tuning 2, Filter, Max S/N Beam?
+            # But displays: Duration, "STEPPED", "RA/Dec" or "Az/Alt", "--", "--", filter, "--"
+            values = [
+                str(index + 1),
+                obs_name,
+                obs.target,
+                obs_comments,
+                start_str,
+                dur_str,
+                'STEPPED',
+                'RA/Dec' if obs.is_radec else 'Az/Alt',
+                '--',
+                '--',
+                str(obs.filter),
+                '--'
+            ]
+            columns = ['ID', 'Name', 'Target', 'Comments', 'Start (UTC)', 'Duration', 'RA (Hour J2000)', 'Dec (Deg. J2000)', 'Tuning 1 (MHz)', 'Tuning 2 (MHz)', 'Filter Code', 'Max S/N Beam?']
 
         else:
             # Unknown mode
@@ -1706,30 +1724,43 @@ class SDFCreator(tk.Tk):
                 raise ValueError(f"Unknown boolean conversion of '{text}'")
 
         # Set up mapping based on mode
+        # Columns now follow wxPython order: ID (0), Name (1), Target (2), Comments (3), Start (UTC) (4), then mode-specific
         if mode == 'TBW':
-            self.columnMap = [None, 'target', None, None, 'start', 'dur', 'filter', 'comments', 'alt1', 'alt2']
-            self.coerceMap = [None, str, None, None, str, str, filterConv, str, str, str]
-            self.listControl.editable_columns = [False, True, False, False, True, True, True, True, True, True]
+            # TBW mode: all mode-specific columns are NOT editable per wxPython behavior (line 351)
+            self.columnMap = [None, 'name', 'target', 'comments', 'start', None, None, None]
+            self.coerceMap = [None, str, str, str, str, None, None, None]
+            self.listControl.editable_columns = [False, True, True, True, True, False, False, False]
 
         elif mode == 'TBN':
-            self.columnMap = [None, 'target', None, None, 'start', 'dur', 'freq', 'filter', 'max_snr', 'comments', 'alt1', 'alt2']
-            self.coerceMap = [None, str, None, None, str, str, lambda x: freqConv(x, tbn=True), filterConv, snrConv, str, str, str]
-            self.listControl.editable_columns = [False, True, False, False, True, True, True, True, True, True, True, True]
-            self.listControl.column_options = {7: ['Yes', 'No']}
+            # TBN: ID, Name, Target, Comments, Start, Duration (5), Frequency (6), Filter (7)
+            self.columnMap = [None, 'name', 'target', 'comments', 'start', 'duration', 'frequency1', 'filter']
+            self.coerceMap = [None, str, str, str, str, str, lambda x: freqConv(x, tbn=True), filterConv]
+            self.listControl.editable_columns = [False, True, True, True, True, True, True, True]
+
+        elif mode == 'TBF':
+            # TBF: ID, Name, Target, Comments, Start, Duration (5), Tuning 1 (6), Tuning 2 (7), Filter (8)
+            self.columnMap = [None, 'name', 'target', 'comments', 'start', 'duration', 'frequency1', 'frequency2', 'filter']
+            self.coerceMap = [None, str, str, str, str, str, freqConv, freqConv, filterConv]
+            self.listControl.editable_columns = [False, True, True, True, True, True, True, True, True]
 
         elif mode in ['TRK_RADEC', 'TRK_SOL', 'TRK_JOV', 'TRK_LUN', 'DRX']:
-            self.columnMap = [None, 'target', 'ra', 'dec', 'start', 'dur', 'freq1', 'freq2', 'filter', 'max_snr', 'comments', 'alt1', 'alt2']
-            self.coerceMap = [None, str, raConv, decConv, str, str, freqConv, freqConv, filterConv, snrConv, str, str, str]
+            # DRX: ID, Name, Target, Comments, Start, Duration (5), RA (6), Dec (7), Tuning 1 (8), Tuning 2 (9), Filter (10), Max S/N (11)
+            self.columnMap = [None, 'name', 'target', 'comments', 'start', 'duration', 'ra', 'dec', 'frequency1', 'frequency2', 'filter', 'max_snr']
+            self.coerceMap = [None, str, str, str, str, str, raConv, decConv, freqConv, freqConv, filterConv, snrConv]
             if mode == 'TRK_RADEC':
-                self.listControl.editable_columns = [False, True, True, True, True, True, True, True, True, True, True, True, True]
+                # TRK_RADEC: all columns editable
+                self.listControl.editable_columns = [False, True, True, True, True, True, True, True, True, True, True, True]
             else:
-                self.listControl.editable_columns = [False, True, False, False, True, True, True, True, True, True, True, True, True]
-            self.listControl.column_options = {8: ['Yes', 'No']}
+                # TRK_SOL/JOV/LUN: RA (6) and Dec (7) not editable (wxPython line 353)
+                self.listControl.editable_columns = [False, True, True, True, True, True, False, False, True, True, True, True]
+            self.listControl.column_options = {11: ['Yes', 'No']}
 
         elif mode == 'STEPPED':
-            self.columnMap = [None, 'target', 'comments', 'start', 'dur', None, None, None, 'alt1', 'alt2']
-            self.coerceMap = [None, str, str, str, str, None, None, None, str, str]
-            self.listControl.editable_columns = [False, True, True, True, True, False, False, False, True, True]
+            # STEPPED uses DRX layout: ID, Name, Target, Comments, Start, Duration (5), RA (6), Dec (7), Tuning 1 (8), Tuning 2 (9), Filter (10), Max S/N (11)
+            # Only common columns and filter are editable (wxPython line 355: 5,6,7,8,9,11 not editable)
+            self.columnMap = [None, 'name', 'target', 'comments', 'start', None, None, None, None, None, 'filter', None]
+            self.coerceMap = [None, str, str, str, str, None, None, None, None, None, filterConv, None]
+            self.listControl.editable_columns = [False, True, True, True, True, False, False, False, False, False, True, False]
 
         else:
             self.columnMap = []
