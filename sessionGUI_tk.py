@@ -111,6 +111,9 @@ class CheckableTreeview(ttk.Treeview):
 
 class EditableCell:
     """Mixin class to add cell editing capability to a Treeview."""
+    # pylint: disable=no-member
+    # This is a mixin class meant to be used with ttk.Treeview
+    # Methods like bind, identify, bbox, item, etc. come from Treeview
 
     def __init__(self):
         self.entry_popup = None
@@ -974,7 +977,7 @@ class SDFCreator(tk.Tk):
         tStart += timedelta(days=1)
 
         # Create new observation
-        obs = self.sdf.TBN('TBN', 'Target', tStart, '00:00:30', 38000000, 7, max_snr=False)
+        obs = self.sdf.TBN('TBN', 'Target', tStart, '00:00:30', 38000000, 7, gain=self.project.sessions[0].tbnGain)
 
         self.project.sessions[0].observations.append(obs)
         self.addObservation(obs, len(self.project.sessions[0].observations) - 1)
@@ -989,11 +992,7 @@ class SDFCreator(tk.Tk):
 
         # Create new observation
         obs = self.sdf.DRX('Target', 'Target', tStart, '00:00:10',
-                      0.0, 0.0, self.project.sessions[0].drxGain)
-        obs.freq1 = int(round(38e6 * 2**32 / fS))
-        obs.freq2 = int(round(74e6 * 2**32 / fS))
-        obs.filter = 7
-        obs.max_snr = False
+                      0.0, 0.0, 38e6, 74e6, 7, gain=self.project.sessions[0].drxGain)
 
         self.project.sessions[0].observations.append(obs)
         self.addObservation(obs, len(self.project.sessions[0].observations) - 1)
@@ -1007,11 +1006,7 @@ class SDFCreator(tk.Tk):
         tStart += timedelta(days=1)
 
         # Create new observation
-        obs = self.sdf.Solar('Sun', 'Target', tStart, '00:00:10', self.project.sessions[0].drxGain)
-        obs.freq1 = int(round(38e6 * 2**32 / fS))
-        obs.freq2 = int(round(74e6 * 2**32 / fS))
-        obs.filter = 7
-        obs.max_snr = False
+        obs = self.sdf.Solar('Sun', 'Target', tStart, '00:00:10', 38e6, 74e6, 7, gain=self.project.sessions[0].drxGain)
 
         self.project.sessions[0].observations.append(obs)
         self.addObservation(obs, len(self.project.sessions[0].observations) - 1)
@@ -1025,11 +1020,7 @@ class SDFCreator(tk.Tk):
         tStart += timedelta(days=1)
 
         # Create new observation
-        obs = self.sdf.Jovian('Jupiter', 'Target', tStart, '00:00:10', self.project.sessions[0].drxGain)
-        obs.freq1 = int(round(38e6 * 2**32 / fS))
-        obs.freq2 = int(round(74e6 * 2**32 / fS))
-        obs.filter = 7
-        obs.max_snr = False
+        obs = self.sdf.Jovian('Jupiter', 'Target', tStart, '00:00:10', 38e6, 74e6, 7, gain=self.project.sessions[0].drxGain)
 
         self.project.sessions[0].observations.append(obs)
         self.addObservation(obs, len(self.project.sessions[0].observations) - 1)
@@ -1043,11 +1034,7 @@ class SDFCreator(tk.Tk):
         tStart += timedelta(days=1)
 
         # Create new observation
-        obs = self.sdf.Lunar('Moon', 'Target', tStart, '00:00:10', self.project.sessions[0].drxGain)
-        obs.freq1 = int(round(38e6 * 2**32 / fS))
-        obs.freq2 = int(round(74e6 * 2**32 / fS))
-        obs.filter = 7
-        obs.max_snr = False
+        obs = self.sdf.Lunar('Moon', 'Target', tStart, '00:00:10', 38e6, 74e6, 7, gain=self.project.sessions[0].drxGain)
 
         self.project.sessions[0].observations.append(obs)
         self.addObservation(obs, len(self.project.sessions[0].observations) - 1)
@@ -1061,8 +1048,7 @@ class SDFCreator(tk.Tk):
         tStart += timedelta(days=1)
 
         # Create new observation
-        obs = self.sdf.Stepped('Target', 'Target', tStart, '00:00:10',
-                          0.0, 0.0, self.project.sessions[0].drxGain, is_radec=True)
+        obs = self.sdf.Stepped('Target', 'Target', tStart, 7, is_radec=True, gain=self.project.sessions[0].drxGain)
         obs.steps = []
 
         self.project.sessions[0].observations.append(obs)
@@ -1077,8 +1063,7 @@ class SDFCreator(tk.Tk):
         tStart += timedelta(days=1)
 
         # Create new observation
-        obs = self.sdf.Stepped('Target', 'Target', tStart, '00:00:10',
-                          0.0, 0.0, self.project.sessions[0].drxGain, is_radec=False)
+        obs = self.sdf.Stepped('Target', 'Target', tStart, 7, is_radec=False, gain=self.project.sessions[0].drxGain)
         obs.steps = []
 
         self.project.sessions[0].observations.append(obs)
@@ -1418,8 +1403,8 @@ class SDFCreator(tk.Tk):
         elif mode in ['TRK_RADEC', 'TRK_SOL', 'TRK_JOV', 'TRK_LUN']:
             # DRX: ID, Target, RA, Dec, Start, Duration, Freq1, Freq2, Filter, Max SNR, Comments, Alt1, Alt2
             if mode == 'TRK_RADEC':
-                ra_str = deg_to_hms(obs.ra, pretty=True)
-                dec_str = deg_to_dms(obs.dec, pretty=True)
+                ra_str = str(deg_to_hms(obs.ra)).replace(' ', ':')
+                dec_str = str(deg_to_dms(obs.dec)).replace(' ', ':')
             else:
                 ra_str = ''
                 dec_str = ''

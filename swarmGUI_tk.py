@@ -110,6 +110,9 @@ class CheckableTreeview(ttk.Treeview):
 
 class EditableCell:
     """Mixin class to add cell editing capability to a Treeview."""
+    # pylint: disable=no-member
+    # This is a mixin class meant to be used with ttk.Treeview
+    # Methods like bind, identify, bbox, item, etc. come from Treeview
 
     def __init__(self):
         self.entry_popup = None
@@ -882,10 +885,7 @@ class IDFCreator(tk.Tk):
 
         # Create new scan
         scan = idf.DRX('Target', 'Target', tStart, '00:00:10',
-                      0.0, 0.0, self.project.runs[0].drxGain)
-        scan.freq1 = int(round(38e6 * 2**32 / fS))
-        scan.freq2 = int(round(74e6 * 2**32 / fS))
-        scan.filter = 7
+                      0.0, 0.0, 38e6, 74e6, 7, gain=self.project.runs[0].drxGain)
 
         self.project.runs[0].scans.append(scan)
         self.addScan(scan, len(self.project.runs[0].scans) - 1)
@@ -899,10 +899,7 @@ class IDFCreator(tk.Tk):
         tStart += timedelta(days=1)
 
         # Create new scan
-        scan = idf.Solar('Sun', 'Target', tStart, '00:00:10', self.project.runs[0].drxGain)
-        scan.freq1 = int(round(38e6 * 2**32 / fS))
-        scan.freq2 = int(round(74e6 * 2**32 / fS))
-        scan.filter = 7
+        scan = idf.Solar('Sun', 'Target', tStart, '00:00:10', 38e6, 74e6, 7, gain=self.project.runs[0].drxGain)
 
         self.project.runs[0].scans.append(scan)
         self.addScan(scan, len(self.project.runs[0].scans) - 1)
@@ -916,10 +913,7 @@ class IDFCreator(tk.Tk):
         tStart += timedelta(days=1)
 
         # Create new scan
-        scan = idf.Jovian('Jupiter', 'Target', tStart, '00:00:10', self.project.runs[0].drxGain)
-        scan.freq1 = int(round(38e6 * 2**32 / fS))
-        scan.freq2 = int(round(74e6 * 2**32 / fS))
-        scan.filter = 7
+        scan = idf.Jovian('Jupiter', 'Target', tStart, '00:00:10', 38e6, 74e6, 7, gain=self.project.runs[0].drxGain)
 
         self.project.runs[0].scans.append(scan)
         self.addScan(scan, len(self.project.runs[0].scans) - 1)
@@ -2450,7 +2444,7 @@ class SearchWindow(OCS):
                 ra = values[5]      # RA
                 dec = values[6]     # Dec
 
-        OCS.__init__(self, self.parent, 'Calibrator Search', target=target, ra=ra, dec=dec)
+        OCS.__init__(self, target=target, ra=ra, dec=dec)
 
 
 class HelpWindow(tk.Toplevel):

@@ -35,7 +35,7 @@ __version__ = "0.2"
 __author__ = "Jayce Dowell"
 
 
-SIMBAD_REF_RE = re.compile('^(\[(?P<ref>[A-Za-z0-9]+)\]\s*)')
+SIMBAD_REF_RE = re.compile(r'^(\[(?P<ref>[A-Za-z0-9]+)\]\s*)')
 
 
 class CalibratorSearch(tk.Tk):
@@ -500,7 +500,7 @@ class CalibratorSearch(tk.Tk):
                 image = hdulist[0].data[0,0,:,:]
                 hdulist.close()
             except (IOError, ValueError, RuntimeError) as error:
-                parent.statusbar.config(text=f"Error loading image: {str(error)}")
+                self.statusbar.config(text=f"Error loading image: {str(error)}")
                 
         return header, image
         
