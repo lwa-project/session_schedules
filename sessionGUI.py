@@ -481,71 +481,136 @@ class SDFCreator(tk.Tk):
         toolbar_frame = tk.Frame(self, bd=1, relief=tk.RAISED)
         toolbar_frame.pack(side=tk.TOP, fill=tk.X)
 
-        # Create toolbar buttons
+        # Create toolbar buttons with icons
         self.toolbar_buttons = {}
+        self.toolbar_icons = {}
 
-        btn = tk.Button(toolbar_frame, text="New", command=self.onNew)
+        # Load icons
+        def load_icon(name):
+            icon_path = os.path.join(self.scriptPath, 'icons', f'{name}.png')
+            if os.path.exists(icon_path):
+                try:
+                    img = tk.PhotoImage(file=icon_path)
+                    self.toolbar_icons[name] = img
+                    return img
+                except:
+                    return None
+            return None
+
+        # New button
+        icon = load_icon('new')
+        btn = tk.Button(toolbar_frame, image=icon if icon else None, text="New" if not icon else "",
+                       command=self.onNew, relief=tk.FLAT, compound=tk.LEFT)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['new'] = btn
 
-        btn = tk.Button(toolbar_frame, text="Open", command=self.onLoad)
+        # Open button
+        icon = load_icon('open')
+        btn = tk.Button(toolbar_frame, image=icon if icon else None, text="Open" if not icon else "",
+                       command=self.onLoad, relief=tk.FLAT, compound=tk.LEFT)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['open'] = btn
 
-        btn = tk.Button(toolbar_frame, text="Save", command=self.onSave, state=tk.DISABLED)
+        # Save button
+        icon = load_icon('save')
+        btn = tk.Button(toolbar_frame, image=icon if icon else None, text="Save" if not icon else "",
+                       command=self.onSave, state=tk.DISABLED, relief=tk.FLAT, compound=tk.LEFT)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['save'] = btn
         self.savemenu = btn
 
-        btn = tk.Button(toolbar_frame, text="Save As", command=self.onSaveAs)
+        # Save As button
+        icon = load_icon('save-as')
+        btn = tk.Button(toolbar_frame, image=icon if icon else None, text="Save As" if not icon else "",
+                       command=self.onSaveAs, relief=tk.FLAT, compound=tk.LEFT)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['saveas'] = btn
 
-        btn = tk.Button(toolbar_frame, text="Quit", command=self.onQuit)
+        # Quit button
+        icon = load_icon('exit')
+        btn = tk.Button(toolbar_frame, image=icon if icon else None, text="Quit" if not icon else "",
+                       command=self.onQuit, relief=tk.FLAT, compound=tk.LEFT)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['quit'] = btn
 
         ttk.Separator(toolbar_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=5)
 
-        btn = tk.Button(toolbar_frame, text="TBW", command=self.onAddTBW)
+        # TBW button
+        icon = load_icon('tbw')
+        btn = tk.Button(toolbar_frame, image=icon if icon else None, text="TBW" if not icon else "",
+                       command=self.onAddTBW, relief=tk.FLAT, compound=tk.LEFT)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['tbw'] = btn
 
-        btn = tk.Button(toolbar_frame, text="TBN", command=self.onAddTBN)
+        # TBN button
+        icon = load_icon('tbn')
+        btn = tk.Button(toolbar_frame, image=icon if icon else None, text="TBN" if not icon else "",
+                       command=self.onAddTBN, relief=tk.FLAT, compound=tk.LEFT)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['tbn'] = btn
 
-        btn = tk.Button(toolbar_frame, text="DRX-RA/Dec", command=self.onAddDRXR)
+        # DRX-RA/Dec button
+        icon = load_icon('drx-radec')
+        btn = tk.Button(toolbar_frame, image=icon if icon else None, text="DRX-RA/Dec" if not icon else "",
+                       command=self.onAddDRXR, relief=tk.FLAT, compound=tk.LEFT)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['drx-radec'] = btn
 
-        btn = tk.Button(toolbar_frame, text="DRX-Solar", command=self.onAddDRXS)
+        # DRX-Solar button
+        icon = load_icon('drx-solar')
+        btn = tk.Button(toolbar_frame, image=icon if icon else None, text="DRX-Solar" if not icon else "",
+                       command=self.onAddDRXS, relief=tk.FLAT, compound=tk.LEFT)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['drx-solar'] = btn
 
-        btn = tk.Button(toolbar_frame, text="DRX-Jovian", command=self.onAddDRXJ)
+        # DRX-Jovian button
+        icon = load_icon('drx-jovian')
+        btn = tk.Button(toolbar_frame, image=icon if icon else None, text="DRX-Jovian" if not icon else "",
+                       command=self.onAddDRXJ, relief=tk.FLAT, compound=tk.LEFT)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['drx-jovian'] = btn
 
-        btn = tk.Button(toolbar_frame, text="Stepped", command=self.onAddSteppedR)
+        # DRX-Lunar button
+        icon = load_icon('drx-lunar')
+        btn = tk.Button(toolbar_frame, image=icon if icon else None, text="DRX-Lunar" if not icon else "",
+                       command=self.onAddDRXL, relief=tk.FLAT, compound=tk.LEFT)
+        btn.pack(side=tk.LEFT, padx=2, pady=2)
+        self.toolbar_buttons['drx-lunar'] = btn
+
+        # Stepped-RA/Dec button
+        icon = load_icon('stepped-radec')
+        btn = tk.Button(toolbar_frame, image=icon if icon else None, text="Stepped" if not icon else "",
+                       command=self.onAddSteppedR, relief=tk.FLAT, compound=tk.LEFT)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['stepped'] = btn
 
-        btn = tk.Button(toolbar_frame, text="Edit", command=self.onEditStepped, state=tk.DISABLED)
+        # Edit Stepped button
+        icon = load_icon('stepped-edit')
+        btn = tk.Button(toolbar_frame, image=icon if icon else None, text="Edit" if not icon else "",
+                       command=self.onEditStepped, state=tk.DISABLED, relief=tk.FLAT, compound=tk.LEFT)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['edit-stepped'] = btn
 
-        btn = tk.Button(toolbar_frame, text="Remove", command=self.onRemove, state=tk.DISABLED)
+        # Remove button
+        icon = load_icon('remove')
+        btn = tk.Button(toolbar_frame, image=icon if icon else None, text="Remove" if not icon else "",
+                       command=self.onRemove, state=tk.DISABLED, relief=tk.FLAT, compound=tk.LEFT)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['remove'] = btn
 
-        btn = tk.Button(toolbar_frame, text="Validate", command=self.onValidate)
+        # Validate button
+        icon = load_icon('validate')
+        btn = tk.Button(toolbar_frame, image=icon if icon else None, text="Validate" if not icon else "",
+                       command=self.onValidate, relief=tk.FLAT, compound=tk.LEFT)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['validate'] = btn
 
         ttk.Separator(toolbar_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=5)
 
-        btn = tk.Button(toolbar_frame, text="Help", command=self.onHelp)
+        # Help button
+        icon = load_icon('help')
+        btn = tk.Button(toolbar_frame, image=icon if icon else None, text="Help" if not icon else "",
+                       command=self.onHelp, relief=tk.FLAT, compound=tk.LEFT)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['help'] = btn
 
@@ -2092,22 +2157,78 @@ class AdvancedInfo(tk.Toplevel):
 
         intervals = ['MCS Decides', 'Never', '1 minute', '5 minutes', '15 minutes', '30 minutes', '1 hour']
 
-        # Station selection checkboxes
-        ttk.Label(mcs_frame, text="Include Logs:").grid(row=0, column=0, sticky=tk.W, pady=2)
-        self.include_sch_log = tk.BooleanVar()
-        ttk.Checkbutton(mcs_frame, text="MSC/Scheduler Log", variable=self.include_sch_log).grid(
-            row=0, column=1, sticky=tk.W, pady=2)
-        self.include_exe_log = tk.BooleanVar()
-        ttk.Checkbutton(mcs_frame, text="MSC/Executive Log", variable=self.include_exe_log).grid(
-            row=0, column=2, sticky=tk.W, pady=2)
+        # MIB Recording Period
+        ttk.Label(mcs_frame, text="MIB Recording Period:", font=('TkDefaultFont', 10, 'bold')).grid(
+            row=0, column=0, columnspan=2, sticky=tk.W, pady=5)
 
-        ttk.Label(mcs_frame, text="Include Station Data:").grid(row=1, column=0, sticky=tk.W, pady=2)
+        ttk.Label(mcs_frame, text="ASP:").grid(row=1, column=0, sticky=tk.W, pady=2)
+        self.mib_rec_asp = ttk.Combobox(mcs_frame, values=intervals, state='readonly', width=15)
+        self.mib_rec_asp.set('MCS Decides')
+        self.mib_rec_asp.grid(row=1, column=1, sticky=tk.W, pady=2, padx=5)
+
+        ttk.Label(mcs_frame, text="DP:").grid(row=1, column=2, sticky=tk.W, pady=2)
+        self.mib_rec_dp = ttk.Combobox(mcs_frame, values=intervals, state='readonly', width=15)
+        self.mib_rec_dp.set('MCS Decides')
+        self.mib_rec_dp.grid(row=1, column=3, sticky=tk.W, pady=2, padx=5)
+
+        ttk.Label(mcs_frame, text="DR1-DR4:").grid(row=1, column=4, sticky=tk.W, pady=2)
+        self.mib_rec_dr = ttk.Combobox(mcs_frame, values=intervals, state='readonly', width=15)
+        self.mib_rec_dr.set('MCS Decides')
+        self.mib_rec_dr.grid(row=1, column=5, sticky=tk.W, pady=2, padx=5)
+
+        ttk.Label(mcs_frame, text="SHL:").grid(row=2, column=0, sticky=tk.W, pady=2)
+        self.mib_rec_shl = ttk.Combobox(mcs_frame, values=intervals, state='readonly', width=15)
+        self.mib_rec_shl.set('MCS Decides')
+        self.mib_rec_shl.grid(row=2, column=1, sticky=tk.W, pady=2, padx=5)
+
+        ttk.Label(mcs_frame, text="MSC:").grid(row=2, column=2, sticky=tk.W, pady=2)
+        self.mib_rec_mcs = ttk.Combobox(mcs_frame, values=intervals, state='readonly', width=15)
+        self.mib_rec_mcs.set('MCS Decides')
+        self.mib_rec_mcs.grid(row=2, column=3, sticky=tk.W, pady=2, padx=5)
+
+        # MIB Update Period
+        ttk.Label(mcs_frame, text="MIB Update Period:", font=('TkDefaultFont', 10, 'bold')).grid(
+            row=3, column=0, columnspan=2, sticky=tk.W, pady=(10, 5))
+
+        ttk.Label(mcs_frame, text="ASP:").grid(row=4, column=0, sticky=tk.W, pady=2)
+        self.mib_upd_asp = ttk.Combobox(mcs_frame, values=intervals, state='readonly', width=15)
+        self.mib_upd_asp.set('MCS Decides')
+        self.mib_upd_asp.grid(row=4, column=1, sticky=tk.W, pady=2, padx=5)
+
+        ttk.Label(mcs_frame, text="DP:").grid(row=4, column=2, sticky=tk.W, pady=2)
+        self.mib_upd_dp = ttk.Combobox(mcs_frame, values=intervals, state='readonly', width=15)
+        self.mib_upd_dp.set('MCS Decides')
+        self.mib_upd_dp.grid(row=4, column=3, sticky=tk.W, pady=2, padx=5)
+
+        ttk.Label(mcs_frame, text="DR1-DR4:").grid(row=4, column=4, sticky=tk.W, pady=2)
+        self.mib_upd_dr = ttk.Combobox(mcs_frame, values=intervals, state='readonly', width=15)
+        self.mib_upd_dr.set('MCS Decides')
+        self.mib_upd_dr.grid(row=4, column=5, sticky=tk.W, pady=2, padx=5)
+
+        ttk.Label(mcs_frame, text="SHL:").grid(row=5, column=0, sticky=tk.W, pady=2)
+        self.mib_upd_shl = ttk.Combobox(mcs_frame, values=intervals, state='readonly', width=15)
+        self.mib_upd_shl.set('MCS Decides')
+        self.mib_upd_shl.grid(row=5, column=1, sticky=tk.W, pady=2, padx=5)
+
+        ttk.Label(mcs_frame, text="MSC:").grid(row=5, column=2, sticky=tk.W, pady=2)
+        self.mib_upd_mcs = ttk.Combobox(mcs_frame, values=intervals, state='readonly', width=15)
+        self.mib_upd_mcs.set('MCS Decides')
+        self.mib_upd_mcs.grid(row=5, column=3, sticky=tk.W, pady=2, padx=5)
+
+        # Logs and Station Data
+        self.include_sch_log = tk.BooleanVar()
+        ttk.Checkbutton(mcs_frame, text="Include relevant MSC/Scheduler Log",
+                       variable=self.include_sch_log).grid(row=6, column=0, columnspan=2, sticky=tk.W, pady=5)
+        self.include_exe_log = tk.BooleanVar()
+        ttk.Checkbutton(mcs_frame, text="Include relevant MSC/Executive Log",
+                       variable=self.include_exe_log).grid(row=6, column=2, columnspan=3, sticky=tk.W, pady=5)
+
         self.include_smib = tk.BooleanVar()
-        ttk.Checkbutton(mcs_frame, text="Station static MIB", variable=self.include_smib).grid(
-            row=1, column=1, sticky=tk.W, pady=2)
+        ttk.Checkbutton(mcs_frame, text="Include station static MIB",
+                       variable=self.include_smib).grid(row=7, column=0, columnspan=2, sticky=tk.W, pady=2)
         self.include_design = tk.BooleanVar()
-        ttk.Checkbutton(mcs_frame, text="Design and calibration info", variable=self.include_design).grid(
-            row=1, column=2, sticky=tk.W, pady=2)
+        ttk.Checkbutton(mcs_frame, text="Include design and calibration information",
+                       variable=self.include_design).grid(row=7, column=2, columnspan=3, sticky=tk.W, pady=2)
 
         # ASP-Specific Information
         asp_frame = ttk.LabelFrame(main_frame, text="ASP-Specific Information", padding=10)
@@ -2223,23 +2344,192 @@ class AdvancedInfo(tk.Toplevel):
         ttk.Button(button_frame, text="Cancel", command=self.on_cancel).pack(side=tk.RIGHT, padx=5)
         ttk.Button(button_frame, text="OK", command=self.on_ok).pack(side=tk.RIGHT, padx=5)
 
+    def _time_to_combo(self, time):
+        """Convert a time in minutes to combo box value."""
+        if time == -1:
+            return "MCS Decides"
+        elif time == 0:
+            return "Never"
+        else:
+            if time <= 1:
+                return "1 minute"
+            elif time <= 5:
+                return "5 minutes"
+            elif time <= 15:
+                return "15 minutes"
+            elif time <= 30:
+                return "30 minutes"
+            else:
+                return "1 hour"
+
+    def _parse_time_combo(self, value):
+        """Parse combo box value and return time in minutes."""
+        if value == 'MCS Decides':
+            return -1
+        elif value == 'Never':
+            return 0
+        else:
+            t, u = value.split(None, 1)
+            if 'minute' in u:
+                return int(t)
+            else:
+                return int(t) * 60
+
     def load_data(self):
         """Load data from the parent project."""
         if len(self.parent.project.sessions) > 0:
-            gain = self.parent.project.sessions[0].drxGain
-            self.drx_gain.insert(0, str(gain))
+            session = self.parent.project.sessions[0]
+
+            # Load MIB recording periods
+            self.mib_rec_asp.set(self._time_to_combo(session.recordMIB.get('ASP', -1)))
+            self.mib_rec_dp.set(self._time_to_combo(session.recordMIB.get('DP_', -1)))
+            self.mib_rec_dr.set(self._time_to_combo(session.recordMIB.get('DR1', -1)))
+            self.mib_rec_shl.set(self._time_to_combo(session.recordMIB.get('SHL', -1)))
+            self.mib_rec_mcs.set(self._time_to_combo(session.recordMIB.get('MCS', -1)))
+
+            # Load MIB update periods
+            self.mib_upd_asp.set(self._time_to_combo(session.updateMIB.get('ASP', -1)))
+            self.mib_upd_dp.set(self._time_to_combo(session.updateMIB.get('DP_', -1)))
+            self.mib_upd_dr.set(self._time_to_combo(session.updateMIB.get('DR1', -1)))
+            self.mib_upd_shl.set(self._time_to_combo(session.updateMIB.get('SHL', -1)))
+            self.mib_upd_mcs.set(self._time_to_combo(session.updateMIB.get('MCS', -1)))
+
+            # Load log and station data options
+            self.include_sch_log.set(session.include_mcssch_log)
+            self.include_exe_log.set(session.include_mcsexe_log)
+            self.include_smib.set(session.include_station_smib)
+            self.include_design.set(session.include_station_design)
+
+            # Load ASP settings
+            if len(session.observations) > 0:
+                obs = session.observations[0]
+
+                # ASP filter
+                if obs.asp_filter[0] == -1:
+                    self.asp_filter.set('MCS Decides')
+                elif obs.asp_filter[0] == 0:
+                    self.asp_filter.set('Split')
+                elif obs.asp_filter[0] == 1:
+                    self.asp_filter.set('Full')
+                elif obs.asp_filter[0] == 2:
+                    self.asp_filter.set('Reduced')
+                elif obs.asp_filter[0] == 4:
+                    self.asp_filter.set('Split @ 3MHz')
+                elif obs.asp_filter[0] == 5:
+                    self.asp_filter.set('Full @ 3MHz')
+                else:
+                    self.asp_filter.set('Off')
+
+                # ASP attenuators
+                if obs.asp_atten_1[0] == -1:
+                    self.asp_atten1.set('MCS Decides')
+                else:
+                    self.asp_atten1.set(str(obs.asp_atten_1[0]))
+
+                if obs.asp_atten_2[0] == -1:
+                    self.asp_atten2.set('MCS Decides')
+                else:
+                    self.asp_atten2.set(str(obs.asp_atten_2[0]))
+
+                if obs.asp_atten_split[0] == -1:
+                    self.asp_atten_split.set('MCS Decides')
+                else:
+                    self.asp_atten_split.set(str(obs.asp_atten_split[0]))
+
+            # Load mode-specific settings
+            if self.tbw_frame:
+                if len(session.observations) > 0:
+                    obs = session.observations[0]
+                    if hasattr(obs, 'bits'):
+                        self.tbw_bits.set(f'{obs.bits}-bit')
+                    if hasattr(obs, 'samples'):
+                        self.tbw_samples.insert(0, str(obs.samples))
+
+            if self.tbf_frame:
+                if len(session.observations) > 0:
+                    obs = session.observations[0]
+                    if hasattr(obs, 'samples'):
+                        self.tbf_samples.insert(0, str(obs.samples))
+
+            if self.tbn_frame:
+                self.tbn_gain.set(str(session.tbnGain) if session.tbnGain != -1 else 'MCS Decides')
+
+            if self.drx_frame:
+                self.drx_gain.set(str(session.drxGain) if session.drxGain != -1 else 'MCS Decides')
 
     def on_ok(self):
         """Save the data and close."""
         try:
-            gain = int(self.drx_gain.get())
-
             if len(self.parent.project.sessions) > 0:
-                self.parent.project.sessions[0].drxGain = gain
+                session = self.parent.project.sessions[0]
+
+                # Save MIB recording periods
+                session.recordMIB['ASP'] = self._parse_time_combo(self.mib_rec_asp.get())
+                session.recordMIB['DP_'] = self._parse_time_combo(self.mib_rec_dp.get())
+                dr_time = self._parse_time_combo(self.mib_rec_dr.get())
+                for i in range(1, 6):
+                    session.recordMIB[f'DR{i}'] = dr_time
+                session.recordMIB['SHL'] = self._parse_time_combo(self.mib_rec_shl.get())
+                session.recordMIB['MCS'] = self._parse_time_combo(self.mib_rec_mcs.get())
+
+                # Save MIB update periods
+                session.updateMIB['ASP'] = self._parse_time_combo(self.mib_upd_asp.get())
+                session.updateMIB['DP_'] = self._parse_time_combo(self.mib_upd_dp.get())
+                dr_time = self._parse_time_combo(self.mib_upd_dr.get())
+                for i in range(1, 6):
+                    session.updateMIB[f'DR{i}'] = dr_time
+                session.updateMIB['SHL'] = self._parse_time_combo(self.mib_upd_shl.get())
+                session.updateMIB['MCS'] = self._parse_time_combo(self.mib_upd_mcs.get())
+
+                # Save log and station data options
+                session.include_mcssch_log = self.include_sch_log.get()
+                session.include_mcsexe_log = self.include_exe_log.get()
+                session.include_station_smib = self.include_smib.get()
+                session.include_station_design = self.include_design.get()
+
+                # Save ASP settings for all observations
+                asp_filter_map = {
+                    'MCS Decides': -1, 'Split': 0, 'Full': 1, 'Reduced': 2,
+                    'Off': 3, 'Split @ 3MHz': 4, 'Full @ 3MHz': 5
+                }
+                asp_filter = asp_filter_map.get(self.asp_filter.get(), -1)
+
+                asp_atten1 = -1 if self.asp_atten1.get() == 'MCS Decides' else int(self.asp_atten1.get())
+                asp_atten2 = -1 if self.asp_atten2.get() == 'MCS Decides' else int(self.asp_atten2.get())
+                asp_atten_split = -1 if self.asp_atten_split.get() == 'MCS Decides' else int(self.asp_atten_split.get())
+
+                for obs in session.observations:
+                    obs.asp_filter = [asp_filter] * len(obs.asp_filter)
+                    obs.asp_atten_1 = [asp_atten1] * len(obs.asp_atten_1)
+                    obs.asp_atten_2 = [asp_atten2] * len(obs.asp_atten_2)
+                    obs.asp_atten_split = [asp_atten_split] * len(obs.asp_atten_split)
+
+                # Save mode-specific settings
+                if self.tbw_frame:
+                    bits = int(self.tbw_bits.get().replace('-bit', ''))
+                    samples = int(self.tbw_samples.get())
+                    for obs in session.observations:
+                        if hasattr(obs, 'bits'):
+                            obs.bits = bits
+                        if hasattr(obs, 'samples'):
+                            obs.samples = samples
+
+                if self.tbf_frame:
+                    samples = int(self.tbf_samples.get())
+                    for obs in session.observations:
+                        if hasattr(obs, 'samples'):
+                            obs.samples = samples
+
+                if self.tbn_frame:
+                    tbn_gain = -1 if self.tbn_gain.get() == 'MCS Decides' else int(self.tbn_gain.get())
+                    session.tbnGain = tbn_gain
+
+                if self.drx_frame:
+                    drx_gain = -1 if self.drx_gain.get() == 'MCS Decides' else int(self.drx_gain.get())
+                    session.drxGain = drx_gain
 
             self.parent.edited = True
             self.parent.setSaveButton()
-
             self.destroy()
 
         except ValueError as e:
