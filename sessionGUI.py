@@ -9,7 +9,7 @@ import ephem
 import numpy
 import argparse
 from io import StringIO
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from xml.etree import ElementTree
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
@@ -1029,7 +1029,7 @@ class SDFCreator(tk.Tk):
 
     def onAddTBW(self, event=None):
         """Add TBW observation."""
-        tStart = datetime.now()
+        tStart = datetime.now(timezone.utc)
         tStart += timedelta(days=1)
 
         # Create new observation
@@ -1043,7 +1043,7 @@ class SDFCreator(tk.Tk):
 
     def onAddTBN(self, event=None):
         """Add TBN observation."""
-        tStart = datetime.now()
+        tStart = datetime.now(timezone.utc)
         tStart += timedelta(days=1)
 
         # Create new observation
@@ -1058,7 +1058,7 @@ class SDFCreator(tk.Tk):
 
     def onAddDRXR(self, event=None):
         """Add DRX RA/Dec observation."""
-        tStart = datetime.now()
+        tStart = datetime.now(timezone.utc)
         tStart += timedelta(days=1)
 
         # Create new observation
@@ -1074,7 +1074,7 @@ class SDFCreator(tk.Tk):
 
     def onAddDRXS(self, event=None):
         """Add DRX Solar observation."""
-        tStart = datetime.now()
+        tStart = datetime.now(timezone.utc)
         tStart += timedelta(days=1)
 
         # Create new observation
@@ -1089,7 +1089,7 @@ class SDFCreator(tk.Tk):
 
     def onAddDRXJ(self, event=None):
         """Add DRX Jovian observation."""
-        tStart = datetime.now()
+        tStart = datetime.now(timezone.utc)
         tStart += timedelta(days=1)
 
         # Create new observation
@@ -1104,7 +1104,7 @@ class SDFCreator(tk.Tk):
 
     def onAddDRXL(self, event=None):
         """Add DRX Lunar observation."""
-        tStart = datetime.now()
+        tStart = datetime.now(timezone.utc)
         tStart += timedelta(days=1)
 
         # Create new observation
@@ -1119,7 +1119,7 @@ class SDFCreator(tk.Tk):
 
     def onAddSteppedR(self, event=None):
         """Add STEPPED RA/Dec observation."""
-        tStart = datetime.now()
+        tStart = datetime.now(timezone.utc)
         tStart += timedelta(days=1)
 
         # Create new observation
@@ -1135,7 +1135,7 @@ class SDFCreator(tk.Tk):
 
     def onAddSteppedA(self, event=None):
         """Add STEPPED Az/Alt observation."""
-        tStart = datetime.now()
+        tStart = datetime.now(timezone.utc)
         tStart += timedelta(days=1)
 
         # Create new observation
