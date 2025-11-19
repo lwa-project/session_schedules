@@ -1173,8 +1173,8 @@ A GUI for creating interferometer definition files (IDFs) for LWA swarm mode obs
         self.coerceMap.append(filterConv)
         self.coerceMap.append(pmConv)  # For proper motion
 
-        # Set editable columns (all except ID)
-        self.listControl.editable_columns = [False] + [True] * 10
+        # Set editable columns (all 10 value columns; ID in tree column is not editable)
+        self.listControl.editable_columns = [True] * 10
 
         # Set column options for dropdowns
         self.listControl.column_options = {
