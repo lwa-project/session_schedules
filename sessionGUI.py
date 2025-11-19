@@ -2730,9 +2730,8 @@ class SessionDisplay(tk.Toplevel):
             return
 
         # Determine if we should show elevation plot (DRX mode) or timeline
-        mode = observations[0].mode if len(observations) > 0 else ''
-
-        if mode in ('TRK_RADEC', 'TRK_SOL', 'TRK_JOV', 'TRK_LUN', 'STEPPED'):
+        # Check parent mode which is set based on session type (TBW, TBN, DRX, etc.)
+        if self.parent.mode == 'DRX':
             self.plot_elevation()
         else:
             self.plot_timeline()
