@@ -1606,25 +1606,43 @@ class ObserverInfo(tk.Toplevel):
 
     def create_widgets(self):
         """Create the dialog widgets."""
-        # Main frame
-        main_frame = ttk.Frame(self, padding=10)
+        # Create a canvas with scrollbar for the entire dialog
+        canvas = tk.Canvas(self)
+        scrollbar = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        main_frame = ttk.Frame(scrollable_frame, padding=10)
         main_frame.pack(fill=tk.BOTH, expand=True)
+
+        # Load preferences
+        self.preferences = self._load_preferences()
 
         # Observer section
         observer_frame = ttk.LabelFrame(main_frame, text="Observer Information", padding=10)
         observer_frame.pack(fill=tk.X, padx=5, pady=5)
 
-        ttk.Label(observer_frame, text="First Name:").grid(row=0, column=0, sticky=tk.W, pady=2)
-        self.first_name = ttk.Entry(observer_frame, width=40)
-        self.first_name.grid(row=0, column=1, sticky=tk.EW, pady=2)
-
-        ttk.Label(observer_frame, text="Last Name:").grid(row=1, column=0, sticky=tk.W, pady=2)
-        self.last_name = ttk.Entry(observer_frame, width=40)
-        self.last_name.grid(row=1, column=1, sticky=tk.EW, pady=2)
-
-        ttk.Label(observer_frame, text="Observer ID:").grid(row=2, column=0, sticky=tk.W, pady=2)
+        ttk.Label(observer_frame, text="ID Number:").grid(row=0, column=0, sticky=tk.W, pady=2)
         self.observer_id = ttk.Entry(observer_frame, width=40)
-        self.observer_id.grid(row=2, column=1, sticky=tk.EW, pady=2)
+        self.observer_id.grid(row=0, column=1, sticky=tk.EW, pady=2)
+
+        ttk.Label(observer_frame, text="First Name:").grid(row=1, column=0, sticky=tk.W, pady=2)
+        self.first_name = ttk.Entry(observer_frame, width=40)
+        self.first_name.grid(row=1, column=1, sticky=tk.EW, pady=2)
+
+        ttk.Label(observer_frame, text="Last Name:").grid(row=2, column=0, sticky=tk.W, pady=2)
+        self.last_name = ttk.Entry(observer_frame, width=40)
+        self.last_name.grid(row=2, column=1, sticky=tk.EW, pady=2)
 
         observer_frame.columnconfigure(1, weight=1)
 
@@ -1632,13 +1650,17 @@ class ObserverInfo(tk.Toplevel):
         project_frame = ttk.LabelFrame(main_frame, text="Project Information", padding=10)
         project_frame.pack(fill=tk.X, padx=5, pady=5)
 
-        ttk.Label(project_frame, text="Project ID:").grid(row=0, column=0, sticky=tk.W, pady=2)
+        ttk.Label(project_frame, text="ID Code:").grid(row=0, column=0, sticky=tk.W, pady=2)
         self.project_id = ttk.Entry(project_frame, width=40)
         self.project_id.grid(row=0, column=1, sticky=tk.EW, pady=2)
 
-        ttk.Label(project_frame, text="Project Title:").grid(row=1, column=0, sticky=tk.W, pady=2)
+        ttk.Label(project_frame, text="Title:").grid(row=1, column=0, sticky=tk.W, pady=2)
         self.project_title = ttk.Entry(project_frame, width=40)
         self.project_title.grid(row=1, column=1, sticky=tk.EW, pady=2)
+
+        ttk.Label(project_frame, text="Comments:").grid(row=2, column=0, sticky=tk.NW, pady=2)
+        self.project_comments = tk.Text(project_frame, width=40, height=3, wrap=tk.WORD)
+        self.project_comments.grid(row=2, column=1, sticky=tk.EW, pady=2)
 
         project_frame.columnconfigure(1, weight=1)
 
@@ -1646,53 +1668,340 @@ class ObserverInfo(tk.Toplevel):
         session_frame = ttk.LabelFrame(main_frame, text="Session Information", padding=10)
         session_frame.pack(fill=tk.X, padx=5, pady=5)
 
-        ttk.Label(session_frame, text="Session ID:").grid(row=0, column=0, sticky=tk.W, pady=2)
+        ttk.Label(session_frame, text="ID Number:").grid(row=0, column=0, sticky=tk.W, pady=2)
         self.session_id = ttk.Entry(session_frame, width=40)
-        self.session_id.grid(row=0, column=1, sticky=tk.EW, pady=2)
+        self.session_id.grid(row=0, column=1, sticky=tk.EW, pady=2, columnspan=3)
 
-        ttk.Label(session_frame, text="Session Title:").grid(row=1, column=0, sticky=tk.W, pady=2)
+        ttk.Label(session_frame, text="Title:").grid(row=1, column=0, sticky=tk.W, pady=2)
         self.session_title = ttk.Entry(session_frame, width=40)
-        self.session_title.grid(row=1, column=1, sticky=tk.EW, pady=2)
+        self.session_title.grid(row=1, column=1, sticky=tk.EW, pady=2, columnspan=3)
+
+        ttk.Label(session_frame, text="Comments:").grid(row=2, column=0, sticky=tk.NW, pady=2)
+        self.session_comments = tk.Text(session_frame, width=40, height=3, wrap=tk.WORD)
+        self.session_comments.grid(row=2, column=1, sticky=tk.EW, pady=2, columnspan=3)
+
+        # Session Type
+        ttk.Label(session_frame, text="Session Type:").grid(row=3, column=0, sticky=tk.W, pady=2)
+        self.session_type = tk.StringVar(value='DRX')
+        self.tbw_radio = ttk.Radiobutton(session_frame, text="Transient Buffer-Wide (TBW)",
+                                         variable=self.session_type, value='TBW')
+        self.tbw_radio.grid(row=3, column=1, sticky=tk.W, pady=2)
+        self.tbf_radio = ttk.Radiobutton(session_frame, text="Transient Buffer-Frequency Domain (TBF)",
+                                         variable=self.session_type, value='TBF')
+        self.tbf_radio.grid(row=4, column=1, sticky=tk.W, pady=2)
+        self.tbn_radio = ttk.Radiobutton(session_frame, text="Transient Buffer-Narrow (TBN)",
+                                         variable=self.session_type, value='TBN')
+        self.tbn_radio.grid(row=5, column=1, sticky=tk.W, pady=2)
+        self.drx_radio = ttk.Radiobutton(session_frame, text="Beam Forming (DRX)",
+                                         variable=self.session_type, value='DRX',
+                                         command=self.on_session_type_changed)
+        self.drx_radio.grid(row=6, column=1, sticky=tk.W, pady=2)
+
+        # Bind all radio buttons
+        self.tbw_radio.configure(command=self.on_session_type_changed)
+        self.tbf_radio.configure(command=self.on_session_type_changed)
+        self.tbn_radio.configure(command=self.on_session_type_changed)
+
+        # Data Return Method
+        ttk.Label(session_frame, text="Data Return Method:").grid(row=7, column=0, sticky=tk.W, pady=2)
+        self.data_return_method = tk.StringVar(value='USB')
+        self.usb_radio = ttk.Radiobutton(session_frame, text="Bare Drive(s)",
+                                         variable=self.data_return_method, value='USB',
+                                         command=self.on_data_return_changed)
+        self.usb_radio.grid(row=7, column=1, sticky=tk.W, pady=2)
+        self.ucf_radio = ttk.Radiobutton(session_frame, text="Copy to UCF",
+                                         variable=self.data_return_method, value='UCF',
+                                         command=self.on_data_return_changed)
+        self.ucf_radio.grid(row=8, column=1, sticky=tk.W, pady=2)
+
+        ttk.Label(session_frame, text="UCF Username:").grid(row=8, column=2, sticky=tk.W, pady=2, padx=(10, 0))
+        self.ucf_username = ttk.Entry(session_frame, width=20)
+        self.ucf_username.grid(row=8, column=3, sticky=tk.W, pady=2)
+        self.ucf_username.configure(state='disabled')
+
+        # Beam Processing (DR Spectrometer)
+        ttk.Label(session_frame, text="Beam Processing:").grid(row=9, column=0, sticky=tk.W, pady=2)
+        self.drspec_enabled = tk.BooleanVar(value=False)
+        self.drspec_checkbox = ttk.Checkbutton(session_frame, text="DR spectrometer",
+                                               variable=self.drspec_enabled,
+                                               command=self.on_drspec_changed)
+        self.drspec_checkbox.grid(row=9, column=1, sticky=tk.W, pady=2)
+
+        ttk.Label(session_frame, text="Channels:").grid(row=9, column=2, sticky=tk.W, pady=2, padx=(10, 0))
+        self.drspec_channels = ttk.Combobox(session_frame, width=10, state='readonly',
+                                            values=['1024', '2048', '4096'])
+        self.drspec_channels.grid(row=9, column=3, sticky=tk.W, pady=2)
+        self.drspec_channels.set('1024')
+        self.drspec_channels.configure(state='disabled')
+
+        ttk.Label(session_frame, text="FFTs/int.:").grid(row=10, column=2, sticky=tk.W, pady=2, padx=(10, 0))
+        self.drspec_ffts = ttk.Combobox(session_frame, width=10, state='readonly',
+                                        values=['768', '1024', '2048', '4096'])
+        self.drspec_ffts.grid(row=10, column=3, sticky=tk.W, pady=2)
+        self.drspec_ffts.set('768')
+        self.drspec_ffts.configure(state='disabled')
+
+        ttk.Label(session_frame, text="Data Products:").grid(row=11, column=2, sticky=tk.W, pady=2, padx=(10, 0))
+        self.drspec_product = tk.StringVar(value='Linear')
+        self.linear_radio = ttk.Radiobutton(session_frame, text="Linear",
+                                            variable=self.drspec_product, value='Linear')
+        self.linear_radio.grid(row=11, column=3, sticky=tk.W, pady=2)
+        self.linear_radio.configure(state='disabled')
+        self.stokes_radio = ttk.Radiobutton(session_frame, text="Stokes",
+                                            variable=self.drspec_product, value='Stokes')
+        self.stokes_radio.grid(row=12, column=3, sticky=tk.W, pady=2)
+        self.stokes_radio.configure(state='disabled')
 
         session_frame.columnconfigure(1, weight=1)
+        session_frame.columnconfigure(3, weight=1)
 
         # Buttons
         button_frame = ttk.Frame(main_frame)
         button_frame.pack(fill=tk.X, pady=10)
 
-        ttk.Button(button_frame, text="OK", command=self.on_ok).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(button_frame, text="Save Defaults", command=self.on_save_defaults).pack(side=tk.LEFT, padx=5)
         ttk.Button(button_frame, text="Cancel", command=self.on_cancel).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(button_frame, text="OK", command=self.on_ok).pack(side=tk.RIGHT, padx=5)
+
+    def _load_preferences(self):
+        """Load preferences from ~/.sessionGUI file."""
+        preferences = {}
+        try:
+            with open(os.path.join(os.path.expanduser('~'), '.sessionGUI')) as ph:
+                pl = ph.readlines()
+
+            for line in pl:
+                line = line.replace('\n', '')
+                if len(line) < 3:
+                    continue
+                if line[0] == '#':
+                    continue
+                parts = line.split(None, 1)
+                if len(parts) == 2:
+                    key, value = parts
+                    preferences[key] = value
+        except:
+            pass
+        return preferences
+
+    def on_session_type_changed(self):
+        """Handle session type radio button changes."""
+        session_type = self.session_type.get()
+        if session_type == 'DRX':
+            self.drspec_checkbox.configure(state='normal')
+        else:
+            self.drspec_checkbox.configure(state='disabled')
+            self.drspec_enabled.set(False)
+            self.on_drspec_changed()
+
+    def on_data_return_changed(self):
+        """Handle data return method radio button changes."""
+        if self.data_return_method.get() == 'UCF':
+            self.ucf_username.configure(state='normal')
+        else:
+            self.ucf_username.configure(state='disabled')
+
+    def on_drspec_changed(self):
+        """Handle DR spectrometer checkbox changes."""
+        if self.drspec_enabled.get():
+            self.drspec_channels.configure(state='readonly')
+            self.drspec_ffts.configure(state='readonly')
+            self.linear_radio.configure(state='normal')
+            self.stokes_radio.configure(state='normal')
+        else:
+            self.drspec_channels.configure(state='disabled')
+            self.drspec_ffts.configure(state='disabled')
+            self.linear_radio.configure(state='disabled')
+            self.stokes_radio.configure(state='disabled')
 
     def load_data(self):
         """Load data from the parent project."""
         project = self.parent.project
 
-        self.first_name.insert(0, project.observer.first)
-        self.last_name.insert(0, project.observer.last)
-        self.observer_id.insert(0, str(project.observer.id))
+        # Observer info
+        if project.observer.id != 0:
+            self.observer_id.insert(0, str(project.observer.id))
+        elif 'ObserverID' in self.preferences:
+            self.observer_id.insert(0, self.preferences['ObserverID'])
 
-        self.project_id.insert(0, project.id)
-        self.project_title.insert(0, project.name)
+        if project.observer.first != '':
+            self.first_name.insert(0, project.observer.first)
+            self.last_name.insert(0, project.observer.last)
+        else:
+            self.first_name.insert(0, project.observer.name)
+            if project.observer.name == '':
+                if 'ObserverFirstName' in self.preferences:
+                    self.first_name.delete(0, tk.END)
+                    self.first_name.insert(0, self.preferences['ObserverFirstName'])
+                if 'ObserverLastName' in self.preferences:
+                    self.last_name.insert(0, self.preferences['ObserverLastName'])
 
+        # Project info
+        if project.id != '':
+            self.project_id.insert(0, str(project.id))
+        elif 'ProjectID' in self.preferences:
+            self.project_id.insert(0, self.preferences['ProjectID'])
+
+        if project.name != '':
+            self.project_title.insert(0, project.name)
+        elif 'ProjectName' in self.preferences:
+            self.project_title.insert(0, self.preferences['ProjectName'])
+
+        if project.comments != '' and project.comments is not None:
+            self.project_comments.insert('1.0', project.comments.replace(';;', '\n'))
+
+        # Session info
         if len(project.sessions) > 0:
             self.session_id.insert(0, str(project.sessions[0].id))
             self.session_title.insert(0, project.sessions[0].name)
+            if project.sessions[0].comments != '' and project.sessions[0].comments is not None:
+                # Remove UCF username from display
+                comments = sdf.UCF_USERNAME_RE.sub('', project.sessions[0].comments).replace(';;', '\n')
+                self.session_comments.insert('1.0', comments)
+
+            # Session type
+            if self.parent.mode != '':
+                self.session_type.set(self.parent.mode)
+                # Disable radio buttons when mode is already set
+                self.tbw_radio.configure(state='disabled')
+                self.tbf_radio.configure(state='disabled')
+                self.tbn_radio.configure(state='disabled')
+                self.drx_radio.configure(state='disabled')
+            else:
+                self.session_type.set('DRX')
+                # Disable unavailable modes
+                if not self.parent._getTBWValid():
+                    self.tbw_radio.configure(state='disabled')
+                if not self.parent._getTBNValid():
+                    self.tbn_radio.configure(state='disabled')
+                if not self.parent._getTBFValid():
+                    self.tbf_radio.configure(state='disabled')
+
+            # Data return method
+            if project.sessions[0].data_return_method == 'USB Harddrives':
+                self.data_return_method.set('USB')
+            else:
+                self.data_return_method.set('UCF')
+                self.ucf_username.configure(state='normal')
+                # Extract UCF username
+                mtch = None
+                if project.sessions[0].comments is not None:
+                    mtch = sdf.UCF_USERNAME_RE.search(project.sessions[0].comments)
+                if mtch is not None:
+                    self.ucf_username.insert(0, mtch.group('username'))
+
+            # DR Spectrometer
+            if project.sessions[0].spcSetup[0] != 0 and project.sessions[0].spcSetup[1] != 0:
+                self.drspec_enabled.set(True)
+                self.drspec_channels.set(str(project.sessions[0].spcSetup[0]))
+                self.drspec_ffts.set(str(project.sessions[0].spcSetup[1]))
+
+                mt = project.sessions[0].spcMetatag
+                if mt is None:
+                    self.drspec_product.set('Linear')
+                else:
+                    junk, mt = mt.split('=', 1)
+                    mt = mt.replace('}', '')
+                    if mt in ('XXYY', 'CRCI', 'XXCRCIYY'):
+                        self.drspec_product.set('Linear')
+                    else:
+                        self.drspec_product.set('Stokes')
+
+                self.on_drspec_changed()
+
+            # Disable DR spec for non-DRX modes
+            if self.parent.mode != '' and self.parent.mode != 'DRX':
+                self.drspec_checkbox.configure(state='disabled')
 
     def on_ok(self):
         """Save the data and close."""
         try:
             project = self.parent.project
 
+            # Validate observer ID
+            observer_id = int(self.observer_id.get())
+            if observer_id < 1:
+                messagebox.showerror("Observer ID Error", "Observer ID must be greater than zero")
+                return
+
+            # Validate session ID
+            session_id = int(self.session_id.get())
+            if session_id < 1:
+                messagebox.showerror("Session ID Error", "Session ID must be greater than zero")
+                return
+
+            # Save observer info
             project.observer.first = self.first_name.get()
             project.observer.last = self.last_name.get()
-            project.observer.id = int(self.observer_id.get())
+            project.observer.id = observer_id
+            project.observer.join_name()
 
+            # Save project info
             project.id = self.project_id.get()
             project.name = self.project_title.get()
+            project.comments = self.project_comments.get('1.0', tk.END).strip().replace('\n', ';;')
 
+            # Save session info
             if len(project.sessions) > 0:
-                project.sessions[0].id = int(self.session_id.get())
+                project.sessions[0].id = session_id
                 project.sessions[0].name = self.session_title.get()
+                project.sessions[0].comments = self.session_comments.get('1.0', tk.END).strip().replace('\n', ';;')
+
+                # Data return method
+                if self.data_return_method.get() == 'USB':
+                    project.sessions[0].data_return_method = 'USB Harddrives'
+                    project.sessions[0].spcSetup = [0, 0]
+                    project.sessions[0].spcMetatag = None
+                else:
+                    project.sessions[0].data_return_method = 'UCF'
+                    # Add UCF username to comments
+                    tempc = sdf.UCF_USERNAME_RE.sub('', project.sessions[0].comments)
+                    project.sessions[0].comments = tempc + ';;ucfuser:%s' % self.ucf_username.get()
+
+                    project.sessions[0].spcSetup = [0, 0]
+                    project.sessions[0].spcMetatag = None
+
+                    # Validate UCF username was provided
+                    mtch = sdf.UCF_USERNAME_RE.search(project.sessions[0].comments)
+                    if mtch is None:
+                        messagebox.showerror("Missing UCF User Name",
+                                           "Cannot find UCF username needed for copying data to the UCF.")
+                        return
+
+                # DR Spectrometer
+                if self.drspec_enabled.get():
+                    nchn = int(self.drspec_channels.get())
+                    nint = int(self.drspec_ffts.get())
+                    project.sessions[0].spcSetup = [nchn, nint]
+
+                    if self.drspec_product.get() == 'Linear':
+                        project.sessions[0].spcMetatag = '{Stokes=XXYY}'
+                    else:
+                        project.sessions[0].spcMetatag = '{Stokes=IQUV}'
+
+                # Session type/mode
+                session_type = self.session_type.get()
+                if session_type == 'TBW':
+                    self.parent.mode = 'TBW'
+                    project.sessions[0].include_station_smib = True
+                elif session_type == 'TBF':
+                    self.parent.mode = 'TBF'
+                    project.sessions[0].include_station_smib = True
+                elif session_type == 'TBN':
+                    self.parent.mode = 'TBN'
+                    project.sessions[0].include_station_smib = True
+                else:
+                    self.parent.mode = 'DRX'
+
+                self.parent.setMenuButtons(self.parent.mode)
+                if self.parent.listControl.get_children() == ():
+                    self.parent.addColumns()
+
+                # Cleanup the comments
+                project.comments = _cleanup0RE.sub(';;', project.comments)
+                project.comments = _cleanup1RE.sub('', project.comments)
+                project.sessions[0].comments = _cleanup0RE.sub(';;', project.sessions[0].comments)
+                project.sessions[0].comments = _cleanup1RE.sub('', project.sessions[0].comments)
 
             self.parent.edited = True
             self.parent.setSaveButton()
@@ -1701,6 +2010,37 @@ class ObserverInfo(tk.Toplevel):
 
         except ValueError as e:
             messagebox.showerror("Invalid Input", f"Invalid value:\n\n{str(e)}")
+
+    def on_save_defaults(self):
+        """Save current values as defaults in ~/.sessionGUI file."""
+        preferences = self._load_preferences()
+
+        try:
+            preferences['ObserverID'] = int(self.observer_id.get())
+        except (TypeError, ValueError):
+            pass
+
+        first = self.first_name.get()
+        if len(first):
+            preferences['ObserverFirstName'] = first
+
+        last = self.last_name.get()
+        if len(last):
+            preferences['ObserverLastName'] = last
+
+        pID = self.project_id.get()
+        if len(pID):
+            preferences['ProjectID'] = pID
+
+        pTitle = self.project_title.get()
+        if len(pTitle):
+            preferences['ProjectName'] = pTitle
+
+        with open(os.path.join(os.path.expanduser('~'), '.sessionGUI'), 'w') as ph:
+            for key in preferences:
+                ph.write(f"{key:<24s} {str(preferences[key])}\n")
+
+        messagebox.showinfo("Defaults Saved", "Default values have been saved to ~/.sessionGUI")
 
     def on_cancel(self):
         """Close without saving."""
@@ -1724,21 +2064,164 @@ class AdvancedInfo(tk.Toplevel):
 
     def create_widgets(self):
         """Create the dialog widgets."""
-        main_frame = ttk.Frame(self, padding=10)
+        # Create a canvas with scrollbar for the entire dialog
+        canvas = tk.Canvas(self)
+        scrollbar = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        main_frame = ttk.Frame(scrollable_frame, padding=10)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # DRX Gain
-        ttk.Label(main_frame, text="DRX Gain:").grid(row=0, column=0, sticky=tk.W, pady=5)
-        self.drx_gain = ttk.Entry(main_frame, width=20)
-        self.drx_gain.grid(row=0, column=1, sticky=tk.W, pady=5)
-        ttk.Label(main_frame, text="dB (or -1 for default)").grid(row=0, column=2, sticky=tk.W, pady=5)
+        row = 0
+
+        # MCS-Specific Information
+        mcs_frame = ttk.LabelFrame(main_frame, text="MCS-Specific Information", padding=10)
+        mcs_frame.grid(row=row, column=0, columnspan=6, sticky=tk.EW, padx=5, pady=5)
+        row += 1
+
+        intervals = ['MCS Decides', 'Never', '1 minute', '5 minutes', '15 minutes', '30 minutes', '1 hour']
+
+        # Station selection checkboxes
+        ttk.Label(mcs_frame, text="Include Logs:").grid(row=0, column=0, sticky=tk.W, pady=2)
+        self.include_sch_log = tk.BooleanVar()
+        ttk.Checkbutton(mcs_frame, text="MSC/Scheduler Log", variable=self.include_sch_log).grid(
+            row=0, column=1, sticky=tk.W, pady=2)
+        self.include_exe_log = tk.BooleanVar()
+        ttk.Checkbutton(mcs_frame, text="MSC/Executive Log", variable=self.include_exe_log).grid(
+            row=0, column=2, sticky=tk.W, pady=2)
+
+        ttk.Label(mcs_frame, text="Include Station Data:").grid(row=1, column=0, sticky=tk.W, pady=2)
+        self.include_smib = tk.BooleanVar()
+        ttk.Checkbutton(mcs_frame, text="Station static MIB", variable=self.include_smib).grid(
+            row=1, column=1, sticky=tk.W, pady=2)
+        self.include_design = tk.BooleanVar()
+        ttk.Checkbutton(mcs_frame, text="Design and calibration info", variable=self.include_design).grid(
+            row=1, column=2, sticky=tk.W, pady=2)
+
+        # ASP-Specific Information
+        asp_frame = ttk.LabelFrame(main_frame, text="ASP-Specific Information", padding=10)
+        asp_frame.grid(row=row, column=0, columnspan=6, sticky=tk.EW, padx=5, pady=5)
+        row += 1
+
+        asp_filters = ['MCS Decides', 'Split', 'Full', 'Reduced', 'Off', 'Split @ 3MHz', 'Full @ 3MHz']
+        asp_attn = ['MCS Decides'] + [str(i) for i in range(16)]
+
+        ttk.Label(asp_frame, text="Filter Mode Setting:").grid(row=0, column=0, sticky=tk.W, pady=2)
+        self.asp_filter = ttk.Combobox(asp_frame, values=asp_filters, state='readonly', width=15)
+        self.asp_filter.grid(row=0, column=1, sticky=tk.W, pady=2)
+        self.asp_filter.set('MCS Decides')
+        ttk.Label(asp_frame, text="for all inputs").grid(row=0, column=2, sticky=tk.W, pady=2)
+
+        ttk.Label(asp_frame, text="First Attenuator:").grid(row=1, column=0, sticky=tk.W, pady=2)
+        self.asp_atten1 = ttk.Combobox(asp_frame, values=asp_attn, state='readonly', width=15)
+        self.asp_atten1.grid(row=1, column=1, sticky=tk.W, pady=2)
+        self.asp_atten1.set('MCS Decides')
+        ttk.Label(asp_frame, text="for all inputs").grid(row=1, column=2, sticky=tk.W, pady=2)
+
+        ttk.Label(asp_frame, text="Second Attenuator:").grid(row=2, column=0, sticky=tk.W, pady=2)
+        self.asp_atten2 = ttk.Combobox(asp_frame, values=asp_attn, state='readonly', width=15)
+        self.asp_atten2.grid(row=2, column=1, sticky=tk.W, pady=2)
+        self.asp_atten2.set('MCS Decides')
+        ttk.Label(asp_frame, text="for all inputs").grid(row=2, column=2, sticky=tk.W, pady=2)
+
+        ttk.Label(asp_frame, text="Split Attenuator:").grid(row=3, column=0, sticky=tk.W, pady=2)
+        self.asp_atten_split = ttk.Combobox(asp_frame, values=asp_attn, state='readonly', width=15)
+        self.asp_atten_split.grid(row=3, column=1, sticky=tk.W, pady=2)
+        self.asp_atten_split.set('MCS Decides')
+        ttk.Label(asp_frame, text="for all inputs").grid(row=3, column=2, sticky=tk.W, pady=2)
+
+        # Mode-specific sections
+        self.tbw_frame = None
+        self.tbf_frame = None
+        self.tbn_frame = None
+        self.drx_frame = None
+
+        # TBW-Specific
+        if self.parent.mode == 'TBW' or self.parent._getTBWValid():
+            self.tbw_frame = ttk.LabelFrame(main_frame, text="TBW-Specific Information", padding=10)
+            self.tbw_frame.grid(row=row, column=0, columnspan=6, sticky=tk.EW, padx=5, pady=5)
+            row += 1
+
+            bits = ['12-bit', '4-bit']
+            ttk.Label(self.tbw_frame, text="Data:").grid(row=0, column=0, sticky=tk.W, pady=2)
+            self.tbw_bits = ttk.Combobox(self.tbw_frame, values=bits, state='readonly', width=10)
+            self.tbw_bits.grid(row=0, column=1, sticky=tk.W, pady=2)
+            self.tbw_bits.set('12-bit')
+
+            ttk.Label(self.tbw_frame, text="Samples:").grid(row=1, column=0, sticky=tk.W, pady=2)
+            self.tbw_samples = ttk.Entry(self.tbw_frame, width=15)
+            self.tbw_samples.grid(row=1, column=1, sticky=tk.W, pady=2)
+            ttk.Label(self.tbw_frame, text="per capture").grid(row=1, column=2, sticky=tk.W, pady=2)
+
+        # TBF-Specific
+        if self.parent.mode == 'TBF' or self.parent._getTBFValid():
+            self.tbf_frame = ttk.LabelFrame(main_frame, text="TBF-Specific Information", padding=10)
+            self.tbf_frame.grid(row=row, column=0, columnspan=6, sticky=tk.EW, padx=5, pady=5)
+            row += 1
+
+            ttk.Label(self.tbf_frame, text="Samples:").grid(row=0, column=0, sticky=tk.W, pady=2)
+            self.tbf_samples = ttk.Entry(self.tbf_frame, width=15)
+            self.tbf_samples.grid(row=0, column=1, sticky=tk.W, pady=2)
+            ttk.Label(self.tbf_frame, text="per capture").grid(row=0, column=2, sticky=tk.W, pady=2)
+
+            drx_beam_choices = ['MCS Decides'] + [str(i) for i in range(1, 5)]
+            ttk.Label(self.tbf_frame, text="Beam:").grid(row=1, column=0, sticky=tk.W, pady=2)
+            self.tbf_beam = ttk.Combobox(self.tbf_frame, values=drx_beam_choices, state='readonly', width=15)
+            self.tbf_beam.grid(row=1, column=1, sticky=tk.W, pady=2)
+            self.tbf_beam.set('MCS Decides')
+
+        # TBN-Specific
+        if self.parent.mode == 'TBN' or self.parent._getTBNValid():
+            self.tbn_frame = ttk.LabelFrame(main_frame, text="TBN-Specific Information", padding=10)
+            self.tbn_frame.grid(row=row, column=0, columnspan=6, sticky=tk.EW, padx=5, pady=5)
+            row += 1
+
+            tbn_gain = ['MCS Decides'] + [str(i) for i in range(31)]
+            ttk.Label(self.tbn_frame, text="Gain:").grid(row=0, column=0, sticky=tk.W, pady=2)
+            self.tbn_gain = ttk.Combobox(self.tbn_frame, values=tbn_gain, state='readonly', width=15)
+            self.tbn_gain.grid(row=0, column=1, sticky=tk.W, pady=2)
+            self.tbn_gain.set('MCS Decides')
+            ttk.Label(self.tbn_frame, text="(MCS Decides = 20, smaller = higher gain)").grid(
+                row=0, column=2, sticky=tk.W, pady=2)
+
+        # DRX-Specific
+        if self.parent.mode == 'DRX':
+            self.drx_frame = ttk.LabelFrame(main_frame, text="DRX-Specific Information", padding=10)
+            self.drx_frame.grid(row=row, column=0, columnspan=6, sticky=tk.EW, padx=5, pady=5)
+            row += 1
+
+            drx_gain = ['MCS Decides'] + [str(i) for i in range(13)]
+            drx_beam = ['MCS Decides'] + [str(i) for i in range(1, 5)]
+
+            ttk.Label(self.drx_frame, text="Gain:").grid(row=0, column=0, sticky=tk.W, pady=2)
+            self.drx_gain = ttk.Combobox(self.drx_frame, values=drx_gain, state='readonly', width=15)
+            self.drx_gain.grid(row=0, column=1, sticky=tk.W, pady=2)
+            self.drx_gain.set('MCS Decides')
+            ttk.Label(self.drx_frame, text="(MCS Decides = 6, smaller = higher gain)").grid(
+                row=0, column=2, sticky=tk.W, pady=2)
+
+            ttk.Label(self.drx_frame, text="Beam:").grid(row=1, column=0, sticky=tk.W, pady=2)
+            self.drx_beam = ttk.Combobox(self.drx_frame, values=drx_beam, state='readonly', width=15)
+            self.drx_beam.grid(row=1, column=1, sticky=tk.W, pady=2)
+            self.drx_beam.set('MCS Decides')
 
         # Buttons
         button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=10, column=0, columnspan=3, pady=10)
+        button_frame.grid(row=row, column=0, columnspan=6, pady=10, sticky=tk.EW)
 
-        ttk.Button(button_frame, text="OK", command=self.on_ok).pack(side=tk.RIGHT, padx=5)
         ttk.Button(button_frame, text="Cancel", command=self.on_cancel).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(button_frame, text="OK", command=self.on_ok).pack(side=tk.RIGHT, padx=5)
 
     def load_data(self):
         """Load data from the parent project."""
@@ -1803,6 +2286,9 @@ class SessionDisplay(tk.Toplevel):
         if len(observations) == 0:
             return
 
+        # Get the first observation's start time for reference
+        first_start, _ = self.parent.sdf.get_observation_start_stop(observations[0])
+
         # Plot each observation
         y_pos = 0
         labels = []
@@ -1814,7 +2300,7 @@ class SessionDisplay(tk.Toplevel):
             duration = (tStop - tStart).total_seconds() / 3600.0  # hours
 
             color = colors.get(obs.mode, 'gray')
-            ax.barh(y_pos, duration, left=(tStart - observations[0].start).total_seconds() / 3600.0,
+            ax.barh(y_pos, duration, left=(tStart - first_start).total_seconds() / 3600.0,
                    height=0.8, color=color, alpha=0.7)
 
             labels.append(f"{i+1}: {obs.target}")
