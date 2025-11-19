@@ -2724,38 +2724,153 @@ class SessionDisplay(tk.Toplevel):
         ttk.Button(button_frame, text="Close", command=self.destroy).pack(side=tk.RIGHT, padx=5)
 
     def plot_session(self):
-        """Plot the session timeline."""
-        ax = self.fig.add_subplot(111)
-
+        """Plot the session timeline or elevation."""
         observations = self.parent.project.sessions[0].observations
         if len(observations) == 0:
             return
 
-        # Get the first observation's start time for reference
-        first_start, _ = self.parent.sdf.get_observation_start_stop(observations[0])
+        # Determine if we should show elevation plot (DRX mode) or timeline
+        mode = observations[0].mode if len(observations) > 0 else ''
 
-        # Plot each observation
-        y_pos = 0
-        labels = []
-        colors = {'TBW': 'blue', 'TBN': 'green', 'TRK_RADEC': 'red', 'TRK_SOL': 'orange',
-                  'TRK_JOV': 'purple', 'TRK_LUN': 'brown', 'STEPPED': 'cyan'}
+        if mode in ('TRK_RADEC', 'TRK_SOL', 'TRK_JOV', 'TRK_LUN', 'STEPPED'):
+            self.plot_elevation()
+        else:
+            self.plot_timeline()
 
+    def plot_timeline(self):
+        """Plot simple timeline for TBW/TBN/TBF modes."""
+        ax = self.fig.add_subplot(111)
+        observations = self.parent.project.sessions[0].observations
+
+        # Find earliest observation for reference
+        earliest = conflict.unravelObs(observations)[0][0]
+
+        colors = ['blue', 'green', 'red', 'cyan', 'magenta', 'yellow', 'orange', 'lavender']
+
+        # Plot each observation as a horizontal bar
         for i, obs in enumerate(observations):
-            tStart, tStop = self.parent.sdf.get_observation_start_stop(obs)
-            duration = (tStop - tStart).total_seconds() / 3600.0  # hours
+            start_mjd = obs.mjd + obs.mpm / 1000.0 / (3600.0 * 24.0)
+            dur_days = obs.dur / 1000.0 / (3600.0 * 24.0)
 
-            color = colors.get(obs.mode, 'gray')
-            ax.barh(y_pos, duration, left=(tStart - first_start).total_seconds() / 3600.0,
-                   height=0.8, color=color, alpha=0.7)
+            ax.barh(0, dur_days, height=1.0, left=start_mjd - earliest,
+                   alpha=0.6, color=colors[i % len(colors)],
+                   label=f'Observation {i+1}')
+            ax.annotate(f'{i+1}', (start_mjd - earliest + dur_days/2, 0.5))
 
-            labels.append(f"{i+1}: {obs.target}")
-            y_pos += 1
+        # Create second x-axis for elapsed time in hours
+        ax2 = ax.twiny()
+        ax.xaxis.tick_bottom()
+        ax2.xaxis.tick_top()
+        ax2.set_xlim([ax.get_xlim()[0] * 24.0, ax.get_xlim()[1] * 24.0])
 
-        ax.set_yticks(range(len(observations)))
-        ax.set_yticklabels(labels)
-        ax.set_xlabel('Time (hours from start)')
-        ax.set_title('Session Timeline')
-        ax.grid(True, alpha=0.3)
+        # Labels
+        ax.set_xlabel(f'MJD-{int(earliest)} [days]')
+        ax.set_ylabel('Observation')
+        ax2.set_xlabel('Session Elapsed Time [hours]')
+        ax2.xaxis.set_label_position('top')
+        ax.yaxis.set_major_formatter(matplotlib.ticker.NullFormatter())
+        ax2.yaxis.set_major_formatter(matplotlib.ticker.NullFormatter())
+
+        self.fig.tight_layout()
+        self.plot_panel.get_canvas().draw()
+
+    def plot_elevation(self):
+        """Plot source elevation for DRX/STEPPED modes."""
+        ax = self.fig.add_subplot(111)
+        observations = self.parent.project.sessions[0].observations
+
+        # Find earliest observation for reference
+        earliest = conflict.unravelObs(observations)[0][0]
+
+        # Get observer for station
+        observer = self.parent.station.get_observer()
+
+        # Plot each observation's elevation
+        for i, obs in enumerate(observations):
+            t = []
+            alt = []
+
+            if obs.mode in ('TRK_RADEC', 'TRK_SOL', 'TRK_JOV', 'TRK_LUN'):
+                # Get the source
+                src = obs.fixed_body
+
+                dt = 0.0
+                step_size = obs.dur / 1000.0 / 300
+                if step_size < 30.0:
+                    step_size = 30.0
+
+                # Calculate altitude over the observation duration
+                while dt < obs.dur / 1000.0:
+                    observer.date = obs.mjd + (obs.mpm/1000.0 + dt)/3600/24.0 + astro.MJD_OFFSET - astro.DJD_OFFSET
+                    src.compute(observer)
+
+                    alt.append(float(src.alt) * 180.0 / math.pi)
+                    t.append(obs.mjd + (obs.mpm/1000.0 + dt) / (3600.0*24.0) - earliest)
+
+                    dt += step_size
+
+                # Make sure we get the end of the observation
+                dt = obs.dur / 1000.0
+                observer.date = obs.mjd + (obs.mpm/1000.0 + dt)/3600/24.0 + astro.MJD_OFFSET - astro.DJD_OFFSET
+                src.compute(observer)
+
+                alt.append(float(src.alt) * 180.0 / math.pi)
+                t.append(obs.mjd + (obs.mpm/1000.0 + dt) / (3600.0*24.0) - earliest)
+
+                # Plot the elevation curve
+                ax.plot(t, alt, label=f'{obs.target}')
+
+                # Draw observation boundaries
+                start_time = obs.mjd + obs.mpm/1000.0 / (3600.0*24.0) - earliest
+                end_time = obs.mjd + (obs.mpm/1000.0 + obs.dur/1000.0) / (3600.0*24.0) - earliest
+                ax.axvline(start_time, 0, 90, linestyle=':', color='gray', alpha=0.5)
+                ax.axvline(end_time, 0, 90, linestyle=':', color='gray', alpha=0.5)
+
+            elif obs.mode == 'STEPPED':
+                t0 = obs.mjd + (obs.mpm/1000.0) / (3600.0*24.0)
+
+                for s in obs.steps:
+                    # Get the source
+                    src = s.fixed_body
+
+                    # Figure out if we have RA/Dec or az/alt
+                    if src is not None:
+                        observer.date = t0 + astro.MJD_OFFSET - astro.DJD_OFFSET
+                        src.compute(observer)
+                        step_alt = float(src.alt) * 180.0 / math.pi
+                    else:
+                        step_alt = s.c2
+
+                    alt.append(step_alt)
+                    t.append(t0 - earliest)
+                    t0 += (s.dur/1000.0) / (3600.0*24.0)
+                    alt.append(step_alt)
+                    t.append(t0 - earliest)
+
+                # Plot the elevation curve
+                ax.plot(t, alt, label=f'{obs.target}')
+
+                # Draw observation boundaries
+                start_time = obs.mjd + obs.mpm/1000.0 / (3600.0*24.0) - earliest
+                end_time = obs.mjd + (obs.mpm/1000.0 + obs.dur/1000.0) / (3600.0*24.0) - earliest
+                ax.axvline(start_time, 0, 90, linestyle=':', color='gray', alpha=0.5)
+                ax.axvline(end_time, 0, 90, linestyle=':', color='gray', alpha=0.5)
+
+        # Add legend
+        ax.legend(loc='best')
+
+        # Create second x-axis for elapsed time in hours
+        ax2 = ax.twiny()
+        ax.xaxis.tick_bottom()
+        ax.set_ylim([0, 90])
+        ax2.xaxis.tick_top()
+        ax2.set_xlim([ax.get_xlim()[0] * 24.0, ax.get_xlim()[1] * 24.0])
+
+        # Labels
+        ax.set_xlabel(f'MJD-{int(earliest)} [days]')
+        ax.set_ylabel('Altitude [deg.]')
+        ax2.set_xlabel('Session Elapsed Time [hours]')
+        ax2.xaxis.set_label_position('top')
 
         self.fig.tight_layout()
         self.plot_panel.get_canvas().draw()
