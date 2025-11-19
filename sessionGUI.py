@@ -1046,7 +1046,8 @@ class SDFCreator(tk.Tk):
         tStart += timedelta(days=1)
 
         # Create new observation
-        obs = self.sdf.TBN('TBN', 'Target', tStart, '00:00:30', 38000000, 7, gain=self.project.sessions[0].tbnGain)
+        gain = getattr(self.project.sessions[0], 'tbnGain', -1)
+        obs = self.sdf.TBN('TBN', 'Target', tStart, '00:00:30', 38000000, 7, gain=gain)
 
         self.project.sessions[0].observations.append(obs)
         self.addObservation(obs, len(self.project.sessions[0].observations) - 1)
@@ -1060,8 +1061,9 @@ class SDFCreator(tk.Tk):
         tStart += timedelta(days=1)
 
         # Create new observation
+        gain = getattr(self.project.sessions[0], 'drxGain', -1)
         obs = self.sdf.DRX('Target', 'Target', tStart, '00:00:10',
-                      0.0, 0.0, 38e6, 74e6, 7, gain=self.project.sessions[0].drxGain)
+                      0.0, 0.0, 38e6, 74e6, 7, gain=gain)
 
         self.project.sessions[0].observations.append(obs)
         self.addObservation(obs, len(self.project.sessions[0].observations) - 1)
@@ -1075,7 +1077,8 @@ class SDFCreator(tk.Tk):
         tStart += timedelta(days=1)
 
         # Create new observation
-        obs = self.sdf.Solar('Sun', 'Target', tStart, '00:00:10', 38e6, 74e6, 7, gain=self.project.sessions[0].drxGain)
+        gain = getattr(self.project.sessions[0], 'drxGain', -1)
+        obs = self.sdf.Solar('Sun', 'Target', tStart, '00:00:10', 38e6, 74e6, 7, gain=gain)
 
         self.project.sessions[0].observations.append(obs)
         self.addObservation(obs, len(self.project.sessions[0].observations) - 1)
@@ -1089,7 +1092,8 @@ class SDFCreator(tk.Tk):
         tStart += timedelta(days=1)
 
         # Create new observation
-        obs = self.sdf.Jovian('Jupiter', 'Target', tStart, '00:00:10', 38e6, 74e6, 7, gain=self.project.sessions[0].drxGain)
+        gain = getattr(self.project.sessions[0], 'drxGain', -1)
+        obs = self.sdf.Jovian('Jupiter', 'Target', tStart, '00:00:10', 38e6, 74e6, 7, gain=gain)
 
         self.project.sessions[0].observations.append(obs)
         self.addObservation(obs, len(self.project.sessions[0].observations) - 1)
@@ -1103,7 +1107,8 @@ class SDFCreator(tk.Tk):
         tStart += timedelta(days=1)
 
         # Create new observation
-        obs = self.sdf.Lunar('Moon', 'Target', tStart, '00:00:10', 38e6, 74e6, 7, gain=self.project.sessions[0].drxGain)
+        gain = getattr(self.project.sessions[0], 'drxGain', -1)
+        obs = self.sdf.Lunar('Moon', 'Target', tStart, '00:00:10', 38e6, 74e6, 7, gain=gain)
 
         self.project.sessions[0].observations.append(obs)
         self.addObservation(obs, len(self.project.sessions[0].observations) - 1)
@@ -1117,7 +1122,8 @@ class SDFCreator(tk.Tk):
         tStart += timedelta(days=1)
 
         # Create new observation
-        obs = self.sdf.Stepped('Target', 'Target', tStart, 7, is_radec=True, gain=self.project.sessions[0].drxGain)
+        gain = getattr(self.project.sessions[0], 'drxGain', -1)
+        obs = self.sdf.Stepped('Target', 'Target', tStart, 7, is_radec=True, gain=gain)
         obs.steps = []
 
         self.project.sessions[0].observations.append(obs)
@@ -1132,7 +1138,8 @@ class SDFCreator(tk.Tk):
         tStart += timedelta(days=1)
 
         # Create new observation
-        obs = self.sdf.Stepped('Target', 'Target', tStart, 7, is_radec=False, gain=self.project.sessions[0].drxGain)
+        gain = getattr(self.project.sessions[0], 'drxGain', -1)
+        obs = self.sdf.Stepped('Target', 'Target', tStart, 7, is_radec=False, gain=gain)
         obs.steps = []
 
         self.project.sessions[0].observations.append(obs)
@@ -1424,12 +1431,53 @@ class SDFCreator(tk.Tk):
                 except:
                     pass
 
+    def _ensure_session_attributes(self, session):
+        """Ensure session has all required attributes with defaults."""
+        # Mode-specific gain settings
+        if not hasattr(session, 'tbnGain'):
+            # Try to infer from first observation
+            if len(session.observations) > 0 and hasattr(session.observations[0], 'gain'):
+                session.tbnGain = session.observations[0].gain
+            else:
+                session.tbnGain = -1
+
+        if not hasattr(session, 'drxGain'):
+            # Try to infer from first observation
+            if len(session.observations) > 0 and hasattr(session.observations[0], 'gain'):
+                session.drxGain = session.observations[0].gain
+            else:
+                session.drxGain = -1
+
+        # TBW settings
+        if not hasattr(session, 'tbwBits'):
+            if len(session.observations) > 0 and hasattr(session.observations[0], 'bits'):
+                session.tbwBits = session.observations[0].bits
+            else:
+                session.tbwBits = 12
+
+        if not hasattr(session, 'tbwSamples'):
+            if len(session.observations) > 0 and hasattr(session.observations[0], 'samples'):
+                session.tbwSamples = session.observations[0].samples
+            else:
+                session.tbwSamples = 12000000
+
+        # TBF settings
+        if not hasattr(session, 'tbfSamples'):
+            if len(session.observations) > 0 and hasattr(session.observations[0], 'samples'):
+                session.tbfSamples = session.observations[0].samples
+            else:
+                session.tbfSamples = 12000000
+
     def parseFile(self, filename):
         """Parse an SDF file and populate the GUI."""
         try:
             # Parse the file
             project = self.sdf.parse_sdf(filename)
             self.project = project
+
+            # Ensure session attributes exist
+            if len(project.sessions) > 0:
+                self._ensure_session_attributes(project.sessions[0])
 
             # Clear the list
             for item in self.listControl.get_children():
@@ -2496,10 +2544,12 @@ class AdvancedInfo(tk.Toplevel):
                         self.tbf_samples.insert(0, str(obs.samples))
 
             if self.tbn_frame:
-                self.tbn_gain.set(str(session.tbnGain) if session.tbnGain != -1 else 'MCS Decides')
+                tbn_gain = getattr(session, 'tbnGain', -1)
+                self.tbn_gain.set(str(tbn_gain) if tbn_gain != -1 else 'MCS Decides')
 
             if self.drx_frame:
-                self.drx_gain.set(str(session.drxGain) if session.drxGain != -1 else 'MCS Decides')
+                drx_gain = getattr(session, 'drxGain', -1)
+                self.drx_gain.set(str(drx_gain) if drx_gain != -1 else 'MCS Decides')
 
     def on_ok(self):
         """Save the data and close."""
