@@ -1317,6 +1317,44 @@ class SDFCreator(tk.Tk):
         else:
             self.savemenu.config(state=tk.DISABLED)
 
+    def _getTBWValid(self):
+        """
+        Function that returns whether or not TBW is a valid mode for the
+        current setup.
+        """
+        if self.ndp:
+            return False
+        if self.adp:
+            return False
+        if self.mode != '':
+            if self.mode == 'TBW':
+                return True
+            elif self.mode == 'TBN' and ALLOW_TBW_TBN_SAME_SDF:
+                return True
+            else:
+                return False
+        return True
+
+    def _getTBNValid(self):
+        """
+        Function that returns whether or not TBN is a valid mode for the
+        current setup.
+        """
+        if self.ndp:
+            return False
+        return True
+
+    def _getTBFValid(self):
+        """
+        Function that returns whether or not TBF is a valid mode for the
+        current setup.
+        """
+        if self.ndp:
+            return True
+        if self.adp:
+            return True
+        return False
+
     def setMenuButtons(self, mode):
         """Enable/disable menu buttons based on observation mode."""
         self.mode = mode
