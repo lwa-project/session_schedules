@@ -1655,10 +1655,11 @@ class SDFCreator(tk.Tk):
         def raConv(text):
             """Special conversion function for deal with RA values."""
             fields = text.split(':')
-            fields = [float(f) for f in fields]
+            # Check for negative sign in the text before converting
             sign = 1
-            if fields[0] < 0:
+            if text.strip().startswith('-'):
                 sign = -1
+            fields = [float(f) for f in fields]
             fields[0] = abs(fields[0])
 
             value = 0
@@ -1666,15 +1667,19 @@ class SDFCreator(tk.Tk):
                 value += (f / d)
             value *= sign
 
-            return value * 15.0
+            if value < 0 or value >= 24:
+                raise ValueError("RA value must be 0 <= RA < 24")
+            else:
+                return value * 15.0
 
         def decConv(text):
             """Special conversion function for dealing with dec. values."""
             fields = text.split(':')
-            fields = [float(f) for f in fields]
+            # Check for negative sign in the text before converting
             sign = 1
-            if fields[0] < 0:
+            if text.strip().startswith('-'):
                 sign = -1
+            fields = [float(f) for f in fields]
             fields[0] = abs(fields[0])
 
             value = 0
@@ -1682,7 +1687,10 @@ class SDFCreator(tk.Tk):
                 value += (f / d)
             value *= sign
 
-            return value
+            if value < -90 or value > 90:
+                raise ValueError("Dec values must be -90 <= dec <= 90")
+            else:
+                return value
 
         def freqConv(text, tbn=False):
             """Special conversion function for dealing with frequencies."""
