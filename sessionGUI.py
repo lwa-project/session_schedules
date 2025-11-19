@@ -330,7 +330,8 @@ class SDFCreator(tk.Tk):
     def __init__(self, title, args):
         tk.Tk.__init__(self)
         self.title(title)
-        self.geometry("750x500")
+        self.geometry("1200x700")
+        self.minsize(800, 600)  # Set minimum window size
 
         self.station = stations.lwa1
         self.sdf = sdf
@@ -1751,6 +1752,8 @@ class ObserverInfo(tk.Toplevel):
         tk.Toplevel.__init__(self, parent)
         self.title("Observer/Project/Session Information")
         self.parent = parent
+        self.geometry("700x600")
+        self.minsize(600, 500)
 
         self.create_widgets()
         self.load_data()
@@ -2209,6 +2212,8 @@ class AdvancedInfo(tk.Toplevel):
         tk.Toplevel.__init__(self, parent)
         self.title("Advanced Settings")
         self.parent = parent
+        self.geometry("800x650")
+        self.minsize(700, 550)
 
         self.create_widgets()
         self.load_data()
