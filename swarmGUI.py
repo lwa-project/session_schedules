@@ -406,9 +406,9 @@ class IDFCreator(tk.Tk):
         self.obsmenu['drx-radec'] = (addMenu, 0)
         self.obsmenu['drx-solar'] = (addMenu, 1)
         self.obsmenu['drx-jovian'] = (addMenu, 2)
-        self.obsmenu['pmotion'] = (self.scansMenu, 3)
-        self.obsmenu['remove'] = (self.scansMenu, 4)
-        self.obsmenu['resolve'] = (self.scansMenu, 7)
+        self.obsmenu['pmotion'] = (self.scansMenu, 4)
+        self.obsmenu['remove'] = (self.scansMenu, 5)
+        self.obsmenu['resolve'] = (self.scansMenu, 8)
 
         # Data menu
         dataMenu = tk.Menu(menubar, tearoff=0)
