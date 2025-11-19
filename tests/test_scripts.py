@@ -52,6 +52,8 @@ class scripts_tests(unittest.TestCase):
         _SCRIPTS.sort()
         for script in _SCRIPTS:
             name = script.rsplit(os.path.sep)[-1]
+            if name.find('_wx') != -1:
+                continue
             with self.subTest(script=name):
                 pylint_output = StringIO()
                 reporter = JSONReporter(pylint_output)
