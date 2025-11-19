@@ -441,62 +441,62 @@ class IDFCreator(tk.Tk):
         # Create toolbar buttons
         self.toolbar_buttons = {}
 
-        btn = tk.Button(toolbar_frame, text="New", command=self.onNew)
+        btn = tk.Button(toolbar_frame, image=self.icons.get('new'), command=self.onNew) if 'new' in self.icons else tk.Button(toolbar_frame, text="New", command=self.onNew)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['new'] = btn
 
-        btn = tk.Button(toolbar_frame, text="Open", command=self.onLoad)
+        btn = tk.Button(toolbar_frame, image=self.icons.get('open'), command=self.onLoad) if 'open' in self.icons else tk.Button(toolbar_frame, text="Open", command=self.onLoad)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['open'] = btn
 
-        btn = tk.Button(toolbar_frame, text="Save", command=self.onSave, state=tk.DISABLED)
+        btn = tk.Button(toolbar_frame, image=self.icons.get('save'), command=self.onSave, state=tk.DISABLED) if 'save' in self.icons else tk.Button(toolbar_frame, text="Save", command=self.onSave, state=tk.DISABLED)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['save'] = btn
         self.savemenu = btn
 
-        btn = tk.Button(toolbar_frame, text="Save As", command=self.onSaveAs)
+        btn = tk.Button(toolbar_frame, image=self.icons.get('save-as'), command=self.onSaveAs) if 'save-as' in self.icons else tk.Button(toolbar_frame, text="Save As", command=self.onSaveAs)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['saveas'] = btn
 
-        btn = tk.Button(toolbar_frame, text="Quit", command=self.onQuit)
+        btn = tk.Button(toolbar_frame, image=self.icons.get('exit'), command=self.onQuit) if 'exit' in self.icons else tk.Button(toolbar_frame, text="Quit", command=self.onQuit)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['quit'] = btn
 
         ttk.Separator(toolbar_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=5)
 
-        btn = tk.Button(toolbar_frame, text="DRX-RA/Dec", command=self.onAddDRXR)
+        btn = tk.Button(toolbar_frame, image=self.icons.get('drx-radec'), command=self.onAddDRXR) if 'drx-radec' in self.icons else tk.Button(toolbar_frame, text="DRX-RA/Dec", command=self.onAddDRXR)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['drx-radec'] = btn
 
-        btn = tk.Button(toolbar_frame, text="DRX-Solar", command=self.onAddDRXS)
+        btn = tk.Button(toolbar_frame, image=self.icons.get('drx-solar'), command=self.onAddDRXS) if 'drx-solar' in self.icons else tk.Button(toolbar_frame, text="DRX-Solar", command=self.onAddDRXS)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['drx-solar'] = btn
 
-        btn = tk.Button(toolbar_frame, text="DRX-Jovian", command=self.onAddDRXJ)
+        btn = tk.Button(toolbar_frame, image=self.icons.get('drx-jovian'), command=self.onAddDRXJ) if 'drx-jovian' in self.icons else tk.Button(toolbar_frame, text="DRX-Jovian", command=self.onAddDRXJ)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['drx-jovian'] = btn
 
-        btn = tk.Button(toolbar_frame, text="PM", command=self.onProperMotion, state=tk.DISABLED)
+        btn = tk.Button(toolbar_frame, image=self.icons.get('proper-motion'), command=self.onProperMotion, state=tk.DISABLED) if 'proper-motion' in self.icons else tk.Button(toolbar_frame, text="PM", command=self.onProperMotion, state=tk.DISABLED)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['pmotion'] = btn
 
-        btn = tk.Button(toolbar_frame, text="Remove", command=self.onRemove, state=tk.DISABLED)
+        btn = tk.Button(toolbar_frame, image=self.icons.get('remove'), command=self.onRemove, state=tk.DISABLED) if 'remove' in self.icons else tk.Button(toolbar_frame, text="Remove", command=self.onRemove, state=tk.DISABLED)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['remove'] = btn
 
-        btn = tk.Button(toolbar_frame, text="Validate", command=self.onValidate)
+        btn = tk.Button(toolbar_frame, image=self.icons.get('validate'), command=self.onValidate) if 'validate' in self.icons else tk.Button(toolbar_frame, text="Validate", command=self.onValidate)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['validate'] = btn
 
         ttk.Separator(toolbar_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=5)
 
-        btn = tk.Button(toolbar_frame, text="Search", command=self.onSearch)
+        btn = tk.Button(toolbar_frame, image=self.icons.get('search'), command=self.onSearch) if 'search' in self.icons else tk.Button(toolbar_frame, text="Search", command=self.onSearch)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['search'] = btn
 
         ttk.Separator(toolbar_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=5)
 
-        btn = tk.Button(toolbar_frame, text="Help", command=self.onHelp)
+        btn = tk.Button(toolbar_frame, image=self.icons.get('help'), command=self.onHelp) if 'help' in self.icons else tk.Button(toolbar_frame, text="Help", command=self.onHelp)
         btn.pack(side=tk.LEFT, padx=2, pady=2)
         self.toolbar_buttons['help'] = btn
 
@@ -1137,11 +1137,11 @@ A GUI for creating interferometer definition files (IDFs) for LWA swarm mode obs
         # Configure the tree columns
         self.listControl['columns'] = [col[0] for col in columns[1:]]  # First column is tree column
         self.listControl.heading('#0', text=columns[0][0])
-        self.listControl.column('#0', width=columns[0][1], anchor=tk.W)
+        self.listControl.column('#0', width=columns[0][1], minwidth=columns[0][1], stretch=False, anchor=tk.W)
 
         for i, (name, width) in enumerate(columns[1:]):
             self.listControl.heading(i, text=name)
-            self.listControl.column(i, width=width, anchor=tk.W)
+            self.listControl.column(i, width=width, minwidth=width, stretch=False, anchor=tk.W)
 
         # Column mapping
         self.columnMap = []
