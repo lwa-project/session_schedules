@@ -1269,10 +1269,10 @@ A GUI for creating interferometer definition files (IDFs) for LWA swarm mode obs
         else:
             state = tk.DISABLED
 
-        # Update menu items
-        addMenu = self.nametowidget(self.cget('menu')).nametowidget('!menu2').nametowidget('!menu')
-        for i in range(3):
-            addMenu.entryconfig(i, state=state)
+        # Update menu items using stored references
+        for key in ['drx-radec', 'drx-solar', 'drx-jovian']:
+            menu, index = self.obsmenu[key]
+            menu.entryconfig(index, state=state)
 
         # Update toolbar buttons
         self.toolbar_buttons['drx-radec'].config(state=state)
