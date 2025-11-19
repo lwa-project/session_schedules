@@ -9,7 +9,7 @@ import ephem
 import numpy
 import argparse
 from io import StringIO
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from xml.etree import ElementTree
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
@@ -880,7 +880,7 @@ class IDFCreator(tk.Tk):
 
     def onAddDRXR(self, event=None):
         """Add DRX RA/Dec scan."""
-        tStart = datetime.now()
+        tStart = datetime.now(timezone.utc)
         tStart += timedelta(days=1)
 
         # Create new scan
@@ -895,7 +895,7 @@ class IDFCreator(tk.Tk):
 
     def onAddDRXS(self, event=None):
         """Add DRX Solar scan."""
-        tStart = datetime.now()
+        tStart = datetime.now(timezone.utc)
         tStart += timedelta(days=1)
 
         # Create new scan
@@ -909,7 +909,7 @@ class IDFCreator(tk.Tk):
 
     def onAddDRXJ(self, event=None):
         """Add DRX Jovian scan."""
-        tStart = datetime.now()
+        tStart = datetime.now(timezone.utc)
         tStart += timedelta(days=1)
 
         # Create new scan
