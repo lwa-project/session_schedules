@@ -2700,10 +2700,12 @@ class SessionDisplay(tk.Toplevel):
         tk.Toplevel.__init__(self, parent)
         self.title("Session at a Glance")
         self.parent = parent
-        self.geometry("800x600")
 
         self.create_widgets()
         self.plot_session()
+
+        # Compute and set window size based on content
+        self._compute_window_size()
 
     def create_widgets(self):
         """Create the window widgets."""
@@ -2758,6 +2760,30 @@ class SessionDisplay(tk.Toplevel):
         self.fig.tight_layout()
         self.plot_panel.get_canvas().draw()
 
+    def _compute_window_size(self):
+        """Compute and set appropriate window size based on content."""
+        self.update_idletasks()
+
+        # For plot windows, use a reasonable default size
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+
+        # Use 60% of screen for plots
+        width = int(screen_width * 0.6)
+        height = int(screen_height * 0.6)
+
+        # Cap at reasonable maximums
+        width = min(width, 1200)
+        height = min(height, 800)
+
+        # Set minimum size
+        min_width = max(int(width * 0.6), 600)
+        min_height = max(int(height * 0.6), 400)
+
+        # Apply sizes
+        self.geometry(f"{width}x{height}")
+        self.minsize(min_width, min_height)
+
 
 class VolumeInfo(tk.Toplevel):
     """Dialog to show estimated data volume."""
@@ -2773,6 +2799,9 @@ class VolumeInfo(tk.Toplevel):
         # Make it modal
         self.transient(parent)
         self.grab_set()
+
+        # Compute and set window size based on content
+        self._compute_window_size()
 
     def create_widgets(self):
         """Create the dialog widgets."""
@@ -2823,6 +2852,30 @@ class VolumeInfo(tk.Toplevel):
 
         self.text.insert(tk.END, f"\nTotal Estimated Volume: {total_volume:.2f} GB\n")
 
+    def _compute_window_size(self):
+        """Compute and set appropriate window size based on content."""
+        self.update_idletasks()
+
+        # Get the required width and height
+        req_width = self.winfo_reqwidth()
+        req_height = self.winfo_reqheight()
+
+        # Get screen dimensions
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+
+        # Add some padding and cap at screen size
+        width = min(req_width + 40, int(screen_width * 0.7))
+        height = min(req_height + 40, int(screen_height * 0.75))
+
+        # Set minimum size
+        min_width = max(int(width * 0.6), 450)
+        min_height = max(int(height * 0.6), 350)
+
+        # Apply sizes
+        self.geometry(f"{width}x{height}")
+        self.minsize(min_width, min_height)
+
 
 class ResolveTarget(tk.Toplevel):
     """Dialog to resolve target names to coordinates."""
@@ -2837,6 +2890,9 @@ class ResolveTarget(tk.Toplevel):
         # Make it modal
         self.transient(parent)
         self.grab_set()
+
+        # Compute and set window size based on content
+        self._compute_window_size()
 
     def create_widgets(self):
         """Create the dialog widgets."""
@@ -2944,6 +3000,30 @@ class ResolveTarget(tk.Toplevel):
         """Close without applying."""
         self.destroy()
 
+    def _compute_window_size(self):
+        """Compute and set appropriate window size based on content."""
+        self.update_idletasks()
+
+        # Get the required width and height
+        req_width = self.winfo_reqwidth()
+        req_height = self.winfo_reqheight()
+
+        # Get screen dimensions
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+
+        # Add some padding and cap at screen size
+        width = min(req_width + 40, int(screen_width * 0.6))
+        height = min(req_height + 40, int(screen_height * 0.6))
+
+        # Set minimum size
+        min_width = max(int(width * 0.7), 400)
+        min_height = max(int(height * 0.7), 250)
+
+        # Apply sizes
+        self.geometry(f"{width}x{height}")
+        self.minsize(min_width, min_height)
+
 
 class ScheduleWindow(tk.Toplevel):
     """Dialog for scheduling settings."""
@@ -2959,6 +3039,9 @@ class ScheduleWindow(tk.Toplevel):
         # Make it modal
         self.transient(parent)
         self.grab_set()
+
+        # Compute and set window size based on content
+        self._compute_window_size()
 
     def create_widgets(self):
         """Create the dialog widgets."""
@@ -2995,6 +3078,30 @@ class ScheduleWindow(tk.Toplevel):
         """Close without saving."""
         self.destroy()
 
+    def _compute_window_size(self):
+        """Compute and set appropriate window size based on content."""
+        self.update_idletasks()
+
+        # Get the required width and height
+        req_width = self.winfo_reqwidth()
+        req_height = self.winfo_reqheight()
+
+        # Get screen dimensions
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+
+        # Add some padding and cap at screen size
+        width = min(req_width + 40, int(screen_width * 0.65))
+        height = min(req_height + 40, int(screen_height * 0.65))
+
+        # Set minimum size
+        min_width = max(int(width * 0.6), 450)
+        min_height = max(int(height * 0.6), 350)
+
+        # Apply sizes
+        self.geometry(f"{width}x{height}")
+        self.minsize(min_width, min_height)
+
 
 class SteppedWindow(tk.Toplevel):
     """Window to edit stepped observation steps."""
@@ -3004,10 +3111,12 @@ class SteppedWindow(tk.Toplevel):
         self.title("Edit Stepped Observation")
         self.parent = parent
         self.obs_index = obs_index
-        self.geometry("800x600")
 
         self.create_widgets()
         self.load_data()
+
+        # Compute and set window size based on content
+        self._compute_window_size()
 
     def create_widgets(self):
         """Create the window widgets."""
@@ -3114,6 +3223,30 @@ class SteppedWindow(tk.Toplevel):
         self.parent.setSaveButton()
 
         self.destroy()
+
+    def _compute_window_size(self):
+        """Compute and set appropriate window size based on content."""
+        self.update_idletasks()
+
+        # Get the required width and height
+        req_width = self.winfo_reqwidth()
+        req_height = self.winfo_reqheight()
+
+        # Get screen dimensions
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+
+        # Add some padding and cap at screen size
+        width = min(req_width + 40, int(screen_width * 0.7))
+        height = min(req_height + 40, int(screen_height * 0.75))
+
+        # Set minimum size
+        min_width = max(int(width * 0.6), 600)
+        min_height = max(int(height * 0.6), 450)
+
+        # Apply sizes
+        self.geometry(f"{width}x{height}")
+        self.minsize(min_width, min_height)
 
 
 # PATCH 6: HelpWindow wrapper function
