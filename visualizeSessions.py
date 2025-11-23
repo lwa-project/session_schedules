@@ -319,7 +319,7 @@ class Visualization_GUI(object):
                 alpha = 0.5
             else:
                 alpha = 0.2
-            self.ax1.barh(beam-0.5, d/24, left=start, height=1.0, alpha=alpha, color=self.colors[i % len(self.colors)])
+            self.ax1.barh(beam-0.5, d/24, left=start, height=1.0, alpha=alpha, color=self.colors[i % len(self.colors)], align='edge')
 
             self.ax1.text(start+duration/2, beam, name, size=10, horizontalalignment='center', verticalalignment='center', rotation='vertical')
 
@@ -335,7 +335,7 @@ class Visualization_GUI(object):
                 alpha = 0.5
             else:
                 alpha = 0.2
-            self.ax1.barh(-0.5, d/24, left=free1, alpha=alpha, height=1.0, color='r', hatch='/')
+            self.ax1.barh(-0.5, d/24, left=free1, alpha=alpha, height=1.0, color='r', hatch='/', align='edge')
             self.ax1.text(free1+duration/2, 0, '%i:%02i' % (int(d), int((d-int(d))*60)), size=10, horizontalalignment='center', verticalalignment='center', rotation='vertical')
 
         # Plot Sun altitude in a way that indicates day and night (if needed)
@@ -618,11 +618,14 @@ class MainWindow(tk.Tk):
 
         self.figure = Figure(figsize=(6, 4))
         self.canvas = FigureCanvasTkAgg(self.figure, plot_frame)
-        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
-        # Add navigation toolbar
+        # Add navigation toolbar (pack before canvas to prevent geometry jumps)
         self.toolbar = NavigationToolbar2Tk(self.canvas, plot_frame)
         self.toolbar.update()
+        self.toolbar.pack(side=tk.BOTTOM, fill=tk.X)
+
+        # Pack canvas after toolbar
+        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
         # Info window
         info_frame = tk.Frame(main_frame)
