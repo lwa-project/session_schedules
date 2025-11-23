@@ -41,8 +41,8 @@ available at LWA-SV and other ADP-based stations while TBW is only available at 
 For TBW, both 4 and 12-bit data are supported.  The upper limit for the number of samples for 4-bit data is
 36 million, and the corresponding limit for 12-bit data is 12 million.  Due to the nature of TBW, observations 
 cannot be scheduled to fill a time range, e.g, capture consecutive sets of a given number of samples.  
-Rather, the individual captures need to be scheduled separately.  Session GUI keeps track of the combined integration 
-and readout times help avoid overlap in TBW captures.<br /><br />
+Rather, the individual captures need to be scheduled separately.  Session GUI keeps track of the combined integration
+and readout times to help avoid overlap in TBW captures.<br /><br />
 
 For TBF, dumps of up to three seconds (588 million samples) are supported.  This limit is set by the memory 
 available on the nodes that make up the ADP system.<br /><br />
@@ -58,7 +58,7 @@ determined by MCS but can be overridden in the <a href="#mcs">advanced settings 
 <p>
 <a name="drx">
 <h6>Beam Forming Modes</h6>
-Beam forming modes tracking the sky, Sun, Jupiter, and some stepped observations are avaliable.  For each 
+Beam forming modes tracking the sky, Sun, Jupiter, and some stepped observations are available.  For each 
 beam, both tunings are supported with the caveat that both tunings will use the same filter code and 
 gain settings.  Similar to TBN the default gain value can be changed if it has been specified under the 
 <a href="#mcs">advanced settings menu</a>.  It should also be noted that filter code 7 is not currently
@@ -113,9 +113,9 @@ menu, the various MCS MIB report and update intervals can be tailored and the ob
 desired information (e.g. SSMIF file) to be included in the tar file that is created at the end of the 
 session.<br /><br />
 
-This window also contains the observation gain settings (TBN and DRX) and the TBW data bit-mode and sample 
-number options.  Options are also available to change the setup of the ARX filters and gains.  These 
-options, however, cannot be fined tuned for a particular antenna and set all antennas to the same value.<br /><br />
+This window also contains the observation gain settings (TBN and DRX) and the TBW data bit-mode and sample
+number options.  Options are also available to change the setup of the ARX filters and gains.  These
+options, however, cannot be finely tuned for a particular antenna and set all antennas to the same value.<br /><br />
 
 <i>Note:</i> Caution should be used when making changes in the Advanced MCS Settings menu as changes could 
 have unintended consequences on the observations. For questions regarding these settings please contact 
@@ -139,7 +139,7 @@ Current limitations in the capabilities of Session GUI are:<br />
 <a name="preferences">
 <h6>Preferences File</h6>
 Session GUI supports the use of a preferences file to help preserve common information between sessions.
-The file has a simple text file that uses a "key value" pair format to store information.  It is named 
+The file is a simple text file that uses a "key value" pair format to store information.  It is named 
 ".sessionGUI" and is looked for in the user's home directory.  It supports the following information:<br />
 <ul>
 	<li>ObserverID - Numeric LWA-assigned observer ID</li>
@@ -158,7 +158,7 @@ window launched from the Observation->Observer/Project Info. menu.
 <p>
 <a name="glos">
 <h6>Glossary</h6>
-<b>SDF</b>: <u>S</u>ession <u>D</u>efintion <u>F</u>ile; The files created by Session GUI that are used by
+<b>SDF</b>: <u>S</u>ession <u>D</u>efinition <u>F</u>ile; The files created by Session GUI that are used by
 the MCS/SessionScheduler to setup and obtain observations.<br /><br />
 
 <b>project</b>: A set of observations which collectively support a defined scientific objective.<br /><br />
