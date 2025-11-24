@@ -351,7 +351,8 @@ class Visualization_GUI(object):
             segments = numpy.concatenate([points[:-1], points[1:]], axis=1)
             lc = LineCollection(segments, cmap=plt.get_cmap('Blues_r'), norm=plt.Normalize(-18, 0.25))
             lc.set_array(alts)
-            lc.set_linewidth(5)
+            lc.set_linewidth(8)
+            lc.set_zorder(10)  # Draw on top of bars
             self.ax1.add_collection(lc)
 
         # Plot Jupiter's altitude (if needed)
@@ -362,7 +363,8 @@ class Visualization_GUI(object):
             segments = numpy.concatenate([points[:-1], points[1:]], axis=1)
             lc = LineCollection(segments, cmap=plt.get_cmap('RdYlGn'), norm=plt.Normalize(0, 90))
             lc.set_array(alts)
-            lc.set_linewidth(5)
+            lc.set_linewidth(8)
+            lc.set_zorder(10)  # Draw on top of bars
             self.ax1.add_collection(lc)
 
         # Fix the x axis labels so that we have both MT and UT
@@ -375,6 +377,18 @@ class Visualization_GUI(object):
         self.ax2.xaxis.set_major_formatter(matplotlib.dates.DateFormatter("%Y-%m-%d\n%H:%M:%S", tz=_MST))
         self.ax2.set_xlabel('Time [Mountain]')
         self.frame.figure.autofmt_xdate()
+
+        # Custom coordinate formatter for cleaner toolbar display
+        def format_coord(x, y):
+            """Format the coordinate display to show UTC time, MST time, and beam"""
+            try:
+                dt_utc = matplotlib.dates.num2date(x, tz=_UTC)
+                dt_mst = dt_utc.astimezone(_MST)
+                return f"UTC: {dt_utc.strftime('%Y-%m-%d %H:%M:%S')}  MST: {dt_mst.strftime('%H:%M:%S')}  Beam: {y:.1f}"
+            except:
+                return f"x={x:.3f}, y={y:.3f}"
+
+        self.ax1.format_coord = format_coord
 
         # Fix the y axis labels to use beams, free time, etc.
         if self.showDayNight:
