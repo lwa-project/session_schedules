@@ -265,7 +265,8 @@ class Visualization_GUI(object):
 
         return numpy.array(points), numpy.array(alts)
 
-    def getJupiterAltitude(self, step=timedelta(seconds=900)):
+
+    def getJovianAltitude(self, step=timedelta(seconds=900)):
         """
         Using the time range of all loaded SDFs, return a two-element tuple of the
         time and altitude for Jupiter in 15 minute steps.
@@ -275,7 +276,7 @@ class Visualization_GUI(object):
         start = min(self.sessionStarts)
         stop  = max(self.sessionStops)
 
-        # Define Jupiter
+        # Setup Jupiter
         Jupiter = ephem.Jupiter()
 
         # Go!
@@ -291,236 +292,281 @@ class Visualization_GUI(object):
             s = s.days*24*3600 + s.seconds + s.microseconds/1e6
             s /= 3600.0
 
-            points.append([matplotlib.dates.date2num(tNow),5])
+            points.append([matplotlib.dates.date2num(tNow),6])
             alts.append(alt)
 
             tNow += step
 
         return numpy.array(points), numpy.array(alts)
 
-    def connect(self):
+    def draw(self, selected=None):
         """
-        Connect to all the events we need.
-        """
-
-        self.cidmotion = self.frame.canvas.mpl_connect('motion_notify_event', self.on_motion)
-
-    def disconnect(self):
-        """
-        Disconnect all the stored connection ids.
-        """
-
-        self.frame.canvas.mpl_disconnect(self.cidmotion)
-
-    def on_motion(self, event):
-        """
-        Deal with motion events in the image window.  This involves updating the
-        current MCS session information at the bottom of the plot window.
-        """
-
-        if event.inaxes:
-            clickX = matplotlib.dates.num2date(event.xdata)
-            clickX = clickX.replace(tzinfo=_UTC)
-
-            self.displayText(clickX, y=event.ydata)
-        else:
-            self.displayText(None)
-
-    def displayText(self, t, y=None):
-        """
-        Given a time value, determine which SDF(s) overlap and return the SDF name, beam,
-        observation mode, and target to the window.
-        """
-
-        info = ''
-        if t is not None:
-            try:
-                ## Times
-                if y is not None:
-                    info += f"Time: {t.strftime('%Y/%m/%d %H:%M:%S %Z')} (beam {int(round(y))})\n\n"
-                else:
-                    info += f"Time: {t.strftime('%Y/%m/%d %H:%M:%S %Z')}\n\n"
-
-                ## Free time?
-                isFree = True
-                for start,stop in zip(self.sessionStarts, self.sessionStops):
-                    if t >= start and t <= stop:
-                        isFree = False
-                if isFree:
-                    info += "FREE TIME\n\n"
-
-                ## Session info
-                for i,(name,beam,start,stop,project,data_file) in enumerate(zip(self.sessionNames, self.sessionBeams,
-                                                                                  self.sessionStarts, self.sessionStops,
-                                                                                  self.sessionSDFs, self.sessionDataFiles)):
-                    if t >= start and t <= stop:
-                        info += "Session:\n"
-                        info += "  Project: %s\n" % name.split('_', 1)[0]
-                        info += "  Session: %s\n" % name.split('_', 1)[1]
-                        if data_file is not None:
-                            info += "  Data dir: %s\n" % data_file['tag']
-                            info += "  Comments: %s\n" % data_file['comments']
-                        info += f"  Beam: {beam}\n"
-                        info += f"  Start: {start.strftime('%Y/%m/%d %H:%M:%S %Z')}\n"
-                        info += f"  Stop:  {stop.strftime('%Y/%m/%d %H:%M:%S %Z')}\n"
-                        obs = project.sessions[0].observations
-
-                        ## Observation info
-                        j = 0
-                        for obs in project.sessions[0].observations:
-                            oStart, oStop = getObsStartStop(obs)
-                            if t >= oStart and t <= oStop:
-                                j += 1
-                                info += "\n"
-                                info += "Observation #%i:\n" % (j,)
-                                info += "  Start: %s\n" % oStart.strftime('%Y/%m/%d %H:%M:%S %Z')
-                                info += "  Stop:  %s\n" % oStop.strftime('%Y/%m/%d %H:%M:%S %Z')
-                                info += "  Mode: %s\n" % obs.mode
-                                info += "  Target: %s\n" % obs.target
-                                try:
-                                    info += "  RA: %s\n" % obs.ra
-                                    info += "  Dec: %s\n" % obs.dec
-                                except AttributeError:
-                                    pass
-                                try:
-                                    info += "  Alt: %.1f\n" % obs.alt
-                                    info += "  Az: %.1f\n" % obs.az
-                                except AttributeError:
-                                    pass
-                                try:
-                                    info += "  Filter code: %i\n" % obs.filter
-                                except AttributeError:
-                                    pass
-                        info += "\n"
-            except ValueError:
-                pass
-
-        # Set
-        self.frame.info.delete('1.0', tk.END)
-        self.frame.info.insert('1.0', info)
-
-    def draw(self):
-        """
-        Make a plot of the session in a "at a glance" manner.
+        Shows the sessions.
         """
 
         self.frame.figure.clf()
-        ax = self.frame.figure.gca()
+        self.ax1 = self.frame.figure.gca()
 
-        # Get the project ID for each session (easier than doing it inside a list comprehension)
-        sessionPIDs = []
-        for name in self.sessionNames:
-            pID, sID = name.split('_', 1)
-            sessionPIDs.append(pID)
+        # Plot the sessions
+        startMin = min(self.sessionStarts)
+        startMax = max(self.sessionStarts)
+        for s,(name,beam,start,duration) in enumerate(zip(self.sessionNames, self.sessionBeams, self.sessionStarts, self.sessionDurations)):
+            d = duration.days*24*3600 + duration.seconds + duration.microseconds/1e6
+            d /= 3600.0
 
-        # Build up a collection of rectangles to display
-        ## Loop over unique project IDs
-        segments = []
-        colors = []
-        for i,pID in enumerate(self.uniqueProjects):
-            ## Get the color for the project
-            color = self.colors[i % len(self.colors)]
+            i = self.uniqueProjects.index(name.split('_')[0])
+            if s == selected:
+                alpha = 0.5
+            else:
+                alpha = 0.2
+            self.ax1.barh(beam-0.5, d/24, left=start, height=1.0, alpha=alpha, color=self.colors[i % len(self.colors)], align='edge')
 
-            ## Loop over sessions
-            for sID,sBeam,sStart,sDuration in zip(self.sessionNames, self.sessionBeams, self.sessionStarts, self.sessionDurations):
-                ### Check project ID
-                if sID.find(pID+'_') == -1:
-                    continue
+            self.ax1.text(start+duration/2, beam, name, size=10, horizontalalignment='center', verticalalignment='center', rotation='vertical')
 
-                ### Get times in days for the plot
-                t0 = sStart
-                t1 = sStart + sDuration
+        # Plot the free time more than 30 minutes
+        for s,(free1,free2) in enumerate(self.freePeriods):
+            duration = free2 - free1
+            d = duration.days*24*3600 + duration.seconds + duration.microseconds/1e6
+            d /= 3600.0
+            if d < 0.5:
+                continue
 
-                ### Create the rectangle
-                segments.append( [(matplotlib.dates.date2num(t0), sBeam),
-                                  (matplotlib.dates.date2num(t1), sBeam)] )
-                colors.append(color)
+            if -(s+1) == selected:
+                alpha = 0.5
+            else:
+                alpha = 0.2
+            self.ax1.barh(-0.5, d/24, left=free1, alpha=alpha, height=1.0, color='r', hatch='/', align='edge')
+            self.ax1.text(free1+duration/2, 0, '%i:%02i' % (int(d), int((d-int(d))*60)), size=10, horizontalalignment='center', verticalalignment='center', rotation='vertical')
 
-        lc = LineCollection(segments, colors=colors, linewidths=10)
-        ax.add_collection(lc)
-
-        # Mark the day/night periods
+        # Plot Sun altitude in a way that indicates day and night (if needed)
         if self.showDayNight:
             points, alts = self.getSolarAltitude()
-
-            for i in range(len(alts)):
-                ## Night -> day and day -> night transitions
-                if i == 0 or i == (len(alts)-1):
-                    if alts[i] < 0:
-                        ax.axvspan(points[i,0], points[i,0], color='blue', alpha=0.25)
-                elif alts[i-1] < 0 and alts[i] >= 0:
-                    ax.axvspan(points[0,0], points[i,0], color='blue', alpha=0.25)
-                elif alts[i-1] >= 0 and alts[i] < 0:
-                    ax.axvspan(points[i,0], points[-1,0], color='blue', alpha=0.25)
-
-        # Mark times when Jupiter is visible
-        if self.showJupiter:
-            points, alts = self.getJupiterAltitude()
-
-            for i in range(len(alts)):
-                ## Rise and set
-                if i == 0 or i == (len(alts)-1):
-                    if alts[i] >= 10:
-                        ax.axvspan(points[i,0], points[i,0], color='green', alpha=0.25)
-                elif alts[i-1] < 10 and alts[i] >= 10:
-                    ax.axvspan(points[0,0], points[i,0], color='green', alpha=0.25)
-                elif alts[i-1] >= 10 and alts[i] < 10:
-                    ax.axvspan(points[i,0], points[-1,0], color='green', alpha=0.25)
-
-        # Set the limits to just zoom in on what is there
-        pad = (max(self.sessionStarts)-min(self.sessionStarts))
-        pad = pad.days + pad.seconds/86400.0
-        pad *= 0.05
-
-        ## Datetime instances to plot
-        ax.set_xlim([matplotlib.dates.date2num(min(self.sessionStarts))-pad,
-                     matplotlib.dates.date2num(max(self.sessionStops))+pad])
-        ax.set_ylim([0.5, 6.5])
-
-        ## Proper axes labels
-        ax.xaxis_date()
-        locator = matplotlib.dates.AutoDateLocator()
-        locator.intervald[3] = [1]  # Only show 1 hour intervals for hours
-        ax.xaxis.set_major_locator(locator)
-        ax.xaxis.set_major_formatter(matplotlib.dates.AutoDateFormatter(locator))
-        ax.set_xlabel('Date [UTC]')
-
-        ## Beam labels
-        beamValues = []
-        beamLabels = []
-        for b in range(1, 7):
-            beamValues.append(b)
-            if self.adp or self.ndp:
-                if b == 3:
-                    beamLabels.append('Tied')
-                elif b == 4:
-                    beamLabels.append('Spec.')
-                else:
-                    beamLabels.append('Beam %i' % b)
+            points = points.reshape((-1, 1, 2))
+            if self.ndp:
+                points[:,:,1] = 4.75
+            elif self.adp:
+                points[:,:,1] = 3.75
             else:
-                if b == 5:
-                    beamLabels.append('Tied')
-                elif b == 6:
-                    beamLabels.append('Spec.')
-                else:
-                    beamLabels.append('Beam %i' % b)
-        ax.set_yticks(beamValues)
-        ax.set_yticklabels(beamLabels)
-        ax.set_ylabel('Beam')
+                points[:,:,1] = 5.75
+            segments = numpy.concatenate([points[:-1], points[1:]], axis=1)
+            lc = LineCollection(segments, cmap=plt.get_cmap('Blues_r'), norm=plt.Normalize(-18, 0.25))
+            lc.set_array(alts)
+            lc.set_linewidth(8)
+            lc.set_zorder(10)  # Draw on top of bars
+            self.ax1.add_collection(lc)
 
-        # Legend
-        rectangles = []
-        for i,pID in enumerate(self.uniqueProjects):
-            color = self.colors[i % len(self.colors)]
-            rectangles.append( plt.Rectangle((0,0), 1, 1, fc=color) )
-        lgd = ax.legend(rectangles, self.uniqueProjects, loc=0, ncol=2)
+        # Plot Jupiter's altitude (if needed)
+        if self.showJupiter:
+            points, alts = self.getJovianAltitude()
+            points = points.reshape((-1, 1, 2))
+            points[:,:,1] = -1.75
+            segments = numpy.concatenate([points[:-1], points[1:]], axis=1)
+            lc = LineCollection(segments, cmap=plt.get_cmap('RdYlGn'), norm=plt.Normalize(0, 90))
+            lc.set_array(alts)
+            lc.set_linewidth(8)
+            lc.set_zorder(10)  # Draw on top of bars
+            self.ax1.add_collection(lc)
 
-        ## Try to get the legend to not cover things
-        points = lgd.get_window_extent()
-        if points.x1 > self.frame.figure.get_figwidth()*self.frame.figure.get_dpi():
-            lgd = ax.legend(rectangles, self.uniqueProjects, loc='upper left', bbox_to_anchor=(1.02, 1), ncol=1)
+        # Fix the x axis labels so that we have both MT and UT
+        self.ax2 = self.ax1.twiny()
+        self.ax2.set_xticks(self.ax1.get_xticks())
+        self.ax2.set_xlim(self.ax1.get_xlim())
+
+        self.ax1.xaxis.set_major_formatter( matplotlib.dates.DateFormatter("%Y-%m-%d\n%H:%M:%S", tz=_UTC))
+        self.ax1.set_xlabel('Time [UTC]')
+        self.ax2.xaxis.set_major_formatter(matplotlib.dates.DateFormatter("%Y-%m-%d\n%H:%M:%S", tz=_MST))
+        self.ax2.set_xlabel('Time [Mountain]')
+        self.frame.figure.autofmt_xdate()
+
+        # Custom coordinate formatter for cleaner toolbar display
+        def format_coord(x, y):
+            """Format the coordinate display to show UTC time, MST time, and beam"""
+            try:
+                dt_utc = matplotlib.dates.num2date(x, tz=_UTC)
+                dt_mst = dt_utc.astimezone(_MST)
+                return f"UTC: {dt_utc.strftime('%Y-%m-%d %H:%M:%S')}  MST: {dt_mst.strftime('%H:%M:%S')}  Beam: {y:.1f}"
+            except:
+                return f"x={x:.3f}, y={y:.3f}"
+
+        self.ax1.format_coord = format_coord
+
+        # Fix the y axis labels to use beams, free time, etc.
+        if self.showDayNight:
+            if self.ndp:
+                lower = 5
+            elif self.adp:
+                lower = 4
+            else:
+                lower = 6
+        else:
+            if self.ndp:
+                lower = 4.5
+            elif self.adp:
+                lower = 3.5
+            else:
+                lower = 5.5
+        if self.showJupiter:
+            upper = -2
+        else:
+            upper = -1.5
+        self.ax1.set_ylim((lower, upper))
+        if self.ndp:
+            self.ax1.set_yticks([5, 4.75, 4, 3, 2, 1, 0, -1, -1.75, -2])
+            self.ax1.set_yticklabels(['', 'Day/Night', 'Beam 4', 'Beam 3', 'Beam 2', 'Beam 1', 'Unassigned', 'MCS Decides', 'Jupiter', ''])
+        elif self.adp:
+            self.ax1.set_yticks([4, 3.75, 3, 2, 1, 0, -1, -1.75, -2])
+            self.ax1.set_yticklabels(['', 'Day/Night', 'TBN', 'Beam 2', 'Beam 1', 'Unassigned', 'MCS Decides', 'Jupiter', ''])
+        else:
+            self.ax1.set_yticks([6, 5.75, 5, 4, 3, 2, 1, 0, -1, -1.75, -2])
+            self.ax1.set_yticklabels(['', 'Day/Night', 'TBN/TBW', 'Beam 4', 'Beam 3', 'Beam 2', 'Beam 1', 'Unassigned', 'MCS Decides', 'Jupiter', ''])
 
         self.frame.canvas.draw()
+
+    def describeSDF(self, sdfIndex):
+        """
+        Given an self.sessionSDFs index, display the SDF file in a descriptive manner.
+        This function returns a string (like a __str__ call).
+        """
+
+        # Get the SDF/data file collection in question
+        project = self.sessionSDFs[sdfIndex]
+        dataFile = self.sessionDataFiles[sdfIndex]
+
+        nObs = len(project.sessions[0].observations)
+        tStart = [None,]*nObs
+        for i in range(nObs):
+            tStart[i]  = utcjd_to_unix(project.sessions[0].observations[i].mjd + MJD_OFFSET)
+            tStart[i] += project.sessions[0].observations[i].mpm / 1000.0
+            tStart[i]  = datetime.utcfromtimestamp(tStart[i])
+            tStart[i]  = _UTC.localize(tStart[i])
+
+        # Get the LST at the start
+        self.observer.date = (min(tStart)).strftime('%Y/%m/%d %H:%M:%S')
+        lst = self.observer.sidereal_time()
+
+        out = ""
+        out += " Project ID: %s\n" % project.id
+        out += " Session ID: %i\n" % project.sessions[0].id
+        out += " Observations appear to start at %s\n" % (min(tStart)).strftime(formatString)
+        out += " -> LST at %s for this date/time is %s\n" % (self.observer.name, lst)
+
+        lastDur = project.sessions[0].observations[nObs-1].dur
+        lastDur = timedelta(seconds=int(lastDur/1000), microseconds=(lastDur*1000) % 1000000)
+        sessionDur = max(tStart) - min(tStart) + lastDur
+
+        out += "\n"
+        out += " Total Session Duration: %s\n" % sessionDur
+        out += " -> First observation starts at %s\n" % min(tStart).strftime(formatString)
+        out += " -> Last observation ends at %s\n" % (max(tStart) + lastDur).strftime(formatString)
+        if project.sessions[0].observations[0].mode not in ('TBW', 'TBN'):
+            drspec = 'No'
+            if project.sessions[0].spcSetup[0] != 0 and project.sessions[0].spcSetup[1] != 0:
+                drspec = 'Yes'
+            drxBeam = project.sessions[0].drx_beam
+            if drxBeam < 1:
+                drxBeam = "MCS decides"
+            else:
+                drxBeam = "%i" % drxBeam
+            out += " DRX Beam: %s\n" % drxBeam
+            out += " DR Spectrometer used? %s\n" % drspec
+            if drspec == 'Yes':
+                out += " -> %i channels, %i windows/integration\n" % tuple(project.sessions[0].spcSetup)
+        else:
+            out += " Transient Buffer: %s\n" % ('Wide band' if project.sessions[0].observations[0].mode == 'TBW' else 'Narrow band',)
+
+        out += "\n"
+        out += " Number of observations: %i\n" % nObs
+        out += " Observation Detail:\n"
+        for i in range(nObs):
+            currDur = project.sessions[0].observations[i].dur
+            currDur = timedelta(seconds=int(currDur/1000), microseconds=(currDur*1000) % 1000000)
+
+            out += "  Observation #%i\n" % (i+1,)
+
+            ## Basic setup
+            out += "   Target: %s\n" % project.sessions[0].observations[i].target
+            out += "   Mode: %s\n" % project.sessions[0].observations[i].mode
+            out += "   Start:\n"
+            out += "    MJD: %i\n" % project.sessions[0].observations[i].mjd
+            out += "    MPM: %i\n" % project.sessions[0].observations[i].mpm
+            out += "    -> %s\n" % getObsStartStop(project.sessions[0].observations[i])[0].strftime(formatString)
+            out += "   Duration: %s\n" % currDur
+
+            ## DP setup
+            if project.sessions[0].observations[i].mode not in ('TBW',):
+                out += "   Tuning 1: %.3f MHz\n" % (project.sessions[0].observations[i].frequency1/1e6,)
+            if project.sessions[0].observations[i].mode not in ('TBW', 'TBN'):
+                out += "   Tuning 2: %.3f MHz\n" % (project.sessions[0].observations[i].frequency2/1e6,)
+            if project.sessions[0].observations[i].mode not in ('TBW',):
+                out += "   Filter code: %i\n" % project.sessions[0].observations[i].filter
+
+            ## Comments/notes
+            out += "   Observer Comments: %s\n" % project.sessions[0].observations[i].comments
+
+            ## Data file (optional)
+            if dataFile is not None:
+                try:
+                    dataFilename = dataFile[i+1]
+                    out += "   Data File Tag: %s\n" % dataFilename['tag']
+                except KeyError:
+                    pass
+
+        return out
+
+    def describeFree(self, freeIndex):
+        """
+        Given a self.freePeriods index, describe a block of free time.  This function
+        returns a string (like a __str__ call).
+        """
+
+        # UT and MT
+        fUT = self.freePeriods[freeIndex]
+        fMT = (fUT[0].astimezone(_MST), fUT[1].astimezone(_MST))
+        d = fUT[1] - fUT[0]
+
+        out  = ""
+        out += "Free time between %s and %s\n" % (fUT[0].strftime(formatString), fUT[1].strftime(formatString))
+        out += "               -> %s and %s\n" % (fMT[0].strftime(formatString), fMT[1].strftime(formatString))
+        out += "               -> %i:%02i in length\n" % (d.days*24+d.seconds/3600, d.seconds/60 % 60)
+
+        return out
+
+    def connect(self):
+        """
+        Connect to all the events we need
+        """
+
+        self.cidpress = self.frame.canvas.mpl_connect('button_press_event', self.on_press)
+
+    def on_press(self, event):
+        """
+        On button press we will see if the mouse is over us and display some data
+        """
+
+        if event.inaxes:
+            clickBeam = round(event.ydata)
+            clickTime = matplotlib.dates.num2date(event.xdata)
+
+            if clickBeam == 0:
+                for i in range(len(self.freePeriods)):
+                    if clickTime >= self.freePeriods[i][0] and clickTime <= self.freePeriods[i][1]:
+                        self.frame.info.delete('1.0', tk.END)
+                        self.frame.info.insert('1.0', self.describeFree(i))
+                        self.draw(selected=-(i+1))
+            else:
+                project = None
+                for i in range(len(self.sessionSDFs)):
+                    if clickTime >= self.sessionStarts[i] and clickTime <= self.sessionStarts[i] + self.sessionDurations[i] and clickBeam == self.sessionBeams[i]:
+                        self.frame.info.delete('1.0', tk.END)
+                        self.frame.info.insert('1.0', self.describeSDF(i))
+                        self.draw(selected=i)
+
+    def disconnect(self):
+        """
+        Disconnect all the stored connection IDs.
+        """
+
+        self.frame.canvas.mpl_disconnect(self.cidpress)
 
 
 class MainWindow(tk.Tk):
@@ -531,9 +577,6 @@ class MainWindow(tk.Tk):
     def __init__(self):
         super().__init__()
 
-        self.title("Visualize Sessions")
-        self.geometry("800x900")
-
         self.dirname = ''
         self.scriptPath = os.path.abspath(__file__)
         self.scriptPath = os.path.split(self.scriptPath)[0]
@@ -541,73 +584,87 @@ class MainWindow(tk.Tk):
         self.data = None
         self.filenames = []
 
-        self.create_menu()
-        self.create_widgets()
+        self.title("Visualize Sessions")
+        self.geometry("600x800")
 
-    def create_menu(self):
+        self.initUI()
+        self.Show()
+
+    def initUI(self):
+        """
+        Start the user interface.
+        """
+
+        # Create menu bar
         menubar = tk.Menu(self)
-
-        # File menu
-        filemenu = tk.Menu(menubar, tearoff=0)
-        filemenu.add_command(label="Add File(s)", command=self.on_add_files)
-        filemenu.add_command(label="Remove File(s)", command=self.on_remove_files)
-        filemenu.add_separator()
-        filemenu.add_command(label="Quit", command=self.on_quit)
-        menubar.add_cascade(label="File", menu=filemenu)
-
-        # Display menu
-        dispmenu = tk.Menu(menubar, tearoff=0)
-        self.show_daynight_var = tk.BooleanVar(value=True)
-        self.show_jupiter_var = tk.BooleanVar(value=False)
-        dispmenu.add_checkbutton(label="Show Day/Night", variable=self.show_daynight_var,
-                                 command=self.on_daynight)
-        dispmenu.add_checkbutton(label="Show Jupiter Visibility", variable=self.show_jupiter_var,
-                                 command=self.on_jupiter)
-        menubar.add_cascade(label="Display", menu=dispmenu)
-
-        # Help menu
-        helpmenu = tk.Menu(menubar, tearoff=0)
-        helpmenu.add_command(label="About", command=self.on_about)
-        menubar.add_cascade(label="Help", menu=helpmenu)
-
         self.config(menu=menubar)
 
-    def create_widgets(self):
+        # File menu
+        fileMenu = tk.Menu(menubar, tearoff=0)
+        fileMenu.add_command(label='Add File(s)', command=self.onAddFiles)
+        fileMenu.add_command(label='Remove File(s)', command=self.onRemoveFiles)
+        fileMenu.add_separator()
+        fileMenu.add_command(label='Quit', command=self.onQuit)
+        menubar.add_cascade(label='File', menu=fileMenu)
+
+        # Display menu
+        dispMenu = tk.Menu(menubar, tearoff=0)
+        self.show_daynight_var = tk.BooleanVar(value=True)
+        self.show_jupiter_var = tk.BooleanVar(value=False)
+        dispMenu.add_checkbutton(label='Show Day/Night', variable=self.show_daynight_var,
+                                 command=self.onDayNight)
+        dispMenu.add_checkbutton(label='Show Jupiter Visibility', variable=self.show_jupiter_var,
+                                command=self.onJupiter)
+        menubar.add_cascade(label='Display', menu=dispMenu)
+
+        # Help menu
+        helpMenu = tk.Menu(menubar, tearoff=0)
+        helpMenu.add_command(label='About', command=self.onAbout)
+        menubar.add_cascade(label='Help', menu=helpMenu)
+
         # Main container
         main_frame = tk.Frame(self)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Create matplotlib figure and canvas for plots
+        # Add SDF plot
         plot_frame = tk.Frame(main_frame)
         plot_frame.pack(fill=tk.BOTH, expand=True)
 
-        self.figure = Figure(figsize=(8, 4))
+        self.figure = Figure(figsize=(6, 4))
         self.canvas = FigureCanvasTkAgg(self.figure, plot_frame)
-        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
-        # Add navigation toolbar
+        # Add navigation toolbar (pack before canvas to prevent geometry jumps)
         self.toolbar = NavigationToolbar2Tk(self.canvas, plot_frame)
         self.toolbar.update()
+        self.toolbar.pack(side=tk.BOTTOM, fill=tk.X)
 
-        # Info text area
+        # Pack canvas after toolbar
+        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
+        # Info window
         info_frame = tk.Frame(main_frame)
         info_frame.pack(fill=tk.BOTH, expand=True)
 
         scrollbar = tk.Scrollbar(info_frame)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        self.info = tk.Text(info_frame, wrap=tk.WORD, yscrollcommand=scrollbar.set,
-                           height=20, state=tk.NORMAL)
+        self.info = tk.Text(info_frame, height=15, yscrollcommand=scrollbar.set)
         self.info.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.config(command=self.info.yview)
 
-    def on_add_files(self):
+    def Show(self):
+        """
+        Show the window (for compatibility with wxPython version).
+        """
+        pass  # In Tkinter, window is shown automatically
+
+    def onAddFiles(self):
         """
         Open a file or files.
         """
 
         filenames = filedialog.askopenfilenames(
-            title="Choose file(s)",
+            title="Choose a file",
             initialdir=self.dirname,
             filetypes=[("All files", "*.*")]
         )
@@ -624,14 +681,14 @@ class MainWindow(tk.Tk):
             self.data.loadFiles()
             self.data.draw()
 
-    def on_remove_files(self):
+    def onRemoveFiles(self):
         """
         Remove a file or files.
         """
 
         RemoveFilesDialog(self)
 
-    def on_daynight(self):
+    def onDayNight(self):
         """
         Toggle whether or not the day/night indicator is shown.
         """
@@ -640,7 +697,7 @@ class MainWindow(tk.Tk):
             self.data.showDayNight = self.show_daynight_var.get()
             self.data.draw()
 
-    def on_jupiter(self):
+    def onJupiter(self):
         """
         Toggle whether or not the Jupiter visibility indicator is shown.
         """
@@ -649,50 +706,24 @@ class MainWindow(tk.Tk):
             self.data.showJupiter = self.show_jupiter_var.get()
             self.data.draw()
 
-    def on_about(self):
+    def onAbout(self):
         """
-        Display a very very very brief 'about' window.
+        Display a very brief 'about' window.
         """
 
-        about_window = tk.Toplevel(self)
-        about_window.title("About Visualize Sessions")
-        about_window.geometry("400x300")
-        about_window.resizable(False, False)
+        about_text = f"""Visualize Sessions
 
-        # Add name and version
-        tk.Label(about_window, text="Visualize Sessions", font=("Arial", 14, "bold")).pack(pady=10)
-        tk.Label(about_window, text=f"Version: {__version__}").pack()
+Version: {__version__}
+Author: {__author__}
 
-        # Description
-        description = """GUI for displaying the current
-LWA1 schedule via its SDFs."""
+GUI for displaying the current
+LWA1 schedule via its SDFs.
 
-        desc_label = tk.Label(about_window, text=description, justify=tk.CENTER)
-        desc_label.pack(pady=10)
+Website: http://lwa.unm.edu"""
 
-        # Website
-        website_frame = tk.Frame(about_window)
-        website_frame.pack(pady=5)
-        tk.Label(website_frame, text="Website: ").pack(side=tk.LEFT)
-        website_link = tk.Label(website_frame, text="http://lwa.unm.edu", fg="blue", cursor="hand2")
-        website_link.pack(side=tk.LEFT)
-        website_link.bind("<Button-1>", lambda e: self.open_website("http://lwa.unm.edu"))
+        messagebox.showinfo("About Visualize Sessions", about_text)
 
-        # Developer
-        tk.Label(about_window, text=f"Developer: {__author__}").pack(pady=2)
-        tk.Label(about_window, text=f"Documentation: {__author__}").pack(pady=2)
-
-        # Close button
-        tk.Button(about_window, text="Close", command=about_window.destroy).pack(pady=10)
-
-    def open_website(self, url):
-        """
-        Open a website URL in the default browser
-        """
-        import webbrowser
-        webbrowser.open(url)
-
-    def on_quit(self):
+    def onQuit(self):
         """
         Quit the main window.
         """
@@ -709,15 +740,14 @@ class RemoveFilesDialog(tk.Toplevel):
     def __init__(self, parent):
         super().__init__(parent)
 
+        self.parent = parent
         self.title('Select Files to Remove')
         self.geometry('600x300')
 
-        self.parent = parent
+        self.initUI()
+        self.loadFiles()
 
-        self.create_widgets()
-        self.load_files()
-
-    def create_widgets(self):
+    def initUI(self):
         """
         Start the user interface.
         """
@@ -726,87 +756,58 @@ class RemoveFilesDialog(tk.Toplevel):
         main_frame = tk.Frame(self)
         main_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        # Create Treeview with checkboxes
-        tree_frame = tk.Frame(main_frame)
-        tree_frame.pack(fill=tk.BOTH, expand=True)
+        # File list with scrollbar
+        list_frame = tk.Frame(main_frame)
+        list_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Scrollbar
-        scrollbar = tk.Scrollbar(tree_frame)
+        scrollbar = tk.Scrollbar(list_frame)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        # Treeview
-        self.tree = ttk.Treeview(tree_frame, columns=('filename',), show='tree headings',
-                                yscrollcommand=scrollbar.set)
-        self.tree.heading('#0', text='')
-        self.tree.heading('filename', text='Filename')
-        self.tree.column('#0', width=30)
-        self.tree.column('filename', width=550)
-        self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar.config(command=self.tree.yview)
-
-        # Track checked items
-        self.checked_items = set()
-
-        # Bind click event for checkboxes
-        self.tree.bind('<Button-1>', self.on_click)
+        self.file_listbox = tk.Listbox(list_frame, selectmode=tk.MULTIPLE,
+                                       yscrollcommand=scrollbar.set)
+        self.file_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.config(command=self.file_listbox.yview)
 
         # Buttons
         button_frame = tk.Frame(main_frame)
         button_frame.pack(fill=tk.X, pady=5)
 
-        ok_button = tk.Button(button_frame, text="Ok", width=10, command=self.on_ok)
+        ok_button = tk.Button(button_frame, text='Ok', width=10, command=self.onOK)
         ok_button.pack(side=tk.LEFT, padx=5)
 
-        cancel_button = tk.Button(button_frame, text="Cancel", width=10, command=self.on_cancel)
+        cancel_button = tk.Button(button_frame, text='Cancel', width=10, command=self.onCancel)
         cancel_button.pack(side=tk.LEFT, padx=5)
 
-    def on_click(self, event):
-        """Handle checkbox clicks"""
-        region = self.tree.identify("region", event.x, event.y)
-        if region == "tree":
-            item = self.tree.identify_row(event.y)
-            if item:
-                if item in self.checked_items:
-                    self.checked_items.remove(item)
-                    self.tree.item(item, text='☐')
-                else:
-                    self.checked_items.add(item)
-                    self.tree.item(item, text='☑')
-
-    def load_files(self):
+    def loadFiles(self):
         """
-        Setup the checkable list and populate it with what is currently loaded.
+        Setup the list and populate it with what is currently loaded.
         """
 
-        # Fill with filenames
+        # Fill the listbox with filenames
         for filename in self.parent.filenames:
-            self.tree.insert('', 'end', text='☐', values=(filename,))
+            self.file_listbox.insert(tk.END, filename)
 
-    def on_ok(self):
+    def onOK(self):
         """
-        Process the checklist and remove as necessary.
+        Process the selection and remove as necessary.
         """
 
-        # Build a list of filenames to remove
-        to_remove = []
-        for item in self.checked_items:
-            values = self.tree.item(item, 'values')
-            if values:
-                to_remove.append(values[0])
+        # Build a list of filenames to remove based on selection
+        selected_indices = self.file_listbox.curselection()
+        toRemove = [self.parent.filenames[i] for i in selected_indices]
 
         # Remove them
-        for filename in to_remove:
-            if filename in self.parent.filenames:
-                self.parent.filenames.remove(filename)
+        for filename in toRemove:
+            self.parent.filenames.remove(filename)
 
         # Reload the SDFs and update the plot if needed
-        if len(to_remove) > 0 and self.parent.data is not None:
+        if len(toRemove) > 0:
             self.parent.data.loadFiles()
             self.parent.data.draw()
 
         self.destroy()
 
-    def on_cancel(self):
+    def onCancel(self):
         """
         Quit without deleting any files.
         """
@@ -815,9 +816,9 @@ class RemoveFilesDialog(tk.Toplevel):
 
 
 def main(args):
-    frame = MainWindow()
+    app = MainWindow()
     if args.filename is not None:
-        frame.filenames = args.filename
+        app.filenames = args.filename
 
         if args.lwasv:
             station = 'lwasv'
@@ -826,11 +827,11 @@ def main(args):
         else:
             station = 'lwa1'
 
-        frame.data = Visualization_GUI(frame, station=station)
-        frame.data.loadFiles()
-        frame.data.draw()
+        app.data = Visualization_GUI(app, station=station)
+        app.data.loadFiles()
+        app.data.draw()
 
-    frame.mainloop()
+    app.mainloop()
 
 
 if __name__ == "__main__":
@@ -838,7 +839,7 @@ if __name__ == "__main__":
         description='GUI for looking at the schedule on a station',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         )
-    parser.add_argument('filename', type=str, nargs='+',
+    parser.add_argument('filename', type=str, nargs='*', default=None,
                         help='SDF file to examine')
     sgroup = parser.add_mutually_exclusive_group(required=False)
     sgroup.add_argument('-s', '--lwasv', action='store_true',
