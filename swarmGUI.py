@@ -2541,5 +2541,5 @@ if __name__ == "__main__":
 
     app = IDFCreator('Interferometer Definition File', args)
     if LoggerGUI is not None:
-        lga = LoggerGUI(root=tk.Toplevel(), title='Session GUI Logger')
+        lga = LoggerGUI(title='Session GUI Logger')
     app.mainloop()

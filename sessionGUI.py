@@ -3452,7 +3452,7 @@ def main(args):
     """Main function to run the application."""
     app = SDFCreator("Session GUI", args)
     if LoggerGUI is not None:
-        lga = LoggerGUI(root=tk.Toplevel(), title='Session GUI Logger')
+        lga = LoggerGUI(title='Session GUI Logger')
     app.mainloop()
 
 
