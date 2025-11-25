@@ -7,7 +7,9 @@ import copy
 import math
 import ephem
 import numpy
+import logging
 import argparse
+import threading
 from io import StringIO
 from datetime import datetime, timedelta, timezone
 from xml.etree import ElementTree
@@ -27,6 +29,11 @@ from lsl.reader.tbn import FILTER_CODES as TBNFilters
 from lsl.reader.drx import FILTER_CODES as DRXFilters
 from lsl.misc import parser as aph
 
+try:
+    from lsl.logger_gui import LoggerGUI
+except ImportError:
+    LoggerGUI = None
+
 import matplotlib
 matplotlib.use('TkAgg')
 matplotlib.interactive(True)
@@ -42,8 +49,21 @@ __author__ = "Jayce Dowell"
 ALLOW_TBW_TBN_SAME_SDF = True
 
 
-def pid_print(*args, **kwds):
-    print(f"[{os.getpid()}]", *args, **kwds)
+def pid_print(*args, level=None, logging_only=False, **kwds):
+    if level is not None:
+        if level == logging.DEBUG:
+            LSL_LOGGER.debug(*args, **kwds)
+        elif level == logging.INFO:
+            LSL_LOGGER.info(*args, **kwds)
+        elif level == logging.WARNING:
+            LSL_LOGGER.warning(*args, **kwds)
+        elif level == logging.ERROR:
+            LSL_LOGGER.error(*args, **kwds)
+        elif level == logging.CRITICAL:
+            LSL_LOGGER.critical(*args, **kwds)
+            
+    if not logging_only:
+        print(f"[{os.getpid()}]", *args, **kwds)
 
 
 class CheckableTreeview(ttk.Treeview):
@@ -820,7 +840,7 @@ class SDFCreator(tk.Tk):
 
             messagebox.showerror("Validation Error", str(err))
             self.badEdit = True
-            pid_print(f"Error: {str(err)}")
+            pid_print(f"Error: {str(err)}", level=logging.ERROR)
 
     def onNew(self, event=None):
         """
@@ -1219,7 +1239,7 @@ class SDFCreator(tk.Tk):
                             all_valid = False
 
                 except Exception as e:
-                    pid_print(f"Error validating observation {i+1}: {str(e)}")
+                    pid_print(f"Error validating observation {i+1}: {str(e)}", level=loggging.ERROR)
                     items = self.listControl.get_children()
                     if i < len(items):
                         item = items[i]
@@ -1230,7 +1250,7 @@ class SDFCreator(tk.Tk):
             try:
                 project_valid = self.project.validate(verbose=True)
             except Exception as e:
-                pid_print(f"Error validating project: {str(e)}")
+                pid_print(f"Error validating project: {str(e)}", level=logging.ERROR)
                 project_valid = False
 
             # Get validation output
@@ -3431,6 +3451,8 @@ def create_help_window(parent):
 def main(args):
     """Main function to run the application."""
     app = SDFCreator("Session GUI", args)
+    if LoggerGUI is not None:
+        lga = LoggerGUI(root=tk.Toplevel(), title='Session GUI Logger')
     app.mainloop()
 
 

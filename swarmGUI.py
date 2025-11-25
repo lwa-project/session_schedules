@@ -7,6 +7,7 @@ import copy
 import math
 import ephem
 import numpy
+import logging
 import argparse
 from io import StringIO
 from datetime import datetime, timedelta, timezone
@@ -27,6 +28,11 @@ from lsl.reader.drx import FILTER_CODES as DRXFilters
 from lsl.correlator import uvutils
 from lsl.misc import parser as aph
 
+try:
+    from lsl.logger_gui import LoggerGUI
+except ImportError:
+    LoggerGUI = None
+    
 import matplotlib
 matplotlib.use('TkAgg')
 matplotlib.interactive(True)
@@ -41,8 +47,21 @@ __version__ = "0.2"
 __author__ = "Jayce Dowell"
 
 
-def pid_print(*args, **kwds):
-    print(f"[{os.getpid()}]", *args, **kwds)
+def pid_print(*args, level=None, logging_only=False, **kwds):
+    if level is not None:
+        if level == logging.DEBUG:
+            LSL_LOGGER.debug(*args, **kwds)
+        elif level == logging.INFO:
+            LSL_LOGGER.info(*args, **kwds)
+        elif level == logging.WARNING:
+            LSL_LOGGER.warning(*args, **kwds)
+        elif level == logging.ERROR:
+            LSL_LOGGER.error(*args, **kwds)
+        elif level == logging.CRITICAL:
+            LSL_LOGGER.critical(*args, **kwds)
+            
+    if not logging_only:
+        print(f"[{os.getpid()}]", *args, **kwds)
 
 
 class CheckableTreeview(ttk.Treeview):
@@ -658,7 +677,7 @@ class IDFCreator(tk.Tk):
 
             messagebox.showerror("Validation Error", str(err))
             self.badEdit = True
-            pid_print(f"Error: {str(err)}")
+            pid_print(f"Error: {str(err)}", level=logging.ERROR)
 
     def onNew(self, event=None):
         """
@@ -1288,7 +1307,7 @@ A GUI for creating interferometer definition files (IDFs) for LWA swarm mode obs
         self.onCheckItem(None)
         self.initIDF()
 
-        pid_print(f"Parsing file '{filename}'")
+        pid_print(f"Parsing file '{filename}'", level=logging.INFO)
         try:
             self.project = idf.parse_idf(filename)
         except Exception as e:
@@ -1323,11 +1342,11 @@ A GUI for creating interferometer definition files (IDFs) for LWA swarm mode obs
             title = 'An Error has Occurred'
 
         if details is None:
-            pid_print(f"Error: {str(error)}")
+            pid_print(f"Error: {str(error)}", level=logging.ERROR)
             self.statusbar.config(text=f"Error: {str(error)}")
             messagebox.showerror(title, str(error))
         else:
-            pid_print(f"Error: {str(details)}")
+            pid_print(f"Error: {str(details)}", level=logging.ERROR)
             self.statusbar.config(text=f"Error: {str(details)}")
             messagebox.showerror(title, f"{str(error)}\n\nDetails:\n{str(details)}")
 
@@ -2258,7 +2277,7 @@ class ResolveTarget(tk.Toplevel):
 
                 except ValueError as err:
                     success = False
-                    pid_print(f"Error: {str(err)}")
+                    pid_print(f"Error: {str(err)}", level=logging.ERROR)
 
             if success:
                 self.destroy()
@@ -2419,7 +2438,7 @@ class ProperMotionWindow(tk.Toplevel):
 
             except ValueError as err:
                 success = False
-                pid_print(f"Error: {str(err)}")
+                pid_print(f"Error: {str(err)}", level=logging.ERROR)
 
             if success:
                 self.destroy()
@@ -2521,4 +2540,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     app = IDFCreator('Interferometer Definition File', args)
+    if LoggerGUI is not None:
+        lga = LoggerGUI(root=tk.Toplevel(), title='Session GUI Logger')
     app.mainloop()
