@@ -1089,8 +1089,10 @@ class IDFCreator(tk.Tk):
         # Format start time
         start_str = scan.start if hasattr(scan, 'start') else '--'
 
-        # Intent
-        intent_str = scan.intent if hasattr(scan, 'intent') else 'Target'
+        # Intent (normalize to camel case for display)
+        intent_map = {'fluxcal': 'FluxCal', 'phasecal': 'PhaseCal', 'target': 'Target'}
+        raw_intent = scan.intent if hasattr(scan, 'intent') else 'target'
+        intent_str = intent_map.get(raw_intent.lower(), raw_intent)
 
         # Comments
         comments_str = scan.comments if hasattr(scan, 'comments') and scan.comments else 'None provided'
@@ -2343,6 +2345,17 @@ class RunDisplay(tk.Toplevel):
         main_frame = ttk.Frame(self)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
+        # Options frame (above the plot)
+        options_frame = ttk.Frame(main_frame)
+        options_frame.pack(fill=tk.X, padx=5, pady=5)
+
+        ttk.Label(options_frame, text='Color by:').pack(side=tk.LEFT, padx=(0, 5))
+        self.color_by_var = tk.StringVar(value='Station')
+        self.color_by_combo = ttk.Combobox(options_frame, textvariable=self.color_by_var,
+                                           values=['Station', 'Intent'], state='readonly', width=10)
+        self.color_by_combo.pack(side=tk.LEFT)
+        self.color_by_combo.bind('<<ComboboxSelected>>', self.onColorByChanged)
+
         # Matplotlib figure
         self.figure = Figure(figsize=(8, 6), dpi=100)
         self.canvas = FigureCanvasTkAgg(self.figure, master=main_frame)
@@ -2368,8 +2381,12 @@ class RunDisplay(tk.Toplevel):
         self.protocol("WM_DELETE_WINDOW", self.destroy)
         self.canvas.mpl_connect('motion_notify_event', self.on_motion)
 
+    def onColorByChanged(self, event=None):
+        """Handle color-by dropdown selection change."""
+        self.initPlot()
+
     def initPlot(self):
-        """Create the altitude plot with dual axes, station colors, and scan labels."""
+        """Create the altitude plot with dual axes, station/intent colors, and scan labels."""
         self.obs = self.parent.project.runs[0].scans
 
         if len(self.obs) == 0:
@@ -2388,7 +2405,12 @@ class RunDisplay(tk.Toplevel):
         self.ax2 = self.ax1.twiny()
 
         run = self.parent.project.runs[0]
+        color_by = self.color_by_var.get()
+
+        # Color mappings
         station_colors = {}
+        intent_colors = {'fluxcal': '#1f77b4', 'phasecal': '#ff7f0e', 'target': '#2ca02c'}
+        intents_used = set()
 
         for i, o in enumerate(self.obs):
             # Get the source
@@ -2397,6 +2419,10 @@ class RunDisplay(tk.Toplevel):
             stepSize = o.dur / 1000.0 / 300
             if stepSize < 30.0:
                 stepSize = 30.0
+
+            # Get intent for this scan (normalize to lowercase for color lookup)
+            intent = (o.intent if hasattr(o, 'intent') else 'target').lower()
+            intents_used.add(intent)
 
             # Find altitude over the course of the scan for each station
             j = 0
@@ -2428,11 +2454,18 @@ class RunDisplay(tk.Toplevel):
 
                 # Plot the altitude over time
                 station_id = station.id if hasattr(station, 'id') else str(j)
-                try:
-                    line, = self.ax1.plot(t, alt, label='%s - %s' % (o.target, station_id), color=station_colors[station])
-                except KeyError:
-                    line, = self.ax1.plot(t, alt, label='%s - %s' % (o.target, station_id))
-                    station_colors[station] = line.get_color()
+                if color_by == 'Intent':
+                    # Color by intent
+                    line, = self.ax1.plot(t, alt, label='%s - %s' % (o.target, intent),
+                                          color=intent_colors.get(intent, '#7f7f7f'))
+                else:
+                    # Color by station (default)
+                    try:
+                        line, = self.ax1.plot(t, alt, label='%s - %s' % (o.target, station_id),
+                                              color=station_colors[station])
+                    except KeyError:
+                        line, = self.ax1.plot(t, alt, label='%s - %s' % (o.target, station_id))
+                        station_colors[station] = line.get_color()
 
                 # Draw the scan limits and label the source
                 if j == 0:
@@ -2444,12 +2477,26 @@ class RunDisplay(tk.Toplevel):
 
                 j += 1
 
-        # Add a legend (station labels only)
-        handles, labels = self.ax1.get_legend_handles_labels()
-        station_labels = [l.rsplit(' -', 1)[1].strip() for l in labels]
-        n_stations = len(station_list)
-        if n_stations > 0:
-            self.ax1.legend(handles[:n_stations], station_labels[:n_stations], loc=0)
+        # Add a legend
+        if color_by == 'Intent':
+            # Create legend with intent labels (only show intents that are used)
+            from matplotlib.lines import Line2D
+            legend_elements = []
+            # Map lowercase keys to display names
+            intent_display = {'fluxcal': 'FluxCal', 'phasecal': 'PhaseCal', 'target': 'Target'}
+            for intent_key in ['fluxcal', 'phasecal', 'target']:
+                if intent_key in intents_used:
+                    legend_elements.append(Line2D([0], [0], color=intent_colors[intent_key],
+                                                  label=intent_display[intent_key]))
+            if legend_elements:
+                self.ax1.legend(handles=legend_elements, loc=0)
+        else:
+            # Station labels only
+            handles, labels = self.ax1.get_legend_handles_labels()
+            station_labels = [l.rsplit(' -', 1)[1].strip() for l in labels]
+            n_stations = len(station_list)
+            if n_stations > 0:
+                self.ax1.legend(handles[:n_stations], station_labels[:n_stations], loc=0)
 
         # Second set of x axes
         self.ax1.xaxis.tick_bottom()
