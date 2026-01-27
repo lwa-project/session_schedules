@@ -80,6 +80,7 @@ class ObservationListCtrl(ttk.Treeview):
 
         # For inline editing
         self._edit_entry = None
+        self._edit_var = None
         self._edit_item = None
         self._edit_column = None
 
@@ -160,8 +161,11 @@ class ObservationListCtrl(ttk.Treeview):
 
         # Check if this column uses a dropdown choice
         if col_idx in self.choice_options:
-            self._edit_entry = ttk.Combobox(self, values=self.choice_options[col_idx], state='readonly')
-            self._edit_entry.set(current_value)
+            self._edit_var = tk.StringVar(value=current_value)
+            self._edit_entry = tk.OptionMenu(self, self._edit_var, *self.choice_options[col_idx])
+            self._edit_entry.config(relief='flat', borderwidth=0,
+                                    highlightthickness=1, highlightcolor='#4a90d9',
+                                    highlightbackground='#cccccc', anchor='w')
         else:
             # Use tk.Entry with flat relief to avoid double-border effect
             self._edit_entry = tk.Entry(self, relief='flat', borderwidth=0,
@@ -187,7 +191,11 @@ class ObservationListCtrl(ttk.Treeview):
         if not self._edit_entry or not self._edit_item:
             return
 
-        new_value = self._edit_entry.get()
+        # Get value from StringVar (OptionMenu) or Entry widget
+        if hasattr(self, '_edit_var') and self._edit_var:
+            new_value = self._edit_var.get()
+        else:
+            new_value = self._edit_entry.get()
         old_values = list(self.item(self._edit_item, 'values'))
 
         # Find the row index
@@ -202,6 +210,7 @@ class ObservationListCtrl(ttk.Treeview):
 
         self._edit_entry.destroy()
         self._edit_entry = None
+        self._edit_var = None
         item = self._edit_item
         self._edit_item = None
         self._edit_column = None
@@ -221,6 +230,7 @@ class ObservationListCtrl(ttk.Treeview):
         if self._edit_entry:
             self._edit_entry.destroy()
             self._edit_entry = None
+            self._edit_var = None
             self._edit_item = None
             self._edit_column = None
 
