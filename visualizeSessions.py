@@ -13,19 +13,31 @@ from lsl.common import sdf, metabundle, sdfADP, metabundleADP, sdfNDP, metabundl
 from lsl.common import stations
 from lsl.astro import utcjd_to_unix, MJD_OFFSET
 
-import wx
-from wx.lib.mixins.listctrl import CheckListCtrlMixin
+import tkinter as tk
+from tkinter import ttk, messagebox, filedialog
 
 import matplotlib
-matplotlib.use('WXAgg')
+matplotlib.use('TkAgg')
 matplotlib.interactive(True)
 
-from matplotlib.backends.backend_wxagg import NavigationToolbar2WxAgg, FigureCanvasWxAgg
+from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk, FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
 import matplotlib.dates
 from matplotlib import pyplot as plt
 from matplotlib.collections import LineCollection
+
+
+class NavigationToolbar(NavigationToolbar2Tk):
+    """
+    Custom navigation toolbar that suppresses the coordinate display.
+    Coordinates are shown in a separate status bar instead.
+    """
+
+    def set_message(self, s):
+        """Suppress coordinate display - handled by our status bar."""
+        pass
+
 
 __version__ = "0.3"
 __author__ = "Jayce Dowell"
@@ -39,32 +51,23 @@ formatString = '%Y/%m/%d %H:%M:%S.%f %Z'
 sessionLag = timedelta(seconds=5)
 
 
-# Deal with the different wxPython versions
-if 'phoenix' in wx.PlatformInfo:
-    AppendMenuItem = lambda x, y: x.Append(y)
-    AppendMenuMenu = lambda *args, **kwds: args[0].Append(*args[1:], **kwds)
-else:
-    AppendMenuItem = lambda x, y: x.AppendItem(y)
-    AppendMenuMenu = lambda *args, **kwds: args[0].AppendMenu(*args[1:], **kwds)
-
-
 def round15Minutes(tNow):
     """
     Round a datetime instance to the nearst 15 minutes
     """
-    
+
     reducedTime = tNow.minute*60 + tNow.second + tNow.microsecond/1000000.0
     nearest15min = round(reducedTime / 900)*900
     diff = nearest15min - reducedTime
-    
+
     sign = 1
     if diff < 0:
         sign = -1
         diff = abs(diff)
-    
+
     diffSeconds = int(diff)
     diffMicroseconds = int(round((diff - diffSeconds)*1e6))
-    
+
     return tNow + sign*timedelta(seconds=diffSeconds, microseconds=diffMicroseconds)
 
 
@@ -73,53 +76,96 @@ def getObsStartStop(obs):
     Given an observation, get the start and stop times (returned as a two-
     element tuple).
     """
-    
+
     # UNIX timestamp for the start
     tStart = utcjd_to_unix(obs.mjd + MJD_OFFSET)
     tStart += obs.mpm / 1000.0
-    
+
     # UNIX timestamp for the stop
     tStop = tStart +  obs.dur / 1000.0
-    
+
     # Conversion to a timezone-aware datetime instance
     tStart = _UTC.localize( datetime.utcfromtimestamp(tStart) )
     tStop  = _UTC.localize( datetime.utcfromtimestamp(tStop ) )
-    
+
     # Return
     return tStart, tStop
 
 
-class FilesListCtrl(wx.ListCtrl, CheckListCtrlMixin):
+class FilesListCtrl(ttk.Treeview):
     """
-    Class that combines a list with check boxes.  This is used for making the remove files
-    dialog actually work.
+    Treeview that displays files with checkboxes for selection.
     """
-    
+
     def __init__(self, parent, **kwargs):
-        wx.ListCtrl.__init__(self, parent, style=wx.LC_REPORT, **kwargs)
-        CheckListCtrlMixin.__init__(self)
-        
-    def CheckItem(self, index, check=True):
-        """
-        Catch for wxPython 4.1 which has a wx.ListCtrl.CheckItem() method 
-        that interferes with CheckListCtrlMixin.CheckItem().
-        """
-        
-        CheckListCtrlMixin.CheckItem(self, index, check=check)
+        self.columns = ('filename',)
+        super().__init__(parent, columns=self.columns, show='tree headings',
+                         selectmode='extended', **kwargs)
+
+        self.parent = parent
+        self._check_states = {}  # Track checkbox states by item id
+
+        # Setup columns
+        self.heading('filename', text='Filename')
+        self.column('filename', width=500, minwidth=200)
+        self.column('#0', width=30, minwidth=30, stretch=False)
+
+        # Bind click events for checkbox toggling
+        self.bind('<Button-1>', self._on_click)
+
+    def _on_click(self, event):
+        """Handle clicks to toggle checkbox state."""
+        region = self.identify_region(event.x, event.y)
+        if region == 'tree':
+            item = self.identify_row(event.y)
+            if item:
+                self.CheckItem(item, not self.IsChecked(item))
+
+    def InsertItem(self, index, filename):
+        """Insert an item with a checkbox."""
+        item = self.insert('', index, values=(filename,), text='[ ]')
+        self._check_states[item] = False
+        return item
+
+    def CheckItem(self, item, check=True):
+        """Set the check state of an item."""
+        self._check_states[item] = check
+        self.item(item, text='[X]' if check else '[ ]')
+
+    def IsChecked(self, item):
+        """Get the check state of an item."""
+        return self._check_states.get(item, False)
+
+    def GetItemCount(self):
+        """Return the number of items."""
+        return len(self.get_children())
+
+    def GetItemAtIndex(self, index):
+        """Get the item at a specific index."""
+        children = self.get_children()
+        if 0 <= index < len(children):
+            return children[index]
+        return None
 
 
 class Visualization_GUI(object):
     """
     Class to handle the parsing and plotting of the SDF files selected in the GUI.  The
-    loadFiles() function relies on the 'filenames' attribute of the parent to be a list 
+    loadFiles() function relies on the 'filenames' attribute of the parent to be a list
     of valid SDF filenames.
     """
-    
+
     def __init__(self, frame, station='lwa1'):
         self.frame = frame
         self.showDayNight = True
         self.showJupiter = False
-        
+        self.ax1 = None
+        self.ax2 = None
+        self.solar_times = None
+        self.solar_alts = None
+        self.jupiter_times = None
+        self.jupiter_alts = None
+
         if station == 'lwa1':
             self.observer = stations.lwa1
             self.sdf = sdf
@@ -137,22 +183,22 @@ class Visualization_GUI(object):
             self.ndp = True
         else:
             raise ValueError(f"Unkown station: {station}")
-            
-        self.colors = ['Blue','Green','Cyan','Magenta','Yellow', 
+
+        self.colors = ['Blue','Green','Cyan','Magenta','Yellow',
                     'Peru', 'Moccasin', 'Orange', 'DarkOrchid']
-        
+
         self.sessionSDFs = []
         self.sessionNames = []
         self.sessionBeams = []
         self.sessionStarts = []
         self.sessionDurations = []
         self.unqiueProjects = []
-    
+
     def loadFiles(self):
         """
         Load in the SDF files listed in self.parent.filenames and compute the free time.
         """
-        
+
         sessionSDFs = []
         sessionNames = []
         sessionBeams = []
@@ -160,7 +206,7 @@ class Visualization_GUI(object):
         sessionStops = []
         sessionDurations = []
         sessionDataFiles = []
-    
+
         # Loop over filenames
         for filename in self.frame.filenames:
             try:
@@ -173,10 +219,10 @@ class Visualization_GUI(object):
                 except Exception as e:
                     print(f"Warning: Cannot parse '{os.path.basename(filename)}': {str(e)}")
                     continue
-                    
+
             pID = project.id
             sID = project.sessions[0].id
-            
+
             if project.sessions[0].observations[0].mode in ('TBW', 'TBN'):
                 if self.ndp:
                     raise RuntimeError("No TBW or TBN for NDP")
@@ -189,7 +235,7 @@ class Visualization_GUI(object):
             sessionStart = getObsStartStop(project.sessions[0].observations[ 0])[0] - sessionLag
             sessionStop  = getObsStartStop(project.sessions[0].observations[-1])[1] + sessionLag
             duration = sessionStop-sessionStart
-            
+
             sessionSDFs.append(project)
             sessionNames.append(f"{pID}_{sID:04d}")
             sessionBeams.append(beam)
@@ -197,14 +243,14 @@ class Visualization_GUI(object):
             sessionStops.append(sessionStop)
             sessionDurations.append(duration)
             sessionDataFiles.append(dataFile)
-            
+
         # Find unique project identifiers
         uniqueProjects = []
         for name in sessionNames:
             pID, sID = name.split('_', 1)
             if pID not in uniqueProjects:
                 uniqueProjects.append(pID)
-        
+
         # Save the data
         self.sessionSDFs = sessionSDFs
         self.sessionNames = sessionNames
@@ -214,26 +260,26 @@ class Visualization_GUI(object):
         self.sessionDurations = sessionDurations
         self.sessionDataFiles = sessionDataFiles
         self.uniqueProjects = uniqueProjects
-        
+
         # Compute the free time
         self.getFreeTime()
-        
+
         try:
             self.disconnect()
         except:
             pass
         self.connect()
-        
+
     def getFreeTime(self, step=timedelta(seconds=900)):
         """
-        Using the list of SDFs read in by loadFiles(), find times when nothing is 
+        Using the list of SDFs read in by loadFiles(), find times when nothing is
         scheduled and save these 'free' times to self.freePeriods.  This attribute
         contains a list of two-element tuples (free time start, stop).
         """
-        
+
         startMin = min(self.sessionStarts)
         startMax = max(self.sessionStarts)
-        
+
         # Find free time in 15 minutes chunks
         frees = []
         tNow = round15Minutes(startMin)
@@ -248,7 +294,7 @@ class Visualization_GUI(object):
             if free:
                 frees.append(tNow)
             tNow += step
-        
+
         # Use the free times to come up with free periods
         if len(frees) > 0:
             freePeriods = [[frees[0], frees[0]],]
@@ -259,23 +305,23 @@ class Visualization_GUI(object):
                     freePeriods.append([free, free])
         else:
             freePeriods = []
-            
+
         # Save
         self.freePeriods = freePeriods
-        
+
     def getSolarAltitude(self, step=timedelta(seconds=900)):
         """
-        Using the time range of all loaded SDFs, return a two-element tuple of the 
+        Using the time range of all loaded SDFs, return a two-element tuple of the
         time and altitude for the Sun in 15 minute steps.
         """
-        
+
         # Find out how long we need to compute the position of the Sun
         start = min(self.sessionStarts)
         stop  = max(self.sessionStops)
-        
+
         # Define the Sun
         Sun = ephem.Sun()
-        
+
         # Go!
         tNow = start
         points = []
@@ -284,32 +330,32 @@ class Visualization_GUI(object):
             self.observer.date = tNow.strftime('%Y/%m/%d %H:%M:%S')
             Sun.compute(self.observer)
             alt = float(Sun.alt)*180/math.pi
-            
+
             s = tNow - start
             s = s.days*24*3600 + s.seconds + s.microseconds/1e6
             s /= 3600.0
 
             points.append([matplotlib.dates.date2num(tNow),6])
             alts.append(alt)
-            
+
             tNow += step
-            
+
         return numpy.array(points), numpy.array(alts)
 
 
     def getJovianAltitude(self, step=timedelta(seconds=900)):
         """
-        Using the time range of all loaded SDFs, return a two-element tuple of the 
+        Using the time range of all loaded SDFs, return a two-element tuple of the
         time and altitude for Jupiter in 15 minute steps.
         """
-        
+
         # Find out how long we need to compute the position of the Sun
         start = min(self.sessionStarts)
         stop  = max(self.sessionStops)
-        
+
         # Setup Jupiter
         Jupiter = ephem.Jupiter()
-        
+
         # Go!
         tNow = start
         points = []
@@ -318,42 +364,42 @@ class Visualization_GUI(object):
             self.observer.date = tNow.strftime('%Y/%m/%d %H:%M:%S')
             Jupiter.compute(self.observer)
             alt = float(Jupiter.alt)*180/math.pi
-            
+
             s = tNow - start
             s = s.days*24*3600 + s.seconds + s.microseconds/1e6
             s /= 3600.0
 
             points.append([matplotlib.dates.date2num(tNow),6])
             alts.append(alt)
-            
+
             tNow += step
-            
+
         return numpy.array(points), numpy.array(alts)
-        
+
     def draw(self, selected=None):
         """
         Shows the sessions.
         """
-        
+
         self.frame.figure.clf()
         self.ax1 = self.frame.figure.gca()
-        
+
         # Plot the sessions
         startMin = min(self.sessionStarts)
         startMax = max(self.sessionStarts)
         for s,(name,beam,start,duration) in enumerate(zip(self.sessionNames, self.sessionBeams, self.sessionStarts, self.sessionDurations)):
             d = duration.days*24*3600 + duration.seconds + duration.microseconds/1e6
             d /= 3600.0
-            
+
             i = self.uniqueProjects.index(name.split('_')[0])
             if s == selected:
                 alpha = 0.5
             else:
                 alpha = 0.2
             self.ax1.barh(beam-0.5, d/24, left=start, height=1.0, alpha=alpha, color=self.colors[i % len(self.colors)])
-            
+
             self.ax1.text(start+duration/2, beam, name, size=10, horizontalalignment='center', verticalalignment='center', rotation='vertical')
-            
+
         # Plot the free time more than 30 minutes
         for s,(free1,free2) in enumerate(self.freePeriods):
             duration = free2 - free1
@@ -361,17 +407,19 @@ class Visualization_GUI(object):
             d /= 3600.0
             if d < 0.5:
                 continue
-                
+
             if -(s+1) == selected:
                 alpha = 0.5
             else:
                 alpha = 0.2
             self.ax1.barh(-0.5, d/24, left=free1, alpha=alpha, height=1.0, color='r', hatch='/')
             self.ax1.text(free1+duration/2, 0, '%i:%02i' % (int(d), int((d-int(d))*60)), size=10, horizontalalignment='center', verticalalignment='center', rotation='vertical')
-            
+
         # Plot Sun altitude in a way that indicates day and night (if needed)
         if self.showDayNight:
             points, alts = self.getSolarAltitude()
+            self.solar_times = points[:, 0].copy()  # Store for mouseover lookup
+            self.solar_alts = alts.copy()
             points = points.reshape((-1, 1, 2))
             if self.ndp:
                 points[:,:,1] = 4.75
@@ -384,10 +432,15 @@ class Visualization_GUI(object):
             lc.set_array(alts)
             lc.set_linewidth(5)
             self.ax1.add_collection(lc)
-            
+        else:
+            self.solar_times = None
+            self.solar_alts = None
+
         # Plot Jupiter's altitude (if needed)
         if self.showJupiter:
             points, alts = self.getJovianAltitude()
+            self.jupiter_times = points[:, 0].copy()  # Store for mouseover lookup
+            self.jupiter_alts = alts.copy()
             points = points.reshape((-1, 1, 2))
             points[:,:,1] = -1.75
             segments = numpy.concatenate([points[:-1], points[1:]], axis=1)
@@ -395,18 +448,21 @@ class Visualization_GUI(object):
             lc.set_array(alts)
             lc.set_linewidth(5)
             self.ax1.add_collection(lc)
-            
+        else:
+            self.jupiter_times = None
+            self.jupiter_alts = None
+
         # Fix the x axis labels so that we have both MT and UT
         self.ax2 = self.ax1.twiny()
         self.ax2.set_xticks(self.ax1.get_xticks())
         self.ax2.set_xlim(self.ax1.get_xlim())
-        
+
         self.ax1.xaxis.set_major_formatter( matplotlib.dates.DateFormatter("%Y-%m-%d\n%H:%M:%S", tz=_UTC))
         self.ax1.set_xlabel('Time [UTC]')
         self.ax2.xaxis.set_major_formatter(matplotlib.dates.DateFormatter("%Y-%m-%d\n%H:%M:%S", tz=_MST))
         self.ax2.set_xlabel('Time [Mountain]')
         self.frame.figure.autofmt_xdate()
-        
+
         # Fix the y axis labels to use beams, free time, etc.
         if self.showDayNight:
             if self.ndp:
@@ -436,19 +492,25 @@ class Visualization_GUI(object):
         else:
             self.ax1.set_yticks([6, 5.75, 5, 4, 3, 2, 1, 0, -1, -1.75, -2])
             self.ax1.set_yticklabels(['', 'Day/Night', 'TBN/TBW', 'Beam 4', 'Beam 3', 'Beam 2', 'Beam 1', 'Unassigned', 'MCS Decides', 'Jupiter', ''])
-            
+
+        try:
+            self.frame.figure.tight_layout()
+        except ValueError:
+            # tight_layout can fail with certain axis configurations
+            pass
+
         self.frame.canvas.draw()
-        
+
     def describeSDF(self, sdfIndex):
         """
         Given an self.sessionSDFs index, display the SDF file in a descriptive manner.
         This function returns a string (like a __str__ call).
         """
-        
+
         # Get the SDF/data file collection in question
         project = self.sessionSDFs[sdfIndex]
         dataFile = self.sessionDataFiles[sdfIndex]
-        
+
         nObs = len(project.sessions[0].observations)
         tStart = [None,]*nObs
         for i in range(nObs):
@@ -456,11 +518,11 @@ class Visualization_GUI(object):
             tStart[i] += project.sessions[0].observations[i].mpm / 1000.0
             tStart[i]  = datetime.utcfromtimestamp(tStart[i])
             tStart[i]  = _UTC.localize(tStart[i])
-        
+
         # Get the LST at the start
         self.observer.date = (min(tStart)).strftime('%Y/%m/%d %H:%M:%S')
         lst = self.observer.sidereal_time()
-        
+
         out = ""
         out += " Project ID: %s\n" % project.id
         out += " Session ID: %i\n" % project.sessions[0].id
@@ -470,7 +532,7 @@ class Visualization_GUI(object):
         lastDur = project.sessions[0].observations[nObs-1].dur
         lastDur = timedelta(seconds=int(lastDur/1000), microseconds=(lastDur*1000) % 1000000)
         sessionDur = max(tStart) - min(tStart) + lastDur
-        
+
         out += "\n"
         out += " Total Session Duration: %s\n" % sessionDur
         out += " -> First observation starts at %s\n" % min(tStart).strftime(formatString)
@@ -490,16 +552,16 @@ class Visualization_GUI(object):
                 out += " -> %i channels, %i windows/integration\n" % tuple(project.sessions[0].spcSetup)
         else:
             out += " Transient Buffer: %s\n" % ('Wide band' if project.sessions[0].observations[0].mode == 'TBW' else 'Narrow band',)
-        
+
         out += "\n"
         out += " Number of observations: %i\n" % nObs
         out += " Observation Detail:\n"
         for i in range(nObs):
             currDur = project.sessions[0].observations[i].dur
             currDur = timedelta(seconds=int(currDur/1000), microseconds=(currDur*1000) % 1000000)
-            
+
             out += "  Observation #%i\n" % (i+1,)
-            
+
             ## Basic setup
             out += "   Target: %s\n" % project.sessions[0].observations[i].target
             out += "   Mode: %s\n" % project.sessions[0].observations[i].mode
@@ -508,7 +570,7 @@ class Visualization_GUI(object):
             out += "    MPM: %i\n" % project.sessions[0].observations[i].mpm
             out += "    -> %s\n" % getObsStartStop(project.sessions[0].observations[i])[0].strftime(formatString)
             out += "   Duration: %s\n" % currDur
-            
+
             ## DP setup
             if project.sessions[0].observations[i].mode not in ('TBW',):
                 out += "   Tuning 1: %.3f MHz\n" % (project.sessions[0].observations[i].frequency1/1e6,)
@@ -516,10 +578,10 @@ class Visualization_GUI(object):
                 out += "   Tuning 2: %.3f MHz\n" % (project.sessions[0].observations[i].frequency2/1e6,)
             if project.sessions[0].observations[i].mode not in ('TBW',):
                 out += "   Filter code: %i\n" % project.sessions[0].observations[i].filter
-                
+
             ## Comments/notes
             out += "   Observer Comments: %s\n" % project.sessions[0].observations[i].comments
-            
+
             ## Data file (optional)
             if dataFile is not None:
                 try:
@@ -527,389 +589,506 @@ class Visualization_GUI(object):
                     out += "   Data File Tag: %s\n" % dataFilename['tag']
                 except KeyError:
                     pass
-                    
+
         return out
-        
+
     def describeFree(self, freeIndex):
         """
-        Given a self.freePeriods index, describe a block of free time.  This function 
+        Given a self.freePeriods index, describe a block of free time.  This function
         returns a string (like a __str__ call).
         """
-        
+
         # UT and MT
         fUT = self.freePeriods[freeIndex]
         fMT = (fUT[0].astimezone(_MST), fUT[1].astimezone(_MST))
         d = fUT[1] - fUT[0]
-        
+
         out  = ""
         out += "Free time between %s and %s\n" % (fUT[0].strftime(formatString), fUT[1].strftime(formatString))
         out += "               -> %s and %s\n" % (fMT[0].strftime(formatString), fMT[1].strftime(formatString))
         out += "               -> %i:%02i in length\n" % (d.days*24+d.seconds/3600, d.seconds/60 % 60)
-        
+
         return out
-        
+
     def connect(self):
         """
         Connect to all the events we need
         """
-        
+
         self.cidpress = self.frame.figure.canvas.mpl_connect('button_press_event', self.on_press)
-        
+        self.cidmotion = self.frame.figure.canvas.mpl_connect('motion_notify_event', self.on_motion)
+
     def on_press(self, event):
         """
         On button press we will see if the mouse is over us and display some data
         """
-        
+
         if event.inaxes:
             clickBeam = round(event.ydata)
             clickTime = matplotlib.dates.num2date(event.xdata)
-            
+
             if clickBeam == 0:
                 for i in range(len(self.freePeriods)):
                     if clickTime >= self.freePeriods[i][0] and clickTime <= self.freePeriods[i][1]:
-                        self.frame.info.SetValue(self.describeFree(i))
+                        self.frame.setInfoText(self.describeFree(i))
                         self.draw(selected=-(i+1))
             else:
                 project = None
                 for i in range(len(self.sessionSDFs)):
                     if clickTime >= self.sessionStarts[i] and clickTime <= self.sessionStarts[i] + self.sessionDurations[i] and clickBeam == self.sessionBeams[i]:
-                        self.frame.info.SetValue(self.describeSDF(i))
+                        self.frame.setInfoText(self.describeSDF(i))
                         self.draw(selected=i)
-                        
+
+    def get_row_label(self, ydata):
+        """
+        Convert a y-axis value to a descriptive row label.
+        Handles beams, Day/Night, Jupiter, etc. based on station type.
+        """
+
+        if ydata is None:
+            return ""
+
+        # Round to nearest 0.25 to catch fractional rows (Day/Night, Jupiter)
+        y_rounded = round(ydata * 4) / 4
+
+        # Jupiter row (all station types)
+        if -2.0 < y_rounded <= -1.5:
+            return "Jupiter"
+
+        # MCS Decides row
+        if -1.5 < y_rounded <= -0.5:
+            return "MCS Decides"
+
+        # Free time / Unassigned row
+        if -0.5 < y_rounded <= 0.5:
+            return "Free Time"
+
+        # Beam rows (station-dependent)
+        if self.ndp:
+            # NDP: Beams 1-4, Day/Night at 4.75
+            if 4.5 < y_rounded <= 5.0:
+                return "Day/Night"
+            elif 3.5 < y_rounded <= 4.5:
+                return "Beam 4"
+            elif 2.5 < y_rounded <= 3.5:
+                return "Beam 3"
+            elif 1.5 < y_rounded <= 2.5:
+                return "Beam 2"
+            elif 0.5 < y_rounded <= 1.5:
+                return "Beam 1"
+        elif self.adp:
+            # ADP: Beams 1-2, TBN at 3, Day/Night at 3.75
+            if 3.5 < y_rounded <= 4.0:
+                return "Day/Night"
+            elif 2.5 < y_rounded <= 3.5:
+                return "TBN"
+            elif 1.5 < y_rounded <= 2.5:
+                return "Beam 2"
+            elif 0.5 < y_rounded <= 1.5:
+                return "Beam 1"
+        else:
+            # LWA1: Beams 1-4, TBN/TBW at 5, Day/Night at 5.75
+            if 5.5 < y_rounded <= 6.0:
+                return "Day/Night"
+            elif 4.5 < y_rounded <= 5.5:
+                return "TBN/TBW"
+            elif 3.5 < y_rounded <= 4.5:
+                return "Beam 4"
+            elif 2.5 < y_rounded <= 3.5:
+                return "Beam 3"
+            elif 1.5 < y_rounded <= 2.5:
+                return "Beam 2"
+            elif 0.5 < y_rounded <= 1.5:
+                return "Beam 1"
+
+        return ""
+
+    def on_motion(self, event):
+        """
+        Handle mouse motion to update the status bar with coordinates.
+        """
+
+        # Guard against ax1 not existing yet
+        if self.ax1 is None:
+            return
+
+        # Check both ax1 and ax2 since twin axis may be "on top" for mouse events
+        if event.inaxes in (self.ax1, self.ax2):
+            # Format time from x-axis
+            try:
+                t = matplotlib.dates.num2date(event.xdata)
+                time_str = t.strftime("%Y-%m-%d %H:%M:%S UTC")
+            except (ValueError, OverflowError):
+                time_str = ""
+
+            # Get row label from y-axis
+            row_label = self.get_row_label(event.ydata)
+
+            # Enhance Day/Night label with sun altitude
+            if row_label == "Day/Night" and self.solar_times is not None:
+                try:
+                    alt = numpy.interp(event.xdata, self.solar_times, self.solar_alts)
+                    if alt > 0:
+                        row_label = f"Day - Sun @ {alt:.0f}°"
+                    elif alt > -6:
+                        row_label = f"Civil Twilight - Sun @ {alt:.0f}°"
+                    elif alt > -12:
+                        row_label = f"Nautical Twilight - Sun @ {alt:.0f}°"
+                    elif alt > -18:
+                        row_label = f"Astronomical Twilight - Sun @ {alt:.0f}°"
+                    else:
+                        row_label = f"Night - Sun @ {alt:.0f}°"
+                except (ValueError, IndexError):
+                    pass
+
+            # Enhance Jupiter label with altitude
+            if row_label == "Jupiter" and self.jupiter_times is not None:
+                try:
+                    alt = numpy.interp(event.xdata, self.jupiter_times, self.jupiter_alts)
+                    if alt > 0:
+                        row_label = f"Jupiter @ {alt:.0f}° alt"
+                    else:
+                        row_label = f"Jupiter below horizon ({alt:.0f}°)"
+                except (ValueError, IndexError):
+                    pass
+
+            if time_str and row_label:
+                self.frame.status_var.set(f"{time_str}  |  {row_label}")
+            elif time_str:
+                self.frame.status_var.set(time_str)
+            else:
+                self.frame.status_var.set("")
+        else:
+            self.frame.status_var.set("")
+
     def disconnect(self):
         """
         Disconnect all the stored connection IDs.
         """
-        
-        self.frame.figure1.canvas.mpl_disconnect(self.cidpress)
+
+        self.frame.figure.canvas.mpl_disconnect(self.cidpress)
+        self.frame.figure.canvas.mpl_disconnect(self.cidmotion)
 
 
-ID_ADD_FILES = 10
-ID_REMOVE_FILES = 11
-ID_QUIT = 12
-ID_SHOW_DAYNIGHT = 20
-ID_SHOW_JUPITER = 21
-ID_ABOUT = 30
-
-class MainWindow(wx.Frame):
+class MainWindow(tk.Tk):
     """
-    Main wxPython window for displaying the sessions and adding/removing files.
+    Main Tkinter window for displaying the sessions and adding/removing files.
     """
-    
-    def __init__(self, parent, id):
+
+    def __init__(self, args):
+        super().__init__()
+
         self.dirname = ''
         self.scriptPath = os.path.abspath(__file__)
         self.scriptPath = os.path.split(self.scriptPath)[0]
-        
+
         self.data = None
         self.filenames = []
-        
-        wx.Frame.__init__(self, parent, id, title="Visualize Sessions", size=(600,800))
-        
+
+        self.title("Visualize Sessions")
+        self.geometry("600x800")
+
         self.initUI()
         self.initEvents()
-        self.Show()
-        
+
+        # Process command line arguments
+        if args.filename is not None:
+            self.filenames = args.filename
+
+            if args.lwasv:
+                station = 'lwasv'
+            elif args.lwana:
+                station = 'lwana'
+            else:
+                station = 'lwa1'
+
+            self.data = Visualization_GUI(self, station=station)
+            self.data.loadFiles()
+            self.data.draw()
+
     def initUI(self):
         """
         Start the user interface.
         """
-        
-        menubar = wx.MenuBar()
-        
-        fileMenu = wx.Menu()
-        dispMenu = wx.Menu()
-        helpMenu = wx.Menu()
-        
-        # File menu items
-        add = wx.MenuItem(fileMenu, ID_ADD_FILES, '&Add File(s)')
-        AppendMenuItem(fileMenu, add)
-        remove = wx.MenuItem(fileMenu, ID_REMOVE_FILES, '&Remove File(s)')
-        AppendMenuItem(fileMenu, remove)
-        fileMenu.AppendSeparator()
-        quit = wx.MenuItem(fileMenu, ID_QUIT, '&Quit')
-        AppendMenuItem(fileMenu, quit)
-        
-        # Display menu items
-        daynight = wx.MenuItem(dispMenu, ID_SHOW_DAYNIGHT, 'Show Day/Night', kind=wx.ITEM_CHECK)
-        AppendMenuItem(dispMenu, daynight)
-        jupiter = wx.MenuItem(dispMenu, ID_SHOW_JUPITER, 'Show Jupiter Visibility', kind=wx.ITEM_CHECK)
-        AppendMenuItem(dispMenu, jupiter)
-        
-        # Help menu items
-        about = wx.MenuItem(helpMenu, ID_ABOUT, '&About')
-        AppendMenuItem(helpMenu, about)
-        
-        menubar.Append(fileMenu, '&File')
-        menubar.Append(dispMenu, '&Display')
-        menubar.Append(helpMenu, '&Help')
-        self.SetMenuBar(menubar)
-        
-        # Menu defaults
-        daynight.Check(True)
-        jupiter.Check(False)
-        
-        vbox = wx.BoxSizer(wx.VERTICAL)
-        
-        # Add SDF plot
-        panel1 = wx.Panel(self, -1)
-        hbox1 = wx.BoxSizer(wx.VERTICAL)
-        self.figure = Figure(figsize=(4,4))
-        self.canvas = FigureCanvasWxAgg(panel1, -1, self.figure)
-        self.toolbar = NavigationToolbar2WxAgg(self.canvas)
-        self.toolbar.Realize()
-        hbox1.Add(self.canvas,  1, wx.ALIGN_LEFT | wx.EXPAND)
-        hbox1.Add(self.toolbar, 0, wx.ALIGN_LEFT)
-        panel1.SetSizer(hbox1)
-        vbox.Add(panel1, 1, wx.EXPAND)
-        
-        # Info window
-        panel2 = wx.Panel(self, -1)
-        hbox2 = wx.BoxSizer(wx.HORIZONTAL)
-        self.info = wx.TextCtrl(panel2, style=wx.TE_MULTILINE|wx.EXPAND|wx.TE_READONLY, size=(600,400))
-        hbox2.Add(self.info, 1, wx.EXPAND)
-        panel2.SetSizer(hbox2)
-        vbox.Add(panel2, 1, wx.EXPAND)
-        
-        # Use some sizers to see layout options
-        self.SetSizer(vbox)
-        self.SetAutoLayout(1)
-        vbox.Fit(self)
-        
+
+        # Create menu bar
+        menubar = tk.Menu(self)
+
+        # File menu
+        fileMenu = tk.Menu(menubar, tearoff=0)
+        fileMenu.add_command(label='Add File(s)', command=self.onAddFiles, accelerator='Ctrl+O')
+        fileMenu.add_command(label='Remove File(s)', command=self.onRemoveFiles)
+        fileMenu.add_separator()
+        fileMenu.add_command(label='Quit', command=self.onQuit, accelerator='Ctrl+Q')
+        menubar.add_cascade(label='File', menu=fileMenu)
+
+        # Display menu
+        dispMenu = tk.Menu(menubar, tearoff=0)
+        self.showDayNightVar = tk.BooleanVar(value=True)
+        self.showJupiterVar = tk.BooleanVar(value=False)
+        dispMenu.add_checkbutton(label='Show Day/Night', variable=self.showDayNightVar,
+                                 command=self.onDayNight)
+        dispMenu.add_checkbutton(label='Show Jupiter Visibility', variable=self.showJupiterVar,
+                                 command=self.onJupiter)
+        menubar.add_cascade(label='Display', menu=dispMenu)
+
+        # Help menu
+        helpMenu = tk.Menu(menubar, tearoff=0)
+        helpMenu.add_command(label='About', command=self.onAbout)
+        menubar.add_cascade(label='Help', menu=helpMenu)
+
+        self.config(menu=menubar)
+
+        # Main container using PanedWindow for resizable split
+        paned = ttk.PanedWindow(self, orient=tk.VERTICAL)
+        paned.pack(fill=tk.BOTH, expand=True)
+
+        # Top frame for plot
+        plot_frame = ttk.Frame(paned)
+        paned.add(plot_frame, weight=1)
+
+        # Create a container for toolbar and status bar at bottom of plot_frame
+        # Pack this FIRST with side=BOTTOM so canvas can fill remaining space
+        bottom_bar = ttk.Frame(plot_frame)
+        bottom_bar.pack(side=tk.BOTTOM, fill=tk.X)
+
+        # Navigation toolbar (inside bottom_bar, will pack itself)
+        # We create a sub-frame so the toolbar's auto-pack stays contained
+        toolbar_frame = ttk.Frame(bottom_bar)
+        toolbar_frame.pack(side=tk.TOP, fill=tk.X)
+
+        # Status bar for coordinate display (fixed width, won't cause layout shifts)
+        self.status_var = tk.StringVar(value="Ready")
+        self.status_bar = ttk.Label(bottom_bar, textvariable=self.status_var,
+                                    anchor='w', width=80, relief='sunken', padding=(5, 2))
+        self.status_bar.pack(side=tk.TOP, fill=tk.X, padx=2, pady=(0, 4))
+
+        # Create matplotlib figure and canvas
+        self.figure = Figure(figsize=(6, 4), dpi=100)
+        self.canvas = FigureCanvasTkAgg(self.figure, master=plot_frame)
+        self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
+        # Create toolbar after canvas (it needs the canvas reference)
+        self.toolbar = NavigationToolbar(self.canvas, toolbar_frame)
+        self.toolbar.update()
+
+        # Bottom frame for info panel
+        info_frame = ttk.Frame(paned)
+        paned.add(info_frame, weight=1)
+
+        # Info text widget with scrollbar
+        info_scroll = ttk.Scrollbar(info_frame)
+        info_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.info = tk.Text(info_frame, wrap=tk.WORD, height=15,
+                           yscrollcommand=info_scroll.set, state='disabled')
+        self.info.pack(fill=tk.BOTH, expand=True)
+        info_scroll.config(command=self.info.yview)
+
     def initEvents(self):
         """
         Set all of the various events in the main window.
         """
-        
-        # File menu events
-        self.Bind(wx.EVT_MENU, self.onAddFiles, id=ID_ADD_FILES)
-        self.Bind(wx.EVT_MENU, self.onRemoveFiles, id=ID_REMOVE_FILES)
-        self.Bind(wx.EVT_MENU, self.onQuit, id=ID_QUIT)
-        
-        # Display menu events
-        self.Bind(wx.EVT_MENU, self.onDayNight, id=ID_SHOW_DAYNIGHT)
-        self.Bind(wx.EVT_MENU, self.onJupiter, id=ID_SHOW_JUPITER)
-        
-        # Help menu events
-        self.Bind(wx.EVT_MENU, self.onAbout, id=ID_ABOUT)
-        
-        # Make the images resizable
-        self.Bind(wx.EVT_PAINT, self.resizePlot)
-        
-    def onAddFiles(self, event):
+
+        # Keyboard shortcuts
+        self.bind('<Control-o>', lambda e: self.onAddFiles())
+        self.bind('<Control-q>', lambda e: self.onQuit())
+
+        # Window close
+        self.protocol("WM_DELETE_WINDOW", self.onQuit)
+
+    def setInfoText(self, text):
+        """Set the info panel text."""
+        self.info.config(state='normal')
+        self.info.delete('1.0', tk.END)
+        self.info.insert('1.0', text)
+        self.info.config(state='disabled')
+
+    def onAddFiles(self):
         """
         Open a file or files.
         """
-        
-        dlg = wx.FileDialog(self, "Choose a file", self.dirname, "", "*.*", wx.FD_OPEN|wx.FD_MULTIPLE)
-        if dlg.ShowModal() == wx.ID_OK:
-            self.dirname = dlg.GetDirectory()
-            filenames = dlg.GetFilenames()
+
+        filenames = filedialog.askopenfilenames(
+            initialdir=self.dirname,
+            title="Choose file(s)",
+            filetypes=[('All Files', '*.*')]
+        )
+
+        if filenames:
+            # Update dirname from first file
+            if len(filenames) > 0:
+                self.dirname = os.path.dirname(filenames[0])
+
             for filename in filenames:
-                filename = os.path.join(self.dirname, filename)
                 if filename not in self.filenames:
                     self.filenames.append(filename)
-                    
+
             if self.data is None:
                 self.data = Visualization_GUI(self)
-                
+
             self.data.loadFiles()
             self.data.draw()
-        dlg.Destroy()
-        
-    def onRemoveFiles(self, event):
+
+    def onRemoveFiles(self):
         """
         Remove a file or files.
         """
-        
-        RemoveFilesDialog(self)
-        
-    def onDayNight(self, event):
+
+        if self.filenames:
+            RemoveFilesDialog(self)
+
+    def onDayNight(self):
         """
         Toggle whether or not the day/night indicator is shown.
         """
-        
+
         if self.data is not None:
-            if event.Checked():
-                self.data.showDayNight = True
-            else:
-                self.data.showDayNight = False
+            self.data.showDayNight = self.showDayNightVar.get()
             self.data.draw()
-            
-    def onJupiter(self, event):
+
+    def onJupiter(self):
         """
         Toggle whether or not the Jupiter visibility indicator is shown.
         """
-        
+
         if self.data is not None:
-            if event.Checked():
-                self.data.showJupiter = True
-            else:
-                self.data.showJupiter = False
+            self.data.showJupiter = self.showJupiterVar.get()
             self.data.draw()
-            
-    def onAbout(self, event):
+
+    def onAbout(self):
         """
-        Display a ver very very brief 'about' window.
+        Display a very very very brief 'about' window.
         """
-        
-        dialog = wx.AboutDialogInfo()
-        
-        dialog.SetIcon(wx.Icon(os.path.join(self.scriptPath, 'icons', 'lwa.png'), wx.BITMAP_TYPE_PNG))
-        dialog.SetName('Visualize Sessions')
-        dialog.SetVersion(__version__)
-        dialog.SetDescription("""GUI for displaying the current\nLWA1 schedule via its SDFs.""")
-        dialog.SetWebSite('http://lwa.unm.edu')
-        dialog.AddDeveloper(__author__)
-        
-        # Debuggers/testers
-        dialog.AddDocWriter(__author__)
-        
-        wx.AboutBox(dialog)
-    
-    def onQuit(self, event):
+
+        about_text = f"""Visualize Sessions
+Version {__version__}
+
+GUI for displaying the current LWA1 schedule via its SDFs.
+
+Developer: {__author__}
+Website: http://lwa.unm.edu"""
+
+        messagebox.showinfo('About Visualize Sessions', about_text)
+
+    def onQuit(self):
         """
         Quit the main window.
         """
-        
-        self.Destroy()
-        
-    def resizePlot(self, event):
-        w, h = self.GetSize()
-        dpi = self.figure.get_dpi()
-        newW = 1.0*w/dpi
-        newH = 1.0*w/dpi
-        self.figure.set_size_inches((newW, newH))
-        self.figure.canvas.draw()
 
-    def GetToolBar(self):
-        # You will need to override GetToolBar if you are using an 
-        # unmanaged toolbar in your frame
-        return self.toolbar
+        self.destroy()
 
 
-ID_REMOVE_LISTCTRL = 100
-ID_REMOVE_OK = 101
-ID_REMOVE_CANCEL = 102
-
-class RemoveFilesDialog(wx.Frame):
+class RemoveFilesDialog(tk.Toplevel):
     """
-    Class to implement a window that displays a checkable list of filenames so 
-    that the selected files can be removed from the plot window.
+    Dialog to display a checkable list of filenames so that selected files
+    can be removed from the plot window.
     """
-    
+
     def __init__(self, parent):
-        wx.Frame.__init__(self, parent, title='Select Files to Remove', size=(600,300))
-        
+        super().__init__(parent)
+
         self.parent = parent
-        
+
+        self.title('Select Files to Remove')
+        self.geometry('600x300')
+        self.transient(parent)
+
         self.initUI()
-        self.initEvents()
         self.loadFiles()
-        self.Show()
-        
+
+        self.grab_set()  # Make modal
+
     def initUI(self):
         """
         Start the user interface.
         """
-        
-        # File list
-        hbox = wx.BoxSizer(wx.VERTICAL)
-        panel = wx.Panel(self, -1)
-        
-        self.listControl = FilesListCtrl(panel, id=ID_REMOVE_LISTCTRL)
-        self.listControl.parent = self
-        hbox.Add(self.listControl, 1, wx.EXPAND)
-        
+
+        # Main frame
+        main_frame = ttk.Frame(self)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        # File list with scrollbar
+        list_frame = ttk.Frame(main_frame)
+        list_frame.pack(fill=tk.BOTH, expand=True)
+
+        scrollbar = ttk.Scrollbar(list_frame)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.listControl = FilesListCtrl(list_frame, yscrollcommand=scrollbar.set)
+        self.listControl.pack(fill=tk.BOTH, expand=True)
+        scrollbar.config(command=self.listControl.yview)
+
         # Buttons
-        ok = wx.Button(panel, ID_REMOVE_OK, 'Ok', size=(90, 28))
-        cancel = wx.Button(panel, ID_REMOVE_CANCEL, 'Cancel', size=(90, 28))
-        hbox.Add(ok)
-        hbox.Add(cancel)
-        
-        panel.SetSizer(hbox)
-        
-    def initEvents(self):
-        """
-        Set all of the various events in the file removable window.
-        """
-        
-        self.Bind(wx.EVT_BUTTON, self.onOK, id=ID_REMOVE_OK)
-        self.Bind(wx.EVT_BUTTON, self.onCancel, id=ID_REMOVE_CANCEL)
-        
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(fill=tk.X, pady=(10, 0))
+
+        ok_btn = ttk.Button(button_frame, text='OK', command=self.onOK, width=10)
+        ok_btn.pack(side=tk.LEFT, padx=5)
+
+        cancel_btn = ttk.Button(button_frame, text='Cancel', command=self.onCancel, width=10)
+        cancel_btn.pack(side=tk.LEFT, padx=5)
+
     def loadFiles(self):
         """
         Setup the checkable list and populate it with what is currently loaded.
         """
-        
-        # Add the filename column
-        self.listControl.InsertColumn(0, 'Filename', width=550)
-        
-        # Fill!
-        for i,filename in enumerate(self.parent.filenames):
-            index = self.listControl.InsertStringItem(i, filename)
-    
-    def onOK(self, event):
+
+        for i, filename in enumerate(self.parent.filenames):
+            self.listControl.InsertItem(i, filename)
+
+    def onOK(self):
         """
         Process the checklist and remove as necessary.
         """
-        
+
         # Build a list of filenames to remove
         toRemove = []
-        for i in range(self.listControl.GetItemCount()):
-            if self.listControl.IsChecked(i):
-                toRemove.append( self.parent.filenames[i] )
-        
+        children = self.listControl.get_children()
+        for i, item in enumerate(children):
+            if self.listControl.IsChecked(item):
+                toRemove.append(self.parent.filenames[i])
+
         # Remove them
         for filename in toRemove:
             self.parent.filenames.remove(filename)
-        
+
         # Reload the SDFs and update the plot if needed
         if len(toRemove) > 0:
             self.parent.data.loadFiles()
             self.parent.data.draw()
-        self.Close()
-    
-    def onCancel(self, event):
+
+        self.destroy()
+
+    def onCancel(self):
         """
         Quit without deleting any files.
         """
-        
-        self.Close()
+
+        self.destroy()
 
 
 def main(args):
-    app = wx.App(0)
-    frame = MainWindow(None, -1)
-    if args.filename is not None:
-        frame.filenames = args.filename
-        
-        if args.lwasv:
-            station = 'lwasv'
-        elif args.lwana:
-            station = 'lwana'
-        else:
-            station = 'lwa1'
-        
-        frame.data = Visualization_GUI(frame, station=station)
-        frame.data.loadFiles()
-        frame.data.draw()
-        
-    app.MainLoop()
+    app = MainWindow(args)
+    app.mainloop()
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description='GUI for looking at the schedule on a station', 
+        description='GUI for looking at the schedule on a station',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         )
-    parser.add_argument('filename', type=str, nargs='+', 
+    parser.add_argument('filename', type=str, nargs='*', default=None,
                         help='SDF file to examine')
     sgroup = parser.add_mutually_exclusive_group(required=False)
-    sgroup.add_argument('-s', '--lwasv', action='store_true', 
+    sgroup.add_argument('-s', '--lwasv', action='store_true',
                         help='files are for LWA-SV instead of LWA1')
-    sgroup.add_argument('-n', '--lwana', action='store_true', 
+    sgroup.add_argument('-n', '--lwana', action='store_true',
                         help='files are for LWA-NA instead of LWA1')
     args = parser.parse_args()
+
+    # Handle empty filename list
+    if args.filename is not None and len(args.filename) == 0:
+        args.filename = None
+
     main(args)
-    
