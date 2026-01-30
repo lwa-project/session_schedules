@@ -35,7 +35,7 @@ from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk, FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.ticker import NullFormatter, NullLocator
 
-from calibratorSearch_tk import CalibratorSearch as OCS
+from calibratorSearch import CalibratorSearch as OCS
 
 __version__ = "0.2"
 __author__ = "Jayce Dowell"
