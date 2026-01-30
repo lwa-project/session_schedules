@@ -13,12 +13,11 @@ None
 
 import os
 import sys
-import pytz
 import math
 import ephem
 import argparse
 
-from datetime import datetime, date, time, timedelta
+from datetime import datetime, date, time, timedelta, timezone
 
 import lsl
 from lsl import astro
@@ -32,7 +31,6 @@ from lsl.misc import parser as aph
 __version__ = "0.1"
 
 # Date/time manipulation
-_UTC = pytz.utc
 formatString = '%Y/%m/%d %H:%M:%S.%f %Z'
 
 # LST manipulation
@@ -55,8 +53,8 @@ def get_scan_start_stop(scn):
     tStop = tStart +  scn.dur / 1000.0
     
     # Conversion to a timezone-aware datetime instance
-    tStart = _UTC.localize( datetime.utcfromtimestamp(tStart) )
-    tStop  = _UTC.localize( datetime.utcfromtimestamp(tStop ) )
+    tStart = datetime.fromtimestamp(tStart, tz=timezone.utc)
+    tStop  = datetime.fromtimestamp(tStop, tz=timezone.utc)
     
     # Return
     return tStart, tStop
@@ -91,8 +89,7 @@ def main(args):
     for i in range(nObs):
         tStart[i]  = utcjd_to_unix(project.runs[0].scans[i].mjd + MJD_OFFSET)
         tStart[i] += project.runs[0].scans[i].mpm / 1000.0
-        tStart[i]  = datetime.utcfromtimestamp(tStart[i])
-        tStart[i]  = _UTC.localize(tStart[i])
+        tStart[i]  = datetime.fromtimestamp(tStart[i], tz=timezone.utc)
         
     # Get the LST at the start
     observer.date = (min(tStart)).strftime('%Y/%m/%d %H:%M:%S')
@@ -186,9 +183,7 @@ def main(args):
                     sys.exit(1)
                     
             else:
-                tNewStart = datetime.combine(args.date, min(tStart).time())
-                
-            tNewStart = _UTC.localize(tNewStart)
+                tNewStart = datetime.combine(args.date, min(tStart).time(), tzinfo=timezone.utc)
             
             # Figure out a new start time on the correct day
             diff = ((tNewStart - min(tStart)).days) * siderealRegression
@@ -229,9 +224,7 @@ def main(args):
                         sys.exit(1)
                         
             else:
-                tNewStart = datetime.combine(args.date, args.time)
-            
-            tNewStart = _UTC.localize(tNewStart)
+                tNewStart = datetime.combine(args.date, args.time, tzinfo=timezone.utc)
             
         # Get the new shift needed to translate the old times to the new times
         tShift = tNewStart - min(tStart)
@@ -297,7 +290,7 @@ def main(args):
             utc = Time(tStart[i], format=Time.FORMAT_PY_DATE)
             mjd = int(utc.utc_mjd)
             
-            utcMidnight = datetime(tStart[i].year, tStart[i].month, tStart[i].day, 0, 0, 0, tzinfo=_UTC)
+            utcMidnight = datetime(tStart[i].year, tStart[i].month, tStart[i].day, 0, 0, 0, tzinfo=timezone.utc)
             diff = tStart[i] - utcMidnight
             mpm = int(round((diff.seconds + diff.microseconds/1000000.0)*1000.0))
             

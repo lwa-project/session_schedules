@@ -20,7 +20,7 @@ import conflict
 
 import lsl
 from lsl import astro
-from lsl.common.dp import fS
+from lsl.common.ndp import fS
 from lsl.common import stations, idf
 from lsl.astro import deg_to_dms, deg_to_hms, MJD_OFFSET, DJD_OFFSET
 from lsl.reader.drx import FILTER_CODES as DRXFilters
@@ -35,7 +35,7 @@ from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk, FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.ticker import NullFormatter, NullLocator
 
-from calibratorSearch_tk import CalibratorSearch as OCS
+from calibratorSearch import CalibratorSearch as OCS
 
 __version__ = "0.2"
 __author__ = "Jayce Dowell"
@@ -1802,138 +1802,126 @@ class ObserverInfo(tk.Toplevel):
 
         self.initUI()
         self.initEvents()
+        
+        self.geometry('550x700')
         self.grab_set()
 
     def initUI(self):
         """Setup the UI elements."""
-        # Main frame with scrolling
-        main_frame = ttk.Frame(self)
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        # Create scrollable frame
+        canvas = tk.Canvas(self)
+        scrollbar = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas, padding="10")
 
-        row = 0
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        main_frame = scrollable_frame
 
         # Observer Information Section
-        obs_label = ttk.Label(main_frame, text='Observer Information', font=('TkDefaultFont', 12, 'bold'))
-        obs_label.grid(row=row, column=0, columnspan=4, sticky='w', pady=(0, 10))
-        row += 1
+        obs_frame = ttk.LabelFrame(main_frame, text='Observer Information', padding="5")
+        obs_frame.pack(fill=tk.X, pady=(0, 10))
 
-        ttk.Separator(main_frame, orient='horizontal').grid(row=row, column=0, columnspan=4, sticky='ew', pady=5)
-        row += 1
+        ttk.Label(obs_frame, text='ID Number:').grid(row=0, column=0, sticky=tk.E, padx=5, pady=2)
+        self.observerIDEntry = ttk.Entry(obs_frame, width=15)
+        self.observerIDEntry.grid(row=0, column=1, sticky=tk.W+tk.E, padx=5, pady=2)
 
-        ttk.Label(main_frame, text='Observer ID:').grid(row=row, column=0, sticky='e', padx=5, pady=2)
-        self.observerIDEntry = ttk.Entry(main_frame, width=15)
-        self.observerIDEntry.grid(row=row, column=1, sticky='w', padx=5, pady=2)
+        ttk.Label(obs_frame, text='First Name:').grid(row=1, column=0, sticky=tk.E, padx=5, pady=2)
+        self.observerFirstEntry = ttk.Entry(obs_frame, width=20)
+        self.observerFirstEntry.grid(row=1, column=1, sticky=tk.W+tk.E, padx=5, pady=2)
 
-        ttk.Label(main_frame, text='First Name:').grid(row=row, column=2, sticky='e', padx=5, pady=2)
-        self.observerFirstEntry = ttk.Entry(main_frame, width=20)
-        self.observerFirstEntry.grid(row=row, column=3, sticky='w', padx=5, pady=2)
-        row += 1
+        ttk.Label(obs_frame, text='Last Name:').grid(row=2, column=0, sticky=tk.E, padx=5, pady=2)
+        self.observerLastEntry = ttk.Entry(obs_frame, width=20)
+        self.observerLastEntry.grid(row=2, column=1, sticky=tk.W+tk.E, padx=5, pady=2)
 
-        ttk.Label(main_frame, text='Last Name:').grid(row=row, column=2, sticky='e', padx=5, pady=2)
-        self.observerLastEntry = ttk.Entry(main_frame, width=20)
-        self.observerLastEntry.grid(row=row, column=3, sticky='w', padx=5, pady=2)
-        row += 1
+        obs_frame.columnconfigure(1, weight=1)
 
         # Project Information Section
-        ttk.Separator(main_frame, orient='horizontal').grid(row=row, column=0, columnspan=4, sticky='ew', pady=10)
-        row += 1
+        proj_frame = ttk.LabelFrame(main_frame, text='Project Information', padding="5")
+        proj_frame.pack(fill=tk.X, pady=(0, 10))
 
-        proj_label = ttk.Label(main_frame, text='Project Information', font=('TkDefaultFont', 12, 'bold'))
-        proj_label.grid(row=row, column=0, columnspan=4, sticky='w', pady=(0, 10))
-        row += 1
+        ttk.Label(proj_frame, text='ID Code:').grid(row=0, column=0, sticky=tk.E, padx=5, pady=2)
+        self.projectIDEntry = ttk.Entry(proj_frame, width=15)
+        self.projectIDEntry.grid(row=0, column=1, sticky=tk.W+tk.E, padx=5, pady=2)
 
-        ttk.Label(main_frame, text='Project ID:').grid(row=row, column=0, sticky='e', padx=5, pady=2)
-        self.projectIDEntry = ttk.Entry(main_frame, width=15)
-        self.projectIDEntry.grid(row=row, column=1, sticky='w', padx=5, pady=2)
+        ttk.Label(proj_frame, text='Title:').grid(row=1, column=0, sticky=tk.E, padx=5, pady=2)
+        self.projectTitleEntry = ttk.Entry(proj_frame, width=30)
+        self.projectTitleEntry.grid(row=1, column=1, sticky=tk.W+tk.E, padx=5, pady=2)
 
-        ttk.Label(main_frame, text='Project Title:').grid(row=row, column=2, sticky='e', padx=5, pady=2)
-        self.projectTitleEntry = ttk.Entry(main_frame, width=30)
-        self.projectTitleEntry.grid(row=row, column=3, sticky='w', padx=5, pady=2)
-        row += 1
+        ttk.Label(proj_frame, text='Comments:').grid(row=2, column=0, sticky=tk.NE, padx=5, pady=2)
+        self.projectCommentsEntry = tk.Text(proj_frame, width=50, height=3)
+        self.projectCommentsEntry.grid(row=2, column=1, sticky=tk.W+tk.E, padx=5, pady=2)
 
-        ttk.Label(main_frame, text='Comments:').grid(row=row, column=0, sticky='ne', padx=5, pady=2)
-        self.projectCommentsEntry = tk.Text(main_frame, width=50, height=3)
-        self.projectCommentsEntry.grid(row=row, column=1, columnspan=3, sticky='w', padx=5, pady=2)
-        row += 1
+        proj_frame.columnconfigure(1, weight=1)
 
         # Run Information Section
-        ttk.Separator(main_frame, orient='horizontal').grid(row=row, column=0, columnspan=4, sticky='ew', pady=10)
-        row += 1
+        run_frame = ttk.LabelFrame(main_frame, text='Run Information', padding="5")
+        run_frame.pack(fill=tk.X, pady=(0, 10))
 
-        run_label = ttk.Label(main_frame, text='Run Information', font=('TkDefaultFont', 12, 'bold'))
-        run_label.grid(row=row, column=0, columnspan=4, sticky='w', pady=(0, 10))
-        row += 1
+        ttk.Label(run_frame, text='ID Number:').grid(row=0, column=0, sticky=tk.E, padx=5, pady=2)
+        self.runIDEntry = ttk.Entry(run_frame, width=15)
+        self.runIDEntry.grid(row=0, column=1, sticky=tk.W+tk.E, padx=5, pady=2)
 
-        ttk.Label(main_frame, text='Run ID:').grid(row=row, column=0, sticky='e', padx=5, pady=2)
-        self.runIDEntry = ttk.Entry(main_frame, width=15)
-        self.runIDEntry.grid(row=row, column=1, sticky='w', padx=5, pady=2)
+        ttk.Label(run_frame, text='Title:').grid(row=1, column=0, sticky=tk.E, padx=5, pady=2)
+        self.runTitleEntry = ttk.Entry(run_frame, width=30)
+        self.runTitleEntry.grid(row=1, column=1, sticky=tk.W+tk.E, padx=5, pady=2)
 
-        ttk.Label(main_frame, text='Run Title:').grid(row=row, column=2, sticky='e', padx=5, pady=2)
-        self.runTitleEntry = ttk.Entry(main_frame, width=30)
-        self.runTitleEntry.grid(row=row, column=3, sticky='w', padx=5, pady=2)
-        row += 1
+        ttk.Label(run_frame, text='Comments:').grid(row=2, column=0, sticky=tk.NE, padx=5, pady=2)
+        self.runCommentsEntry = tk.Text(run_frame, width=50, height=3)
+        self.runCommentsEntry.grid(row=2, column=1, sticky=tk.W+tk.E, padx=5, pady=2)
 
-        ttk.Label(main_frame, text='Comments:').grid(row=row, column=0, sticky='ne', padx=5, pady=2)
-        self.runCommentsEntry = tk.Text(main_frame, width=50, height=3)
-        self.runCommentsEntry.grid(row=row, column=1, columnspan=3, sticky='w', padx=5, pady=2)
-        row += 1
+        run_frame.columnconfigure(1, weight=1)
 
         # Correlator Settings Section
-        ttk.Separator(main_frame, orient='horizontal').grid(row=row, column=0, columnspan=4, sticky='ew', pady=10)
-        row += 1
+        corr_frame = ttk.LabelFrame(main_frame, text='Correlator Settings', padding="5")
+        corr_frame.pack(fill=tk.X, pady=(0, 10))
 
-        corr_label = ttk.Label(main_frame, text='Correlator Settings', font=('TkDefaultFont', 12, 'bold'))
-        corr_label.grid(row=row, column=0, columnspan=4, sticky='w', pady=(0, 10))
-        row += 1
+        ttk.Label(corr_frame, text='Channels:').grid(row=0, column=0, sticky=tk.E, padx=5, pady=2)
+        self.nchnEntry = ttk.Entry(corr_frame, width=10)
+        self.nchnEntry.grid(row=0, column=1, sticky=tk.W, padx=5, pady=2)
 
-        ttk.Label(main_frame, text='Channels:').grid(row=row, column=0, sticky='e', padx=5, pady=2)
-        self.nchnEntry = ttk.Entry(main_frame, width=10)
-        self.nchnEntry.grid(row=row, column=1, sticky='w', padx=5, pady=2)
+        ttk.Label(corr_frame, text='Int. Time (s):').grid(row=0, column=2, sticky=tk.E, padx=5, pady=2)
+        self.tintEntry = ttk.Entry(corr_frame, width=10)
+        self.tintEntry.grid(row=0, column=3, sticky=tk.W, padx=5, pady=2)
 
-        ttk.Label(main_frame, text='Int. Time (s):').grid(row=row, column=2, sticky='e', padx=5, pady=2)
-        self.tintEntry = ttk.Entry(main_frame, width=10)
-        self.tintEntry.grid(row=row, column=3, sticky='w', padx=5, pady=2)
-        row += 1
-
-        ttk.Label(main_frame, text='Polarization:').grid(row=row, column=0, sticky='e', padx=5, pady=2)
-        pol_frame = ttk.Frame(main_frame)
-        pol_frame.grid(row=row, column=1, columnspan=3, sticky='w', padx=5, pady=2)
+        ttk.Label(corr_frame, text='Polarization:').grid(row=1, column=0, sticky=tk.E, padx=5, pady=2)
+        pol_frame = ttk.Frame(corr_frame)
+        pol_frame.grid(row=1, column=1, columnspan=3, sticky=tk.W, padx=5, pady=2)
 
         self.pol_var = tk.StringVar(value='linear')
         ttk.Radiobutton(pol_frame, text='Linear', variable=self.pol_var, value='linear').pack(side=tk.LEFT, padx=5)
         ttk.Radiobutton(pol_frame, text='Circular', variable=self.pol_var, value='circular').pack(side=tk.LEFT, padx=5)
         ttk.Radiobutton(pol_frame, text='Stokes', variable=self.pol_var, value='stokes').pack(side=tk.LEFT, padx=5)
-        row += 1
 
         # Data Return Section
-        ttk.Separator(main_frame, orient='horizontal').grid(row=row, column=0, columnspan=4, sticky='ew', pady=10)
-        row += 1
-
-        data_label = ttk.Label(main_frame, text='Data Return', font=('TkDefaultFont', 12, 'bold'))
-        data_label.grid(row=row, column=0, columnspan=4, sticky='w', pady=(0, 10))
-        row += 1
+        drm_frame = ttk.LabelFrame(main_frame, text='Data Return Method', padding="5")
+        drm_frame.pack(fill=tk.X, pady=(0, 10))
 
         self.data_return_var = tk.StringVar(value='ucf')
-        ttk.Radiobutton(main_frame, text='USB Hard Drive', variable=self.data_return_var, value='usb',
-                       command=self.onRadioButtons).grid(row=row, column=0, columnspan=2, sticky='w', padx=5, pady=2)
-        row += 1
+        ttk.Radiobutton(drm_frame, text='Bare Drive(s)', variable=self.data_return_var, value='usb',
+                       command=self.onRadioButtons).grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
+        ttk.Radiobutton(drm_frame, text='Copy to UCF', variable=self.data_return_var, value='ucf',
+                       command=self.onRadioButtons).grid(row=1, column=0, sticky=tk.W, padx=5, pady=2)
 
-        ttk.Radiobutton(main_frame, text='UCF (Username):', variable=self.data_return_var, value='ucf',
-                       command=self.onRadioButtons).grid(row=row, column=0, sticky='w', padx=5, pady=2)
-        self.ucfUsernameEntry = ttk.Entry(main_frame, width=20, state='disabled')
-        self.ucfUsernameEntry.grid(row=row, column=1, sticky='w', padx=5, pady=2)
-        row += 1
+        ttk.Label(drm_frame, text='UCF Username:').grid(row=1, column=1, sticky=tk.E, padx=5)
+        self.ucfUsernameEntry = ttk.Entry(drm_frame, width=15, state='disabled')
+        self.ucfUsernameEntry.grid(row=1, column=2, sticky=tk.W, padx=5)
 
         # Buttons
-        ttk.Separator(main_frame, orient='horizontal').grid(row=row, column=0, columnspan=4, sticky='ew', pady=10)
-        row += 1
-
         btn_frame = ttk.Frame(main_frame)
-        btn_frame.grid(row=row, column=0, columnspan=4, pady=10)
+        btn_frame.pack(fill=tk.X, pady=(10, 0))
 
-        ttk.Button(btn_frame, text='OK', command=self.onOK, width=10).pack(side=tk.LEFT, padx=5)
-        ttk.Button(btn_frame, text='Cancel', command=self.onCancel, width=10).pack(side=tk.LEFT, padx=5)
-        ttk.Button(btn_frame, text='Save Defaults', command=self.onSaveDefaults, width=12).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text='Save Defaults', command=self.onSaveDefaults).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text='OK', command=self.onOK).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(btn_frame, text='Cancel', command=self.onCancel).pack(side=tk.RIGHT, padx=5)
 
         # Load existing values
         self._loadValues()
@@ -2182,27 +2170,38 @@ class AdvancedInfo(tk.Toplevel):
 
         self.initUI()
         self.initEvents()
+
+        self.geometry('500x300')
         self.grab_set()
 
     def initUI(self):
         """Setup the UI elements."""
-        main_frame = ttk.Frame(self)
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        # Create scrollable frame
+        canvas = tk.Canvas(self)
+        scrollbar = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas, padding="10")
 
-        row = 0
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        main_frame = scrollable_frame
 
         # Stations Section
-        sta_label = ttk.Label(main_frame, text='Stations', font=('TkDefaultFont', 12, 'bold'))
-        sta_label.grid(row=row, column=0, columnspan=4, sticky='w', pady=(0, 10))
-        row += 1
-
-        ttk.Separator(main_frame, orient='horizontal').grid(row=row, column=0, columnspan=4, sticky='ew', pady=5)
-        row += 1
+        sta_frame = ttk.LabelFrame(main_frame, text='Stations', padding="5")
+        sta_frame.pack(fill=tk.X, pady=(0, 10))
 
         # Create checkboxes for stations
         self.staChecks = []
-        sta_frame = ttk.Frame(main_frame)
-        sta_frame.grid(row=row, column=0, columnspan=4, sticky='w', pady=5)
+        sta_inner = ttk.Frame(sta_frame)
+        sta_inner.pack(fill=tk.X, pady=5)
 
         try:
             all_stations = stations.get_all_stations()
@@ -2210,59 +2209,44 @@ class AdvancedInfo(tk.Toplevel):
             sta_row = 0
             for sta in all_stations:
                 var = tk.BooleanVar(value=True)
-                cb = ttk.Checkbutton(sta_frame, text=sta.name, variable=var)
-                cb.grid(row=sta_row, column=col, sticky='w', padx=5, pady=2)
+                cb = ttk.Checkbutton(sta_inner, text=sta.name, variable=var)
+                cb.grid(row=sta_row, column=col, sticky=tk.W, padx=5, pady=2)
                 self.staChecks.append((sta.name, var, cb))
                 col += 1
                 if col >= 3:
                     col = 0
                     sta_row += 1
         except:
-            ttk.Label(sta_frame, text='No stations available').grid(row=0, column=0)
-
-        row += 1
+            ttk.Label(sta_inner, text='No stations available').grid(row=0, column=0)
 
         # ASP Filter Section
-        ttk.Separator(main_frame, orient='horizontal').grid(row=row, column=0, columnspan=4, sticky='ew', pady=10)
-        row += 1
+        asp_frame = ttk.LabelFrame(main_frame, text='ASP Filter', padding="5")
+        asp_frame.pack(fill=tk.X, pady=(0, 10))
 
-        asp_label = ttk.Label(main_frame, text='ASP Filter', font=('TkDefaultFont', 12, 'bold'))
-        asp_label.grid(row=row, column=0, columnspan=4, sticky='w', pady=(0, 10))
-        row += 1
-
-        ttk.Label(main_frame, text='Filter Setting:').grid(row=row, column=0, sticky='e', padx=5, pady=2)
-        self.aspCombo = ttk.Combobox(main_frame, state='readonly', width=20)
+        ttk.Label(asp_frame, text='Filter Setting:').grid(row=0, column=0, sticky=tk.E, padx=5, pady=2)
+        self.aspCombo = ttk.Combobox(asp_frame, state='readonly', width=20)
         self.aspCombo['values'] = ['MCS Decides', 'Split', 'Full', 'Reduced', 'Off', 'Split @ 3MHz', 'Full @ 3MHz']
         self.aspCombo.set('MCS Decides')
-        self.aspCombo.grid(row=row, column=1, columnspan=2, sticky='w', padx=5, pady=2)
-        row += 1
+        self.aspCombo.grid(row=0, column=1, sticky=tk.W, padx=5, pady=2)
 
         # DRX Gain Section
-        ttk.Separator(main_frame, orient='horizontal').grid(row=row, column=0, columnspan=4, sticky='ew', pady=10)
-        row += 1
+        gain_frame = ttk.LabelFrame(main_frame, text='DRX Gain', padding="5")
+        gain_frame.pack(fill=tk.X, pady=(0, 10))
 
-        gain_label = ttk.Label(main_frame, text='DRX Gain', font=('TkDefaultFont', 12, 'bold'))
-        gain_label.grid(row=row, column=0, columnspan=4, sticky='w', pady=(0, 10))
-        row += 1
-
-        ttk.Label(main_frame, text='Gain Setting:').grid(row=row, column=0, sticky='e', padx=5, pady=2)
-        self.gainCombo = ttk.Combobox(main_frame, state='readonly', width=15)
+        ttk.Label(gain_frame, text='Gain Setting:').grid(row=0, column=0, sticky=tk.E, padx=5, pady=2)
+        self.gainCombo = ttk.Combobox(gain_frame, state='readonly', width=15)
         self.gainCombo['values'] = ['MCS Decides'] + [str(i) for i in range(13)]
         self.gainCombo.set('MCS Decides')
-        self.gainCombo.grid(row=row, column=1, sticky='w', padx=5, pady=2)
+        self.gainCombo.grid(row=0, column=1, sticky=tk.W, padx=5, pady=2)
 
-        ttk.Label(main_frame, text='(Lower values = higher gain)').grid(row=row, column=2, sticky='w', padx=5, pady=2)
-        row += 1
+        ttk.Label(gain_frame, text='(Lower values = higher gain)').grid(row=0, column=2, sticky=tk.W, padx=5, pady=2)
 
         # Buttons
-        ttk.Separator(main_frame, orient='horizontal').grid(row=row, column=0, columnspan=4, sticky='ew', pady=10)
-        row += 1
-
         btn_frame = ttk.Frame(main_frame)
-        btn_frame.grid(row=row, column=0, columnspan=4, pady=10)
+        btn_frame.pack(fill=tk.X, pady=(10, 0))
 
-        ttk.Button(btn_frame, text='OK', command=self.onOK, width=10).pack(side=tk.LEFT, padx=5)
-        ttk.Button(btn_frame, text='Cancel', command=self.onCancel, width=10).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text='OK', command=self.onOK).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(btn_frame, text='Cancel', command=self.onCancel).pack(side=tk.RIGHT, padx=5)
 
         # Load existing values
         self._loadValues()

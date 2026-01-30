@@ -3,13 +3,17 @@
 import os
 import sys
 import math
-import pytz
 import ephem
 import numpy
 import argparse
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
-from lsl.common import sdf, metabundle, sdfADP, metabundleADP, sdfNDP, metabundleNDP
+try:
+    import zoneinfo
+except ImportError:
+    from backports import zoneinfo
+
+from lsl.common import sdf, metabundle
 from lsl.common import stations
 from lsl.astro import utcjd_to_unix, MJD_OFFSET
 
@@ -43,8 +47,7 @@ __version__ = "0.3"
 __author__ = "Jayce Dowell"
 
 # Date/time manipulation
-_UTC = pytz.utc
-_MST = pytz.timezone('US/Mountain')
+_MST = zoneinfo.ZoneInfo('US/Mountain')
 formatString = '%Y/%m/%d %H:%M:%S.%f %Z'
 
 # MCS session padding extent
@@ -85,8 +88,8 @@ def getObsStartStop(obs):
     tStop = tStart +  obs.dur / 1000.0
 
     # Conversion to a timezone-aware datetime instance
-    tStart = _UTC.localize( datetime.utcfromtimestamp(tStart) )
-    tStop  = _UTC.localize( datetime.utcfromtimestamp(tStop ) )
+    tStart = datetime.fromtimestamp(tStart, tz=timezone.utc)
+    tStop  = datetime.fromtimestamp(tStop, tz=timezone.utc)
 
     # Return
     return tStart, tStop
@@ -155,7 +158,7 @@ class Visualization_GUI(object):
     of valid SDF filenames.
     """
 
-    def __init__(self, frame, station='lwa1'):
+    def __init__(self, frame):
         self.frame = frame
         self.showDayNight = True
         self.showJupiter = False
@@ -166,23 +169,7 @@ class Visualization_GUI(object):
         self.jupiter_times = None
         self.jupiter_alts = None
 
-        if station == 'lwa1':
-            self.observer = stations.lwa1
-            self.sdf = sdf
-            self.adp = False
-            self.ndp = False
-        elif station == 'lwasv':
-            self.observer = stations.lwasv
-            self.sdf = sdfADP
-            self.adp = True
-            self.ndp = False
-        elif station == 'lwana':
-            self.observer = stations.lwana
-            self.sdf = sdfNDP
-            self.adp = False
-            self.ndp = True
-        else:
-            raise ValueError(f"Unkown station: {station}")
+        self.observer = stations.lwa1
 
         self.colors = ['Blue','Green','Cyan','Magenta','Yellow',
                     'Peru', 'Moccasin', 'Orange', 'DarkOrchid']
@@ -210,7 +197,7 @@ class Visualization_GUI(object):
         # Loop over filenames
         for filename in self.frame.filenames:
             try:
-                project = self.sdf.parse_sdf(filename)
+                project = sdf.parse_sdf(filename)
                 dataFile = None
             except Exception as e:
                 try:
@@ -223,13 +210,8 @@ class Visualization_GUI(object):
             pID = project.id
             sID = project.sessions[0].id
 
-            if project.sessions[0].observations[0].mode in ('TBW', 'TBN'):
-                if self.ndp:
-                    raise RuntimeError("No TBW or TBN for NDP")
-                elif self.adp:
-                    beam = 3
-                else:
-                    beam = 5
+            if project.sessions[0].observations[0].mode in ('TBT', 'TBS'):
+                beam = 5
             else:
                 beam = project.sessions[0].drx_beam
             sessionStart = getObsStartStop(project.sessions[0].observations[ 0])[0] - sessionLag
@@ -396,7 +378,7 @@ class Visualization_GUI(object):
                 alpha = 0.5
             else:
                 alpha = 0.2
-            self.ax1.barh(beam-0.5, d/24, left=start, height=1.0, alpha=alpha, color=self.colors[i % len(self.colors)])
+            self.ax1.barh(beam, d/24, left=start, height=1.0, alpha=alpha, color=self.colors[i % len(self.colors)])
 
             self.ax1.text(start+duration/2, beam, name, size=10, horizontalalignment='center', verticalalignment='center', rotation='vertical')
 
@@ -412,7 +394,7 @@ class Visualization_GUI(object):
                 alpha = 0.5
             else:
                 alpha = 0.2
-            self.ax1.barh(-0.5, d/24, left=free1, alpha=alpha, height=1.0, color='r', hatch='/')
+            self.ax1.barh(0, d/24, left=free1, alpha=alpha, height=1.0, color='r', hatch='/')
             self.ax1.text(free1+duration/2, 0, '%i:%02i' % (int(d), int((d-int(d))*60)), size=10, horizontalalignment='center', verticalalignment='center', rotation='vertical')
 
         # Plot Sun altitude in a way that indicates day and night (if needed)
@@ -421,12 +403,7 @@ class Visualization_GUI(object):
             self.solar_times = points[:, 0].copy()  # Store for mouseover lookup
             self.solar_alts = alts.copy()
             points = points.reshape((-1, 1, 2))
-            if self.ndp:
-                points[:,:,1] = 4.75
-            elif self.adp:
-                points[:,:,1] = 3.75
-            else:
-                points[:,:,1] = 5.75
+            points[:,:,1] = 5.75
             segments = numpy.concatenate([points[:-1], points[1:]], axis=1)
             lc = LineCollection(segments, cmap=plt.get_cmap('Blues_r'), norm=plt.Normalize(-18, 0.25))
             lc.set_array(alts)
@@ -457,7 +434,7 @@ class Visualization_GUI(object):
         self.ax2.set_xticks(self.ax1.get_xticks())
         self.ax2.set_xlim(self.ax1.get_xlim())
 
-        self.ax1.xaxis.set_major_formatter( matplotlib.dates.DateFormatter("%Y-%m-%d\n%H:%M:%S", tz=_UTC))
+        self.ax1.xaxis.set_major_formatter( matplotlib.dates.DateFormatter("%Y-%m-%d\n%H:%M:%S", tz=timezone.utc))
         self.ax1.set_xlabel('Time [UTC]')
         self.ax2.xaxis.set_major_formatter(matplotlib.dates.DateFormatter("%Y-%m-%d\n%H:%M:%S", tz=_MST))
         self.ax2.set_xlabel('Time [Mountain]')
@@ -465,33 +442,16 @@ class Visualization_GUI(object):
 
         # Fix the y axis labels to use beams, free time, etc.
         if self.showDayNight:
-            if self.ndp:
-                lower = 5
-            elif self.adp:
-                lower = 4
-            else:
-                lower = 6
+            lower = 6
         else:
-            if self.ndp:
-                lower = 4.5
-            elif self.adp:
-                lower = 3.5
-            else:
-                lower = 5.5
+            lower = 5.5
         if self.showJupiter:
             upper = -2
         else:
             upper = -1.5
         self.ax1.set_ylim((lower, upper))
-        if self.ndp:
-            self.ax1.set_yticks([5, 4.75, 4, 3, 2, 1, 0, -1, -1.75, -2])
-            self.ax1.set_yticklabels(['', 'Day/Night', 'Beam 4', 'Beam 3', 'Beam 2', 'Beam 1', 'Unassigned', 'MCS Decides', 'Jupiter', ''])
-        elif self.adp:
-            self.ax1.set_yticks([4, 3.75, 3, 2, 1, 0, -1, -1.75, -2])
-            self.ax1.set_yticklabels(['', 'Day/Night', 'TBN', 'Beam 2', 'Beam 1', 'Unassigned', 'MCS Decides', 'Jupiter', ''])
-        else:
-            self.ax1.set_yticks([6, 5.75, 5, 4, 3, 2, 1, 0, -1, -1.75, -2])
-            self.ax1.set_yticklabels(['', 'Day/Night', 'TBN/TBW', 'Beam 4', 'Beam 3', 'Beam 2', 'Beam 1', 'Unassigned', 'MCS Decides', 'Jupiter', ''])
+        self.ax1.set_yticks([6, 5.75, 5, 4, 3, 2, 1, 0, -1, -1.75, -2])
+        self.ax1.set_yticklabels(['', 'Day/Night', 'TBS/TBT', 'Beam 4', 'Beam 3', 'Beam 2', 'Beam 1', 'Unassigned', 'MCS Decides', 'Jupiter', ''])
 
         try:
             self.frame.figure.tight_layout()
@@ -516,8 +476,7 @@ class Visualization_GUI(object):
         for i in range(nObs):
             tStart[i]  = utcjd_to_unix(project.sessions[0].observations[i].mjd + MJD_OFFSET)
             tStart[i] += project.sessions[0].observations[i].mpm / 1000.0
-            tStart[i]  = datetime.utcfromtimestamp(tStart[i])
-            tStart[i]  = _UTC.localize(tStart[i])
+            tStart[i]  = datetime.fromtimestamp(tStart[i], tz=timezone.utc)
 
         # Get the LST at the start
         self.observer.date = (min(tStart)).strftime('%Y/%m/%d %H:%M:%S')
@@ -537,9 +496,9 @@ class Visualization_GUI(object):
         out += " Total Session Duration: %s\n" % sessionDur
         out += " -> First observation starts at %s\n" % min(tStart).strftime(formatString)
         out += " -> Last observation ends at %s\n" % (max(tStart) + lastDur).strftime(formatString)
-        if project.sessions[0].observations[0].mode not in ('TBW', 'TBN'):
+        if project.sessions[0].observations[0].mode not in ('TBT', 'TBS'):
             drspec = 'No'
-            if project.sessions[0].spcSetup[0] != 0 and project.sessions[0].spcSetup[1] != 0:
+            if project.sessions[0].spc_setup[0] != 0 and project.sessions[0].spc_setup[1] != 0:
                 drspec = 'Yes'
             drxBeam = project.sessions[0].drx_beam
             if drxBeam < 1:
@@ -549,9 +508,9 @@ class Visualization_GUI(object):
             out += " DRX Beam: %s\n" % drxBeam
             out += " DR Spectrometer used? %s\n" % drspec
             if drspec == 'Yes':
-                out += " -> %i channels, %i windows/integration\n" % tuple(project.sessions[0].spcSetup)
+                out += " -> %i channels, %i windows/integration\n" % tuple(project.sessions[0].spc_setup)
         else:
-            out += " Transient Buffer: %s\n" % ('Wide band' if project.sessions[0].observations[0].mode == 'TBW' else 'Narrow band',)
+            out += " Transient Buffer: %s\n" % ('Triggered' if project.sessions[0].observations[0].mode == 'TBT' else 'Streaming',)
 
         out += "\n"
         out += " Number of observations: %i\n" % nObs
@@ -571,12 +530,12 @@ class Visualization_GUI(object):
             out += "    -> %s\n" % getObsStartStop(project.sessions[0].observations[i])[0].strftime(formatString)
             out += "   Duration: %s\n" % currDur
 
-            ## DP setup
-            if project.sessions[0].observations[i].mode not in ('TBW',):
+            ## NDP setup
+            if project.sessions[0].observations[i].mode not in ('TBT',):
                 out += "   Tuning 1: %.3f MHz\n" % (project.sessions[0].observations[i].frequency1/1e6,)
-            if project.sessions[0].observations[i].mode not in ('TBW', 'TBN'):
+            if project.sessions[0].observations[i].mode not in ('TBT', 'TBS'):
                 out += "   Tuning 2: %.3f MHz\n" % (project.sessions[0].observations[i].frequency2/1e6,)
-            if project.sessions[0].observations[i].mode not in ('TBW',):
+            if project.sessions[0].observations[i].mode not in ('TBT',):
                 out += "   Filter code: %i\n" % project.sessions[0].observations[i].filter
 
             ## Comments/notes
@@ -627,17 +586,25 @@ class Visualization_GUI(object):
             clickBeam = round(event.ydata)
             clickTime = matplotlib.dates.num2date(event.xdata)
 
-            if clickBeam == 0:
+            # First check for sessions (including MCS Decides which has beam <= 0)
+            found_session = False
+            for i in range(len(self.sessionSDFs)):
+                session_beam = self.sessionBeams[i]
+                # For MCS Decides (beam <= 0), match when clicking in that row (clickBeam == 0 or -1)
+                beam_match = (clickBeam == session_beam) or (session_beam <= 0 and clickBeam <= 0)
+                if clickTime >= self.sessionStarts[i] and clickTime <= self.sessionStarts[i] + self.sessionDurations[i] and beam_match:
+                    self.frame.setInfoText(self.describeSDF(i))
+                    self.draw(selected=i)
+                    found_session = True
+                    break
+
+            # If no session found and clicking in the free time row, check for free periods
+            if not found_session and clickBeam <= 0:
                 for i in range(len(self.freePeriods)):
                     if clickTime >= self.freePeriods[i][0] and clickTime <= self.freePeriods[i][1]:
                         self.frame.setInfoText(self.describeFree(i))
                         self.draw(selected=-(i+1))
-            else:
-                project = None
-                for i in range(len(self.sessionSDFs)):
-                    if clickTime >= self.sessionStarts[i] and clickTime <= self.sessionStarts[i] + self.sessionDurations[i] and clickBeam == self.sessionBeams[i]:
-                        self.frame.setInfoText(self.describeSDF(i))
-                        self.draw(selected=i)
+                        break
 
     def get_row_label(self, ydata):
         """
@@ -651,11 +618,11 @@ class Visualization_GUI(object):
         # Round to nearest 0.25 to catch fractional rows (Day/Night, Jupiter)
         y_rounded = round(ydata * 4) / 4
 
-        # Jupiter row (all station types)
+        # Jupiter row (at -1.75)
         if -2.0 < y_rounded <= -1.5:
             return "Jupiter"
 
-        # MCS Decides row
+        # MCS Decides row (bar spans -1.5 to -0.5, centered at -1)
         if -1.5 < y_rounded <= -0.5:
             return "MCS Decides"
 
@@ -663,43 +630,19 @@ class Visualization_GUI(object):
         if -0.5 < y_rounded <= 0.5:
             return "Free Time"
 
-        # Beam rows (station-dependent)
-        if self.ndp:
-            # NDP: Beams 1-4, Day/Night at 4.75
-            if 4.5 < y_rounded <= 5.0:
-                return "Day/Night"
-            elif 3.5 < y_rounded <= 4.5:
-                return "Beam 4"
-            elif 2.5 < y_rounded <= 3.5:
-                return "Beam 3"
-            elif 1.5 < y_rounded <= 2.5:
-                return "Beam 2"
-            elif 0.5 < y_rounded <= 1.5:
-                return "Beam 1"
-        elif self.adp:
-            # ADP: Beams 1-2, TBN at 3, Day/Night at 3.75
-            if 3.5 < y_rounded <= 4.0:
-                return "Day/Night"
-            elif 2.5 < y_rounded <= 3.5:
-                return "TBN"
-            elif 1.5 < y_rounded <= 2.5:
-                return "Beam 2"
-            elif 0.5 < y_rounded <= 1.5:
-                return "Beam 1"
-        else:
-            # LWA1: Beams 1-4, TBN/TBW at 5, Day/Night at 5.75
-            if 5.5 < y_rounded <= 6.0:
-                return "Day/Night"
-            elif 4.5 < y_rounded <= 5.5:
-                return "TBN/TBW"
-            elif 3.5 < y_rounded <= 4.5:
-                return "Beam 4"
-            elif 2.5 < y_rounded <= 3.5:
-                return "Beam 3"
-            elif 1.5 < y_rounded <= 2.5:
-                return "Beam 2"
-            elif 0.5 < y_rounded <= 1.5:
-                return "Beam 1"
+        # Beam rows: Beams 1-4, TBS/TBT at 5, Day/Night at 5.75
+        if 5.5 < y_rounded <= 6.0:
+            return "Day/Night"
+        elif 4.5 < y_rounded <= 5.5:
+            return "TBS/TBT"
+        elif 3.5 < y_rounded <= 4.5:
+            return "Beam 4"
+        elif 2.5 < y_rounded <= 3.5:
+            return "Beam 3"
+        elif 1.5 < y_rounded <= 2.5:
+            return "Beam 2"
+        elif 0.5 < y_rounded <= 1.5:
+            return "Beam 1"
 
         return ""
 
@@ -794,15 +737,7 @@ class MainWindow(tk.Tk):
         # Process command line arguments
         if args.filename is not None:
             self.filenames = args.filename
-
-            if args.lwasv:
-                station = 'lwasv'
-            elif args.lwana:
-                station = 'lwana'
-            else:
-                station = 'lwa1'
-
-            self.data = Visualization_GUI(self, station=station)
+            self.data = Visualization_GUI(self)
             self.data.loadFiles()
             self.data.draw()
 
@@ -1080,11 +1015,6 @@ if __name__ == "__main__":
         )
     parser.add_argument('filename', type=str, nargs='*', default=None,
                         help='SDF file to examine')
-    sgroup = parser.add_mutually_exclusive_group(required=False)
-    sgroup.add_argument('-s', '--lwasv', action='store_true',
-                        help='files are for LWA-SV instead of LWA1')
-    sgroup.add_argument('-n', '--lwana', action='store_true',
-                        help='files are for LWA-NA instead of LWA1')
     args = parser.parse_args()
 
     # Handle empty filename list

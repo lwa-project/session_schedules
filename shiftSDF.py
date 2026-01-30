@@ -13,26 +13,25 @@ None
 
 import os
 import sys
-import pytz
 import math
 import ephem
+import socket
 import argparse
 
-from datetime import datetime, date, time, timedelta
+from datetime import datetime, date, time, timedelta, timezone
 
 import lsl
 from lsl import astro
 from lsl.common import stations
 from lsl.transform import Time
 from lsl.astro import utcjd_to_unix, MJD_OFFSET
-from lsl.common import sdf, sdfADP, sdfNDP
+from lsl.common import sdf
 from lsl.misc import parser as aph
 
 
 __version__ = "0.5"
 
 # Date/time manipulation
-_UTC = pytz.utc
 formatString = '%Y/%m/%d %H:%M:%S.%f %Z'
 
 # LST manipulation
@@ -55,8 +54,8 @@ def getObsStartStop(obs):
     tStop = tStart +  obs.dur / 1000.0
     
     # Conversion to a timezone-aware datetime instance
-    tStart = _UTC.localize( datetime.utcfromtimestamp(tStart) )
-    tStop  = _UTC.localize( datetime.utcfromtimestamp(tStop ) )
+    tStart = datetime.fromtimestamp(tStart, tz=timezone.utc)
+    tStop  = datetime.fromtimestamp(tStop, tz=timezone.utc)
     
     # Return
     return tStart, tStop
@@ -78,40 +77,25 @@ def main(args):
         args.time = time(int(h,10), int(m,10), s, us)
         
     # Parse the input file and get the dates of the observations
-    try:
-        ## LWA-1
+    hostname = socket.gethostname()
+    hostname = hostname.split('-')[0]
+    station = getattr(stations, hostname, None)
+    if station is None:
+        print("WARNING: Assuming LWA1 for all location-based computations")
         station = stations.lwa1
-        project = sdf.parse_sdf(inputSDF)
-        adp = False
-        ndp = False
-    except Exception as e:
-        try:
-            ## LWA-SV
-            ### Try again
-            station = stations.lwasv
-            project = sdfADP.parse_sdf(inputSDF)
-            adp = True
-            ndp = False
-        except Exception as e:
-            ## LWA-NA
-            ### Try again
-            station = stations.lwana
-            project = sdfNDP.parse_sdf(inputSDF)
-            adp = False
-            ndp = True
-            
+    project = sdf.parse_sdf(inputSDF)
+
     # Load the station and objects to find the Sun and Jupiter
     observer = station.get_observer()
     Sun = ephem.Sun()
     Jupiter = ephem.Jupiter()
-    
+
     nObs = len(project.sessions[0].observations)
     tStart = [None,]*nObs
     for i in range(nObs):
         tStart[i]  = utcjd_to_unix(project.sessions[0].observations[i].mjd + MJD_OFFSET)
         tStart[i] += project.sessions[0].observations[i].mpm / 1000.0
-        tStart[i]  = datetime.utcfromtimestamp(tStart[i])
-        tStart[i]  = _UTC.localize(tStart[i])
+        tStart[i]  = datetime.fromtimestamp(tStart[i], tz=timezone.utc)
         
     # Get the LST at the start
     observer.date = (min(tStart)).strftime('%Y/%m/%d %H:%M:%S')
@@ -140,9 +124,9 @@ def main(args):
         print(" Total Session Duration: %s" % sessionDur)
         print(" -> First observation starts at %s" % min(tStart).strftime(formatString))
         print(" -> Last observation ends at %s" % (max(tStart) + lastDur).strftime(formatString))
-        if project.sessions[0].observations[0].mode not in ('TBW', 'TBN'):
+        if project.sessions[0].observations[0].mode not in ('TBT', 'TBS'):
             drspec = 'No'
-            if project.sessions[0].spcSetup[0] != 0 and project.sessions[0].spcSetup[1] != 0:
+            if project.sessions[0].spc_setup[0] != 0 and project.sessions[0].spc_setup[1] != 0:
                 drspec = 'Yes'
             drxBeam = project.sessions[0].drx_beam
             if drxBeam < 1:
@@ -152,23 +136,23 @@ def main(args):
             print(" DRX Beam: %s" % drxBeam)
             print(" DR Spectrometer used? %s" % drspec)
             if drspec == 'Yes':
-                mt = project.sessions[0].spcMetatag
+                mt = project.sessions[0].spc_metatag
                 if mt is None:
                     mt = '{Stokes=XXYY}'
                 junk, mt = mt.split('=', 1)
                 mt = mt.replace('}', '')
-                
+
                 if mt in ('XX', 'YY', 'XY', 'YX', 'XXYY', 'XXXYYXYY'):
                     products = len(mt)//2
                     mt = [mt[2*i:2*i+2] for i in range(products)]
                 else:
                     products = len(mt)
                     mt = [mt[1*i:1*i+1] for i in range(products)]
-                    
-                print(" -> %i channels, %i windows/integration" % tuple(project.sessions[0].spcSetup))
+
+                print(" -> %i channels, %i windows/integration" % tuple(project.sessions[0].spc_setup))
                 print(" -> %i data products (%s)" % (products, ','.join(mt)))
         else:
-            print(" Transient Buffer: %s\n" % ('Wide band' if project.sessions[0].observations[0].mode == 'TBW' else 'Narrow band',))
+            print(" Transient Buffer: %s\n" % ('Triggered' if project.sessions[0].observations[0].mode == 'TBT' else 'Streaming',))
             
         print(" ")
         print(" Number of observations: %i" % nObs)
@@ -188,12 +172,12 @@ def main(args):
             print("    -> %s" % getObsStartStop(project.sessions[0].observations[i])[0].strftime(formatString))
             print("   Duration: %s" % currDur)
             
-            ## DP setup
-            if project.sessions[0].observations[i].mode not in ('TBW',):
+            ## NDP setup
+            if project.sessions[0].observations[i].mode not in ('TBT',):
                 print("   Tuning 1: %.3f MHz" % (project.sessions[0].observations[i].frequency1/1e6,))
-            if project.sessions[0].observations[i].mode not in ('TBW', 'TBN'):
+            if project.sessions[0].observations[i].mode not in ('TBT', 'TBS'):
                 print("   Tuning 2: %.3f MHz" % (project.sessions[0].observations[i].frequency2/1e6,))
-            if project.sessions[0].observations[i].mode not in ('TBW',):
+            if project.sessions[0].observations[i].mode not in ('TBT',):
                 print("   Filter code: %i" % project.sessions[0].observations[i].filter)
                 
             ## Comments/notes
@@ -232,9 +216,7 @@ def main(args):
                     sys.exit(1)
                     
             else:
-                tNewStart = datetime.combine(args.date, min(tStart).time())
-                
-            tNewStart = _UTC.localize(tNewStart)
+                tNewStart = datetime.combine(args.date, min(tStart).time(), tzinfo=timezone.utc)
             
             # Figure out a new start time on the correct day
             diff = ((tNewStart - min(tStart)).days) * siderealRegression
@@ -275,9 +257,7 @@ def main(args):
                         sys.exit(1)
                         
             else:
-                tNewStart = datetime.combine(args.date, args.time)
-            
-            tNewStart = _UTC.localize(tNewStart)
+                tNewStart = datetime.combine(args.date, args.time, tzinfo=timezone.utc)
             
         # Get the new shift needed to translate the old times to the new times
         tShift = tNewStart - min(tStart)
@@ -343,7 +323,7 @@ def main(args):
             utc = Time(tStart[i], format=Time.FORMAT_PY_DATE)
             mjd = int(utc.utc_mjd)
             
-            utcMidnight = datetime(tStart[i].year, tStart[i].month, tStart[i].day, 0, 0, 0, tzinfo=_UTC)
+            utcMidnight = datetime(tStart[i].year, tStart[i].month, tStart[i].day, 0, 0, 0, tzinfo=timezone.utc)
             diff = tStart[i] - utcMidnight
             mpm = int(round((diff.seconds + diff.microseconds/1000000.0)*1000.0))
             
@@ -382,7 +362,7 @@ def main(args):
         beam = project.sessions[0].drx_beam
         foStart = min(tStart)
         
-        if project.sessions[0].observations[0].mode not in ('TBW', 'TBN'):
+        if project.sessions[0].observations[0].mode not in ('TBT', 'TBS'):
             if beam == -1:
                 print(" ")
                 print("Enter the DRX beam to use:")
@@ -392,23 +372,15 @@ def main(args):
                 except Exception as e:
                     print("Error: %s" % str(e))
                     sys.exit(1)
-                if ndp:
-                    raise RuntimeError("No TBW or TBN for NDP")
-                    
-                elif adp:
-                    if newBeam not in (1,):
-                        print("Error: beam '%i' is out of range" % newBeam)
-                        sys.exit(1)
-                        
-                else:
-                    if newBeam not in (1, 2, 3, 4):
-                        print("Error: beam '%i' is out of range" % newBeam)
-                        sys.exit(1)
-                        
+
+                if newBeam not in (1, 2, 3, 4):
+                    print("Error: beam '%i' is out of range" % newBeam)
+                    sys.exit(1)
+
                 print("Shifting DRX beam from %i to %i" % (beam, newBeam))
                 beam = newBeam
                 project.sessions[0].drx_beam = beam
-                
+
             outputSDF = '%s_%s_%s_%04i_B%i.sdf' % (pID, foStart.strftime('%y%m%d'), foStart.strftime('%H%M'), sID, beam)
         else:
             outputSDF = '%s_%s_%s_%04i_%s.sdf' % (pID, foStart.strftime('%y%m%d'), foStart.strftime('%H%M'), sID, project.sessions[0].observations[0].mode)

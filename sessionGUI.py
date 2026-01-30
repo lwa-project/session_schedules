@@ -17,12 +17,11 @@ import conflict
 
 import lsl
 from lsl import astro
-from lsl.common.dp import fS
+from lsl.common.ndp import fS
 from lsl.common import stations
 from lsl.astro import deg_to_dms, deg_to_hms, MJD_OFFSET, DJD_OFFSET
-from lsl.reader.tbn import FILTER_CODES as TBNFilters
 from lsl.reader.drx import FILTER_CODES as DRXFilters
-from lsl.common import sdf, sdfADP, sdfNDP
+from lsl.common import sdf
 from lsl.misc import parser as aph
 
 import matplotlib
@@ -37,9 +36,6 @@ __version__ = "0.6"
 __author__ = "Jayce Dowell"
 
 
-ALLOW_TBW_TBN_SAME_SDF = True
-
-
 def pid_print(*args, **kwds):
     print(f"[{os.getpid()}]", *args, **kwds)
 
@@ -50,26 +46,19 @@ class ObservationListCtrl(ttk.Treeview):
     Replaces wx.ListCtrl with TextEditMixin, ChoiceMixIn, and CheckListCtrlMixin.
     """
 
-    def __init__(self, parent, adp=False, ndp=False, **kwargs):
+    def __init__(self, parent, **kwargs):
         # Define columns
         self.columns = ('id', 'name', 'target', 'start', 'duration',
-                       'ra', 'dec', 'freq1', 'freq2', 'filter', 'max_sn', 'comments')
+                       'ra', 'dec', 'freq1', 'freq2', 'filter', 'high_dr', 'comments')
 
         super().__init__(parent, columns=self.columns, show='headings', selectmode='extended', **kwargs)
 
-        self.adp = adp
-        self.ndp = ndp
         self.parent = parent
         self.nSelected = 0
         self._check_states = {}  # Track checkbox states by item id
 
         # Configure choice options for certain columns
-        if ndp:
-            self.choice_options = {10: ['1','2','3','4','5','6','7'], 11: ['No','Yes']}
-        elif adp:
-            self.choice_options = {10: ['1','2','3','4','5','6','7'], 11: ['No','Yes']}
-        else:
-            self.choice_options = {10: ['1','2','3','4','5','6','7'], 11: ['No','Yes']}
+        self.choice_options = {10: ['1','2','3','4','5','6','7'], 11: ['No','Yes']}
 
         # Setup columns
         self._setup_columns()
@@ -97,7 +86,7 @@ class ObservationListCtrl(ttk.Treeview):
             'freq1': ('Freq. 1', 80),
             'freq2': ('Freq. 2', 80),
             'filter': ('Filter', 50),
-            'max_sn': ('MaxSN', 50),
+            'high_dr': ('High DR', 60),
             'comments': ('Comments', 100),
         }
 
@@ -571,17 +560,6 @@ class SDFCreator(tk.Tk):
         self.geometry('1100x550')
 
         self.station = stations.lwa1
-        self.sdf = sdf
-        self.adp = False
-        self.ndp = False
-        if args.lwasv:
-            self.station = stations.lwasv
-            self.sdf = sdfADP
-            self.adp = True
-        if args.lwana:
-            self.station = stations.lwana
-            self.sdf = sdfNDP
-            self.ndp = True
 
         self.scriptPath = os.path.abspath(__file__)
         self.scriptPath = os.path.split(self.scriptPath)[0]
@@ -598,15 +576,12 @@ class SDFCreator(tk.Tk):
         self.initUI()
         self.initEvents()
 
-        self.sdf._DRSUCapacityTB = args.drsu_size
+        sdf._DRSUCapacityTB = args.drsu_size
 
         if args.filename is not None:
             self.filename = args.filename
             self.parseFile(self.filename)
-            if self.mode == 'TBW' and not ALLOW_TBW_TBN_SAME_SDF:
-                self.helpMenu.entryconfig(self.finfo_idx, state='disabled')
-            else:
-                self.helpMenu.entryconfig(self.finfo_idx, state='normal')
+            self.helpMenu.entryconfig(self.finfo_idx, state='normal')
             self.setSDFActive(True)
         else:
             self.filename = ''
@@ -622,21 +597,16 @@ class SDFCreator(tk.Tk):
         observations.
         """
 
-        po = self.sdf.ProjectOffice()
-        observer = self.sdf.Observer('', 0, first='', last='')
-        project = self.sdf.Project(observer, '', '', project_office=po)
-        session = self.sdf.Session('session_name', 0, observations=[])
+        po = sdf.ProjectOffice()
+        observer = sdf.Observer('', 0, first='', last='')
+        project = sdf.Project(observer, '', '', project_office=po)
+        session = sdf.Session('session_name', 0, observations=[])
         project.sessions = [session,]
 
         self.project = project
         self.mode = ''
 
-        self.project.sessions[0].tbwBits = 12
-        self.project.sessions[0].tbwSamples = 12000000
-
-        self.project.sessions[0].tbfSamples = 12000000
-
-        self.project.sessions[0].tbnGain = -1
+        self.project.sessions[0].tbtSamples = 12000000
         self.project.sessions[0].drxGain = -1
 
     def initUI(self):
@@ -687,28 +657,26 @@ class SDFCreator(tk.Tk):
 
         # Add submenu
         addMenu = tk.Menu(obsMenu, tearoff=0)
-        addMenu.add_command(label='TBW', command=self.onAddTBW)
-        self.obsmenu['tbw_idx'] = 0
-        addMenu.add_command(label='TBF', command=self.onAddTBF)
-        self.obsmenu['tbf_idx'] = 1
-        addMenu.add_command(label='TBN', command=self.onAddTBN)
-        self.obsmenu['tbn_idx'] = 2
+        addMenu.add_command(label='TBT', command=self.onAddTBT)
+        self.obsmenu['tbt_idx'] = 0
+        addMenu.add_command(label='TBS', command=self.onAddTBS)
+        self.obsmenu['tbs_idx'] = 1
         addMenu.add_separator()
         addMenu.add_command(label='DRX - RA/Dec', command=self.onAddDRXR)
-        self.obsmenu['drx_radec_idx'] = 4
+        self.obsmenu['drx_radec_idx'] = 3
         addMenu.add_command(label='DRX - Solar', command=self.onAddDRXS)
-        self.obsmenu['drx_solar_idx'] = 5
+        self.obsmenu['drx_solar_idx'] = 4
         addMenu.add_command(label='DRX - Jovian', command=self.onAddDRXJ)
-        self.obsmenu['drx_jovian_idx'] = 6
+        self.obsmenu['drx_jovian_idx'] = 5
         addMenu.add_command(label='DRX - Lunar', command=self.onAddDRXL)
-        self.obsmenu['drx_lunar_idx'] = 7
+        self.obsmenu['drx_lunar_idx'] = 6
         addMenu.add_command(label='DRX - Stepped - RA/Dec', command=self.onAddSteppedRADec)
-        self.obsmenu['stepped_radec_idx'] = 8
+        self.obsmenu['stepped_radec_idx'] = 7
         addMenu.add_command(label='DRX - Stepped - Az/Alt', command=self.onAddSteppedAzAlt)
-        self.obsmenu['stepped_azalt_idx'] = 9
+        self.obsmenu['stepped_azalt_idx'] = 8
         addMenu.add_command(label='DRX - Edit Selected Stepped Obs.', command=self.onEditStepped, state='disabled')
         self.obsmenu['steppedEdit'] = addMenu
-        self.obsmenu['steppedEdit_idx'] = 10
+        self.obsmenu['steppedEdit_idx'] = 9
         obsMenu.add_cascade(label='Add', menu=addMenu)
         self.addMenu = addMenu  # Store reference to add menu
 
@@ -761,7 +729,7 @@ class SDFCreator(tk.Tk):
         list_frame = ttk.Frame(main_frame)
         list_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        self.listControl = ObservationListCtrl(list_frame, adp=self.adp, ndp=self.ndp)
+        self.listControl = ObservationListCtrl(list_frame)
         self.listControl.parent = self
         self.listControl.pack(fill=tk.BOTH, expand=True, side=tk.LEFT)
 
@@ -794,9 +762,8 @@ class SDFCreator(tk.Tk):
 
         ttk.Separator(parent, orient=tk.VERTICAL).pack(side=tk.LEFT, fill=tk.Y, padx=5)
 
-        self.toolbar_buttons['tbw'] = make_button(parent, 'tbw', 'TBW', self.onAddTBW)
-        self.toolbar_buttons['tbf'] = make_button(parent, 'tbf', 'TBF', self.onAddTBF)
-        self.toolbar_buttons['tbn'] = make_button(parent, 'tbn', 'TBN', self.onAddTBN)
+        self.toolbar_buttons['tbt'] = make_button(parent, 'tbt', 'TBT', self.onAddTBT)
+        self.toolbar_buttons['tbs'] = make_button(parent, 'tbs', 'TBS', self.onAddTBS)
         self.toolbar_buttons['drx_radec'] = make_button(parent, 'drx-radec', 'DRX-R', self.onAddDRXR)
         self.toolbar_buttons['drx_solar'] = make_button(parent, 'drx-solar', 'DRX-S', self.onAddDRXS)
         self.toolbar_buttons['drx_jovian'] = make_button(parent, 'drx-jovian', 'DRX-J', self.onAddDRXJ)
@@ -896,7 +863,7 @@ class SDFCreator(tk.Tk):
 
     def setMenuButtons(self, mode):
         """
-        Given a mode of observation (TBW, TBN, TRK_RADEC, etc.), update the
+        Given a mode of observation (TBT, TBS, TRK_RADEC, etc.), update the
         various menu items in 'Observations' and the toolbar buttons.
         """
 
@@ -905,9 +872,8 @@ class SDFCreator(tk.Tk):
 
         # Mapping from toolbar button keys to menu indices
         menu_idx_map = {
-            'tbw': 'tbw_idx',
-            'tbf': 'tbf_idx',
-            'tbn': 'tbn_idx',
+            'tbt': 'tbt_idx',
+            'tbs': 'tbs_idx',
             'drx_radec': 'drx_radec_idx',
             'drx_solar': 'drx_solar_idx',
             'drx_jovian': 'drx_jovian_idx',
@@ -918,7 +884,7 @@ class SDFCreator(tk.Tk):
 
         # If no SDF is active, keep all observation buttons and menu items disabled
         if not self.sdf_active:
-            obs_buttons = ['tbw', 'tbf', 'tbn', 'drx_radec', 'drx_solar', 'drx_jovian',
+            obs_buttons = ['tbt', 'tbs', 'drx_radec', 'drx_solar', 'drx_jovian',
                            'drx_lunar', 'stepped_radec', 'stepped_azalt']
             for key in obs_buttons:
                 if key in self.toolbar_buttons:
@@ -933,27 +899,19 @@ class SDFCreator(tk.Tk):
 
         # Define button states based on mode
         states = {
-            'tbw': {'tbw': 'normal', 'tbf': 'disabled', 'tbn': 'normal' if ALLOW_TBW_TBN_SAME_SDF else 'disabled',
+            'tbt': {'tbt': 'normal', 'tbs': 'normal',
                    'drx_radec': 'disabled', 'drx_solar': 'disabled', 'drx_jovian': 'disabled', 'drx_lunar': 'disabled',
                    'stepped_radec': 'disabled', 'stepped_azalt': 'disabled'},
-            'tbf': {'tbw': 'disabled', 'tbf': 'normal', 'tbn': 'disabled',
+            'tbs': {'tbt': 'normal', 'tbs': 'normal',
                    'drx_radec': 'disabled', 'drx_solar': 'disabled', 'drx_jovian': 'disabled', 'drx_lunar': 'disabled',
                    'stepped_radec': 'disabled', 'stepped_azalt': 'disabled'},
-            'tbn': {'tbw': 'normal' if ALLOW_TBW_TBN_SAME_SDF else 'disabled', 'tbf': 'disabled', 'tbn': 'normal',
-                   'drx_radec': 'disabled', 'drx_solar': 'disabled', 'drx_jovian': 'disabled', 'drx_lunar': 'disabled',
-                   'stepped_radec': 'disabled', 'stepped_azalt': 'disabled'},
-            'drx': {'tbw': 'disabled', 'tbf': 'disabled', 'tbn': 'disabled',
+            'drx': {'tbt': 'disabled', 'tbs': 'disabled',
                    'drx_radec': 'normal', 'drx_solar': 'normal', 'drx_jovian': 'normal', 'drx_lunar': 'normal',
                    'stepped_radec': 'normal', 'stepped_azalt': 'normal'},
-            'none': {'tbw': 'normal', 'tbf': 'normal', 'tbn': 'normal',
+            'none': {'tbt': 'normal', 'tbs': 'normal',
                     'drx_radec': 'normal', 'drx_solar': 'normal', 'drx_jovian': 'normal', 'drx_lunar': 'normal',
                     'stepped_radec': 'normal', 'stepped_azalt': 'normal'},
         }
-
-        # Handle ADP/NDP restrictions
-        if self.adp or self.ndp:
-            states['tbw'] = {k: 'disabled' for k in states.get('tbw', {})}
-            states['none']['tbw'] = 'disabled'
 
         current_states = states.get(mode, states['none'])
 
@@ -976,9 +934,9 @@ class SDFCreator(tk.Tk):
         tStop = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
         if self.listControl.GetItemCount() > 0:
             if self.mode == 'DRX':
-                _, tStop = self.sdf.get_observation_start_stop(self.project.sessions[0].observations[-1])
-            elif self.mode == 'TBN':
-                _, tStop = self.sdf.get_observation_start_stop(self.project.sessions[0].observations[-1])
+                _, tStop = sdf.get_observation_start_stop(self.project.sessions[0].observations[-1])
+            elif self.mode == 'TBS':
+                _, tStop = sdf.get_observation_start_stop(self.project.sessions[0].observations[-1])
                 tStop += timedelta(seconds=20)
 
         return 'UTC %i %02i %02i %02i:%02i:%06.3f' % (tStop.year, tStop.month, tStop.day, tStop.hour, tStop.minute, tStop.second+tStop.microsecond/1e6)
@@ -989,66 +947,32 @@ class SDFCreator(tk.Tk):
         """
         return 7
 
-    def _getTBWValid(self):
-        """Check if TBW is a valid mode for the current setup."""
-        if self.ndp or self.adp:
-            return False
-        if self.mode != '':
-            if self.mode == 'TBW':
-                return True
-            elif self.mode == 'TBN' and ALLOW_TBW_TBN_SAME_SDF:
-                return True
-            else:
-                return False
-        return False
-
-    def _getTBNValid(self):
-        """Check if TBN is a valid mode for the current setup."""
-        if self.ndp:
-            return False
-        return True
-
-    def _getTBFValid(self):
-        """Check if TBF is a valid mode for the current setup."""
-        if self.ndp:
-            return True
-        if self.adp:
-            return True
-        return False
-
     def addColumns(self):
         """
         Add the various columns to the main window based on the type of observations.
         """
 
         # Configure columns based on mode
-        if self.mode == 'TBW':
+        if self.mode == 'TBT':
             columns = ('id', 'name', 'target', 'comments', 'start', 'duration', 'frequency', 'filter')
             headings = {'id': ('ID', 40), 'name': ('Name', 100), 'target': ('Target', 100),
                        'comments': ('Comments', 150), 'start': ('Start', 180),
                        'duration': ('Duration', 100), 'frequency': ('Frequency (MHz)', 100), 'filter': ('Filter Code', 70)}
             self.columnMap = ['id', 'name', 'target', 'comments', 'start', 'duration', 'frequency1', 'filter']
-        elif self.mode == 'TBF':
-            columns = ('id', 'name', 'target', 'comments', 'start', 'duration', 'freq1', 'freq2', 'filter')
-            headings = {'id': ('ID', 40), 'name': ('Name', 100), 'target': ('Target', 100),
-                       'comments': ('Comments', 150), 'start': ('Start', 180),
-                       'duration': ('Duration', 100), 'freq1': ('Tuning 1 (MHz)', 100),
-                       'freq2': ('Tuning 2 (MHz)', 100), 'filter': ('Filter Code', 70)}
-            self.columnMap = ['id', 'name', 'target', 'comments', 'start', 'duration', 'frequency1', 'frequency2', 'filter']
-        elif self.mode == 'TBN' or self._getTBWValid():
+        elif self.mode == 'TBS':
             columns = ('id', 'name', 'target', 'comments', 'start', 'duration', 'frequency', 'filter')
             headings = {'id': ('ID', 40), 'name': ('Name', 100), 'target': ('Target', 100),
                        'comments': ('Comments', 150), 'start': ('Start', 180),
                        'duration': ('Duration', 100), 'frequency': ('Frequency (MHz)', 100), 'filter': ('Filter Code', 70)}
             self.columnMap = ['id', 'name', 'target', 'comments', 'start', 'duration', 'frequency1', 'filter']
         elif self.mode == 'DRX':
-            columns = ('id', 'name', 'target', 'comments', 'start', 'duration', 'ra', 'dec', 'freq1', 'freq2', 'filter', 'max_snr')
+            columns = ('id', 'name', 'target', 'comments', 'start', 'duration', 'ra', 'dec', 'freq1', 'freq2', 'filter', 'high_dr')
             headings = {'id': ('ID', 40), 'name': ('Name', 100), 'target': ('Target', 100),
                        'comments': ('Comments', 120), 'start': ('Start', 180),
                        'duration': ('Duration', 100), 'ra': ('RA (J2000)', 100), 'dec': ('Dec (J2000)', 100),
                        'freq1': ('Tuning 1 (MHz)', 100), 'freq2': ('Tuning 2 (MHz)', 100),
-                       'filter': ('Filter', 50), 'max_snr': ('MaxSN', 60)}
-            self.columnMap = ['id', 'name', 'target', 'comments', 'start', 'duration', 'ra', 'dec', 'frequency1', 'frequency2', 'filter', 'max_snr']
+                       'filter': ('Filter', 50), 'high_dr': ('High DR', 60)}
+            self.columnMap = ['id', 'name', 'target', 'comments', 'start', 'duration', 'ra', 'dec', 'frequency1', 'frequency2', 'filter', 'high_dr']
         else:
             columns = ('id', 'name', 'target', 'comments', 'start')
             headings = {'id': ('ID', 40), 'name': ('Name', 100), 'target': ('Target', 100),
@@ -1081,18 +1005,18 @@ class SDFCreator(tk.Tk):
                 return '%02i:%02i:%05.2f' % (d, m, s)
 
         # Build values based on mode
-        if self.mode == 'TBN':
+        if self.mode == 'TBS':
             values = (str(id), obs.name, obs.target,
                      obs.comments if obs.comments else 'None provided',
                      obs.start, obs.duration,
                      "%.6f" % (obs.freq1 * fS / 2**32 / 1e6),
                      "%i" % obs.filter)
-        elif self.mode == 'TBW':
-            if ALLOW_TBW_TBN_SAME_SDF and obs.mode == 'TBW':
+        elif self.mode == 'TBT':
+            if obs.mode == 'TBT':
                 values = (str(id), obs.name, obs.target,
                          obs.comments if obs.comments else 'None provided',
                          obs.start, obs.duration, "--", "--")
-            elif ALLOW_TBW_TBN_SAME_SDF and obs.mode == 'TBN':
+            elif obs.mode == 'TBS':
                 values = (str(id), obs.name, obs.target,
                          obs.comments if obs.comments else 'None provided',
                          obs.start, obs.duration,
@@ -1102,24 +1026,17 @@ class SDFCreator(tk.Tk):
                 values = (str(id), obs.name, obs.target,
                          obs.comments if obs.comments else 'None provided',
                          obs.start, obs.duration, "--", "--")
-        elif self.mode == 'TBF':
-            values = (str(id), obs.name, obs.target,
-                     obs.comments if obs.comments else 'None provided',
-                     obs.start, obs.duration,
-                     "%.6f" % (obs.freq1 * fS / 2**32 / 1e6),
-                     "%.6f" % (obs.freq2 * fS / 2**32 / 1e6),
-                     "%i" % obs.filter)
         elif self.mode == 'DRX':
             if obs.mode == 'STEPPED':
                 ra_str = "STEPPED"
                 dec_str = "RA/Dec" if obs.is_radec else "Az/Alt"
                 freq1_str = "--"
                 freq2_str = "--"
-                max_snr_str = "--"
+                high_dr_str = "--"
             else:
                 freq1_str = "%.6f" % (obs.freq1 * fS / 2**32 / 1e6)
                 freq2_str = "%.6f" % (obs.freq2 * fS / 2**32 / 1e6)
-                max_snr_str = "Yes" if obs.max_snr else "No"
+                high_dr_str = "Yes" if obs.high_dr else "No"
 
                 if obs.mode == 'TRK_SOL':
                     ra_str = "Sun"
@@ -1138,7 +1055,7 @@ class SDFCreator(tk.Tk):
                      obs.comments if obs.comments else 'None provided',
                      obs.start, obs.duration,
                      ra_str, dec_str, freq1_str, freq2_str,
-                     "%i" % obs.filter, max_snr_str)
+                     "%i" % obs.filter, high_dr_str)
         else:
             values = (str(id), obs.name, obs.target,
                      obs.comments if obs.comments else 'None provided',
@@ -1176,11 +1093,7 @@ class SDFCreator(tk.Tk):
 
         # Enable GUI after creating new SDF
         self.setSDFActive(True)
-
-        if self.mode == 'TBW' and not ALLOW_TBW_TBN_SAME_SDF:
-            self.helpMenu.entryconfig(self.finfo_idx, state='disabled')
-        else:
-            self.helpMenu.entryconfig(self.finfo_idx, state='normal')
+        self.helpMenu.entryconfig(self.finfo_idx, state='normal')
 
     def onLoad(self, event=None):
         """Load an existing SD file."""
@@ -1205,10 +1118,6 @@ class SDFCreator(tk.Tk):
 
             # Enable GUI after loading SDF
             self.setSDFActive(True)
-
-        if self.mode == 'TBW':
-            self.helpMenu.entryconfig(self.finfo_idx, state='disabled')
-        else:
             self.helpMenu.entryconfig(self.finfo_idx, state='normal')
 
     def onSave(self, event=None):
@@ -1357,52 +1266,33 @@ class SDFCreator(tk.Tk):
         """Open scheduling window."""
         ScheduleWindow(self)
 
-    def onAddTBW(self, event=None):
-        """Add a TBW observation to the list."""
+    def onAddTBT(self, event=None):
+        """Add a TBT observation to the list."""
         if self.mode == '':
-            self.mode = 'TBW'
-            self.setMenuButtons('TBW')
+            self.mode = 'TBT'
+            self.setMenuButtons('TBT')
             self.addColumns()
 
         id = self.listControl.GetItemCount() + 1
-        bits = self.project.sessions[0].tbwBits
-        samples = self.project.sessions[0].tbwSamples
+        samples = self.project.sessions[0].tbtSamples
         self.project.sessions[0].observations.append(
-            self.sdf.TBW('tbw-%i' % id, 'All-Sky', self._getCurrentDateString(), samples, bits=bits)
+            sdf.TBT('tbt-%i' % id, 'All-Sky', self._getCurrentDateString(), samples)
         )
         self.addObservation(self.project.sessions[0].observations[-1], id)
 
         self.edited = True
         self.setSaveButton()
 
-    def onAddTBF(self, event=None):
-        """Add a TBF observation to the list."""
+    def onAddTBS(self, event=None):
+        """Add a TBS observation to the list."""
         if self.mode == '':
-            self.mode = 'TBF'
-            self.setMenuButtons('TBF')
+            self.mode = 'TBS'
+            self.setMenuButtons('TBS')
             self.addColumns()
 
         id = self.listControl.GetItemCount() + 1
-        samples = self.project.sessions[0].tbfSamples
         self.project.sessions[0].observations.append(
-            self.sdf.TBF('tbf-%i' % id, 'All-Sky', self._getCurrentDateString(), 42e6, 74e6, self._getDefaultFilter(), samples)
-        )
-        self.addObservation(self.project.sessions[0].observations[-1], id)
-
-        self.edited = True
-        self.setSaveButton()
-
-    def onAddTBN(self, event=None):
-        """Add a TBN observation to the list."""
-        if self.mode == '':
-            self.mode = 'TBN'
-            self.setMenuButtons('TBN')
-            self.addColumns()
-
-        id = self.listControl.GetItemCount() + 1
-        gain = self.project.sessions[0].tbnGain
-        self.project.sessions[0].observations.append(
-            self.sdf.TBN('tbn-%i' % id, 'All-Sky', self._getCurrentDateString(), '00:00:00.000', 38e6, self._getDefaultFilter(), gain=gain)
+            sdf.TBS('tbs-%i' % id, 'All-Sky', self._getCurrentDateString(), '00:00:00.000', 38e6, self._getDefaultFilter())
         )
         self.addObservation(self.project.sessions[0].observations[-1], id)
 
@@ -1419,7 +1309,7 @@ class SDFCreator(tk.Tk):
         id = self.listControl.GetItemCount() + 1
         gain = self.project.sessions[0].drxGain
         self.project.sessions[0].observations.append(
-            self.sdf.DRX('drx-%i' % id, 'target-%i' % id, self._getCurrentDateString(), '00:00:00.000', 0.0, 0.0, 42e6, 74e6, self._getDefaultFilter(), gain=gain)
+            sdf.DRX('drx-%i' % id, 'target-%i' % id, self._getCurrentDateString(), '00:00:00.000', 0.0, 0.0, 42e6, 74e6, self._getDefaultFilter(), gain=gain)
         )
         self.addObservation(self.project.sessions[0].observations[-1], id)
 
@@ -1436,7 +1326,7 @@ class SDFCreator(tk.Tk):
         id = self.listControl.GetItemCount() + 1
         gain = self.project.sessions[0].drxGain
         self.project.sessions[0].observations.append(
-            self.sdf.Solar('solar-%i' % id, 'Sun', self._getCurrentDateString(), '00:00:00.000', 42e6, 74e6, self._getDefaultFilter(), gain=gain)
+            sdf.Solar('solar-%i' % id, 'Sun', self._getCurrentDateString(), '00:00:00.000', 42e6, 74e6, self._getDefaultFilter(), gain=gain)
         )
         self.addObservation(self.project.sessions[0].observations[-1], id)
 
@@ -1453,7 +1343,7 @@ class SDFCreator(tk.Tk):
         id = self.listControl.GetItemCount() + 1
         gain = self.project.sessions[0].drxGain
         self.project.sessions[0].observations.append(
-            self.sdf.Jovian('jovian-%i' % id, 'Jupiter', self._getCurrentDateString(), '00:00:00.000', 42e6, 74e6, self._getDefaultFilter(), gain=gain)
+            sdf.Jovian('jovian-%i' % id, 'Jupiter', self._getCurrentDateString(), '00:00:00.000', 42e6, 74e6, self._getDefaultFilter(), gain=gain)
         )
         self.addObservation(self.project.sessions[0].observations[-1], id)
 
@@ -1470,7 +1360,7 @@ class SDFCreator(tk.Tk):
         id = self.listControl.GetItemCount() + 1
         gain = self.project.sessions[0].drxGain
         self.project.sessions[0].observations.append(
-            self.sdf.Lunar('lunar-%i' % id, 'Moon', self._getCurrentDateString(), '00:00:00.000', 42e6, 74e6, self._getDefaultFilter(), gain=gain)
+            sdf.Lunar('lunar-%i' % id, 'Moon', self._getCurrentDateString(), '00:00:00.000', 42e6, 74e6, self._getDefaultFilter(), gain=gain)
         )
         self.addObservation(self.project.sessions[0].observations[-1], id)
 
@@ -1487,7 +1377,7 @@ class SDFCreator(tk.Tk):
         id = self.listControl.GetItemCount() + 1
         gain = self.project.sessions[0].drxGain
         self.project.sessions[0].observations.append(
-            self.sdf.Stepped('stps-%i' % id, 'radec-%i' % id, self._getCurrentDateString(), self._getDefaultFilter(), is_radec=True, gain=gain)
+            sdf.Stepped('stps-%i' % id, 'radec-%i' % id, self._getCurrentDateString(), self._getDefaultFilter(), is_radec=True, gain=gain)
         )
         self.addObservation(self.project.sessions[0].observations[-1], id)
 
@@ -1504,7 +1394,7 @@ class SDFCreator(tk.Tk):
         id = self.listControl.GetItemCount() + 1
         gain = self.project.sessions[0].drxGain
         self.project.sessions[0].observations.append(
-            self.sdf.Stepped('stps-%i' % id, 'azalt-%i' % id, self._getCurrentDateString(), self._getDefaultFilter(), is_radec=False, gain=gain)
+            sdf.Stepped('stps-%i' % id, 'azalt-%i' % id, self._getCurrentDateString(), self._getDefaultFilter(), is_radec=False, gain=gain)
         )
         self.addObservation(self.project.sessions[0].observations[-1], id)
 
@@ -1638,7 +1528,7 @@ class SDFCreator(tk.Tk):
         HelpWindow(self)
 
     def onFilterInfo(self, event=None):
-        """Display filter codes for TBN and DRX modes."""
+        """Display filter codes for TBS and DRX modes."""
         def units(value):
             if value >= 1e6:
                 return float(value) / 1e6, 'MHz'
@@ -1647,14 +1537,10 @@ class SDFCreator(tk.Tk):
             else:
                 return float(value), 'Hz'
 
-        if self.mode == 'TBN':
-            filterInfo = "TBN Filter Codes:\n"
-            for tk, tv in TBNFilters.items():
-                if tk > 7:
-                    continue
-                tv, tu = units(tv)
-                filterInfo += f"  {tk}:  {tv:.3f} {tu}\n"
-        elif self.mode == 'DRX' or self.mode == 'TBF':
+        if self.mode == 'TBS':
+            filterInfo = "TBS Filter Codes:\n"
+            filterInfo += "  8:  200.000 kHz\n"
+        elif self.mode == 'DRX':
             filterInfo = "DRX Filter Codes:\n"
             for dk, dv in DRXFilters.items():
                 if dk > 7:
@@ -1718,22 +1604,15 @@ Website: http://lwa.unm.edu"""
                         obs.freq2 = int(float(new_value) * 1e6 * 2**32 / fS)
                 elif col_idx == 10:  # Filter
                     obs.filter = int(new_value)
-                elif col_idx == 11:  # Max S/N
-                    obs.max_snr = (new_value.lower() == 'yes')
-            elif self.mode in ('TBN', 'TBW'):
+                elif col_idx == 11:  # High DR
+                    obs.high_dr = (new_value.lower() == 'yes')
+            elif self.mode in ('TBS', 'TBT'):
                 if col_idx == 6:  # Frequency
                     if new_value != '--':
                         obs.freq1 = int(float(new_value) * 1e6 * 2**32 / fS)
                 elif col_idx == 7:  # Filter
                     if new_value != '--':
                         obs.filter = int(new_value)
-            elif self.mode == 'TBF':
-                if col_idx == 6:  # Freq1
-                    obs.freq1 = int(float(new_value) * 1e6 * 2**32 / fS)
-                elif col_idx == 7:  # Freq2
-                    obs.freq2 = int(float(new_value) * 1e6 * 2**32 / fS)
-                elif col_idx == 8:  # Filter
-                    obs.filter = int(new_value)
 
             obs.update()
             self.statusbar.config(text='')
@@ -1796,7 +1675,7 @@ Website: http://lwa.unm.edu"""
 
         pid_print(f"Parsing file '{filename}'")
         try:
-            self.project = self.sdf.parse_sdf(filename)
+            self.project = sdf.parse_sdf(filename)
         except Exception as e:
             messagebox.showerror('Parse Error', f"Cannot parse provided SDF: {str(e)}")
             return
@@ -1811,12 +1690,10 @@ Website: http://lwa.unm.edu"""
 
         # Determine mode from first observation
         first_obs_mode = self.project.sessions[0].observations[0].mode
-        if first_obs_mode == 'TBW':
-            self.mode = 'TBW'
-        elif first_obs_mode == 'TBF':
-            self.mode = 'TBF'
-        elif first_obs_mode == 'TBN':
-            self.mode = 'TBN'
+        if first_obs_mode == 'TBT':
+            self.mode = 'TBT'
+        elif first_obs_mode == 'TBS':
+            self.mode = 'TBS'
         elif first_obs_mode.startswith('TRK') or first_obs_mode == 'STEPPED':
             self.mode = 'DRX'
         else:
@@ -1826,17 +1703,11 @@ Website: http://lwa.unm.edu"""
 
         # Set session parameters
         try:
-            if hasattr(self.project.sessions[0].observations[0], 'bits'):
-                self.project.sessions[0].tbwBits = self.project.sessions[0].observations[0].bits
-                self.project.sessions[0].tbwSamples = self.project.sessions[0].observations[0].samples
-            elif hasattr(self.project.sessions[0].observations[0], 'samples'):
-                self.project.sessions[0].tbfSamples = self.project.sessions[0].observations[0].samples
+            self.project.sessions[0].tbtSamples = self.project.sessions[0].observations[0].samples
         except:
-            if self.mode == 'TBN' and self._getTBWValid():
-                self.project.sessions[0].tbwBits = 12
-                self.project.sessions[0].tbwSamples = 12000000
+            if self.mode == 'TBS':
+                self.project.sessions[0].tbtSamples = 12000000
 
-        self.project.sessions[0].tbnGain = self.project.sessions[0].observations[0].gain
         self.project.sessions[0].drxGain = self.project.sessions[0].observations[0].gain
 
         # Setup columns and add observations
@@ -1891,10 +1762,7 @@ class ObserverInfo(tk.Toplevel):
 
         self.initUI()
 
-        # Set minimum size to ensure dialog is wide enough for content
-        self.update_idletasks()  # Ensure geometry is calculated
-        self.minsize(700, 500)
-
+        self.geometry('650x650')
         self.grab_set()
 
     def _load_preferences(self):
@@ -1992,15 +1860,12 @@ class ObserverInfo(tk.Toplevel):
         type_frame.grid(row=3, column=1, sticky=tk.W, padx=5, pady=2)
 
         self.sess_type = tk.StringVar(value='DRX')
-        self.tbw_rb = ttk.Radiobutton(type_frame, text='Transient Buffer-Wide (TBW)',
-                                       variable=self.sess_type, value='TBW', command=self._on_type_change)
-        self.tbw_rb.pack(anchor=tk.W)
-        self.tbf_rb = ttk.Radiobutton(type_frame, text='Transient Buffer-Frequency Domain (TBF)',
-                                       variable=self.sess_type, value='TBF', command=self._on_type_change)
-        self.tbf_rb.pack(anchor=tk.W)
-        self.tbn_rb = ttk.Radiobutton(type_frame, text='Transient Buffer-Narrow (TBN)',
-                                       variable=self.sess_type, value='TBN', command=self._on_type_change)
-        self.tbn_rb.pack(anchor=tk.W)
+        self.tbt_rb = ttk.Radiobutton(type_frame, text='Transient Buffer-Triggered (TBT)',
+                                       variable=self.sess_type, value='TBT', command=self._on_type_change)
+        self.tbt_rb.pack(anchor=tk.W)
+        self.tbs_rb = ttk.Radiobutton(type_frame, text='Transient Buffer-Streaming (TBS)',
+                                       variable=self.sess_type, value='TBS', command=self._on_type_change)
+        self.tbs_rb.pack(anchor=tk.W)
         self.drx_rb = ttk.Radiobutton(type_frame, text='Beam Forming (DRX)',
                                        variable=self.sess_type, value='DRX', command=self._on_type_change)
         self.drx_rb.pack(anchor=tk.W)
@@ -2069,9 +1934,6 @@ class ObserverInfo(tk.Toplevel):
         # Populate fields from parent project
         self._populate_fields()
 
-        # Set initial window size
-        self.geometry('600x700')
-
     def _populate_fields(self):
         """Populate fields from parent's project data and preferences."""
         proj = self.sdf_parent.project
@@ -2119,18 +1981,9 @@ class ObserverInfo(tk.Toplevel):
         if self.sdf_parent.mode != '':
             self.sess_type.set(self.sdf_parent.mode)
             # Disable type selection if mode is already set
-            self.tbw_rb.config(state='disabled')
-            self.tbf_rb.config(state='disabled')
-            self.tbn_rb.config(state='disabled')
+            self.tbt_rb.config(state='disabled')
+            self.tbs_rb.config(state='disabled')
             self.drx_rb.config(state='disabled')
-        else:
-            # Enable/disable based on validity
-            if not self.sdf_parent._getTBWValid():
-                self.tbw_rb.config(state='disabled')
-            if not self.sdf_parent._getTBNValid():
-                self.tbn_rb.config(state='disabled')
-            if not self.sdf_parent._getTBFValid():
-                self.tbf_rb.config(state='disabled')
 
         # Data return method
         if proj.sessions[0].data_return_method == 'USB Harddrives':
@@ -2145,18 +1998,18 @@ class ObserverInfo(tk.Toplevel):
                 self.ucf_username.insert(0, mtch.group('username'))
 
         # DR Spectrometer
-        if proj.sessions[0].spcSetup[0] != 0 and proj.sessions[0].spcSetup[1] != 0:
+        if proj.sessions[0].spc_setup[0] != 0 and proj.sessions[0].spc_setup[1] != 0:
             self.drs_var.set(True)
             self.nchn_entry.config(state='normal')
             self.nchn_entry.delete(0, tk.END)
-            self.nchn_entry.insert(0, str(proj.sessions[0].spcSetup[0]))
+            self.nchn_entry.insert(0, str(proj.sessions[0].spc_setup[0]))
             self.nint_entry.config(state='normal')
             self.nint_entry.delete(0, tk.END)
-            self.nint_entry.insert(0, str(proj.sessions[0].spcSetup[1]))
+            self.nint_entry.insert(0, str(proj.sessions[0].spc_setup[1]))
             self.linear_rb.config(state='normal')
             self.stokes_rb.config(state='normal')
 
-            mt = proj.sessions[0].spcMetatag
+            mt = proj.sessions[0].spc_metatag
             if mt is not None:
                 junk, mt = mt.split('=', 1)
                 mt = mt.replace('}', '')
@@ -2166,7 +2019,7 @@ class ObserverInfo(tk.Toplevel):
                     self.spc_type.set('Stokes')
 
         # Disable DR spec for non-DRX modes
-        if self.sdf_parent.mode in ('TBW', 'TBF', 'TBN'):
+        if self.sdf_parent.mode in ('TBT', 'TBS'):
             self.drs_cb.config(state='disabled')
 
     def _on_type_change(self):
@@ -2249,15 +2102,15 @@ class ObserverInfo(tk.Toplevel):
         # Data return method
         if self.drm_var.get() == 'USB':
             proj.sessions[0].data_return_method = 'USB Harddrives'
-            proj.sessions[0].spcSetup = [0, 0]
-            proj.sessions[0].spcMetatag = None
+            proj.sessions[0].spc_setup = [0, 0]
+            proj.sessions[0].spc_metatag = None
         else:
             proj.sessions[0].data_return_method = 'UCF'
             tempc = sdf.UCF_USERNAME_RE.sub('', proj.sessions[0].comments)
             proj.sessions[0].comments = tempc + ';;ucfuser:%s' % self.ucf_username.get()
 
-            proj.sessions[0].spcSetup = [0, 0]
-            proj.sessions[0].spcMetatag = None
+            proj.sessions[0].spc_setup = [0, 0]
+            proj.sessions[0].spc_metatag = None
 
             mtch = sdf.UCF_USERNAME_RE.search(proj.sessions[0].comments)
             if mtch is None:
@@ -2273,32 +2126,29 @@ class ObserverInfo(tk.Toplevel):
             except ValueError:
                 self.displayError('Channels and FFTs/int. must be numeric', title='DR Spectrometer Error')
                 return
-            proj.sessions[0].spcSetup = [nchn, nint]
+            proj.sessions[0].spc_setup = [nchn, nint]
 
-            mt = proj.sessions[0].spcMetatag
+            mt = proj.sessions[0].spc_metatag
             if mt is None:
                 isLinear = True
-                proj.sessions[0].spcMetatag = '{Stokes=XXYY}'
+                proj.sessions[0].spc_metatag = '{Stokes=XXYY}'
             else:
                 junk, mt = mt.split('=', 1)
                 mt = mt.replace('}', '')
                 isLinear = mt in ('XXYY', 'CRCI', 'XXCRCIYY')
 
             if self.spc_type.get() == 'Linear' and not isLinear:
-                proj.sessions[0].spcMetatag = '{Stokes=XXYY}'
+                proj.sessions[0].spc_metatag = '{Stokes=XXYY}'
             if self.spc_type.get() == 'Stokes' and isLinear:
-                proj.sessions[0].spcMetatag = '{Stokes=IQUV}'
+                proj.sessions[0].spc_metatag = '{Stokes=IQUV}'
 
         # Session type
         sess_type = self.sess_type.get()
-        if sess_type == 'TBW':
-            self.sdf_parent.mode = 'TBW'
+        if sess_type == 'TBT':
+            self.sdf_parent.mode = 'TBT'
             proj.sessions[0].include_station_smib = True
-        elif sess_type == 'TBF':
-            self.sdf_parent.mode = 'TBF'
-            proj.sessions[0].include_station_smib = True
-        elif sess_type == 'TBN':
-            self.sdf_parent.mode = 'TBN'
+        elif sess_type == 'TBS':
+            self.sdf_parent.mode = 'TBS'
             proj.sessions[0].include_station_smib = True
         else:
             self.sdf_parent.mode = 'DRX'
@@ -2374,6 +2224,8 @@ class AdvancedInfo(tk.Toplevel):
         self.transient(parent)
 
         self.initUI()
+        
+        self.geometry('625x625')
         self.grab_set()
 
     def _timeToCombo(self, time_val):
@@ -2440,15 +2292,8 @@ class AdvancedInfo(tk.Toplevel):
         intervals = ['MCS Decides', 'Never', '1 minute', '5 minutes', '15 minutes', '30 minutes', '1 hour']
         aspFilters = ['MCS Decides', 'Split', 'Full', 'Reduced', 'Off', 'Split @ 3MHz', 'Full @ 3MHz']
         aspAttn = ['MCS Decides'] + [str(i) for i in range(16)]
-        tbnGain = ['MCS Decides'] + [str(i) for i in range(31)]
         drxGain = ['MCS Decides'] + [str(i) for i in range(13)]
-        if self.sdf_parent.ndp:
-            drxBeam = ['MCS Decides'] + ['%i' % i for i in range(1, 5)]
-        elif self.sdf_parent.adp:
-            drxBeam = ['MCS Decides'] + ['%i' % i for i in range(1, 4)]
-        else:
-            drxBeam = ['MCS Decides'] + ['%i' % i for i in range(1, 5)]
-        bits_choices = ['12-bit', '4-bit']
+        drxBeam = ['MCS Decides'] + ['%i' % i for i in range(1, 5)]
 
         # MCS-Specific Information
         mcs_frame = ttk.LabelFrame(main_frame, text='MCS-Specific Information', padding="5")
@@ -2460,27 +2305,27 @@ class AdvancedInfo(tk.Toplevel):
         ttk.Label(mcs_frame, text='ASP:').grid(row=1, column=0, sticky=tk.E, padx=2)
         self.mrpASP = ttk.Combobox(mcs_frame, values=intervals, state='readonly', width=12)
         self.mrpASP.grid(row=1, column=1, padx=2)
-        self.mrpASP.set(self._timeToCombo(self.sdf_parent.project.sessions[0].recordMIB.get('ASP', -1)))
+        self.mrpASP.set(self._timeToCombo(self.sdf_parent.project.sessions[0].record_mib.get('ASP', -1)))
 
-        ttk.Label(mcs_frame, text='DP:').grid(row=1, column=2, sticky=tk.E, padx=2)
+        ttk.Label(mcs_frame, text='NDP:').grid(row=1, column=2, sticky=tk.E, padx=2)
         self.mrpDP = ttk.Combobox(mcs_frame, values=intervals, state='readonly', width=12)
         self.mrpDP.grid(row=1, column=3, padx=2)
-        self.mrpDP.set(self._timeToCombo(self.sdf_parent.project.sessions[0].recordMIB.get('DP_', -1)))
+        self.mrpDP.set(self._timeToCombo(self.sdf_parent.project.sessions[0].record_mib.get('NDP', -1)))
 
         ttk.Label(mcs_frame, text='DR1-DR4:').grid(row=1, column=4, sticky=tk.E, padx=2)
         self.mrpDR = ttk.Combobox(mcs_frame, values=intervals, state='readonly', width=12)
         self.mrpDR.grid(row=1, column=5, padx=2)
-        self.mrpDR.set(self._timeToCombo(self.sdf_parent.project.sessions[0].recordMIB.get('DR1', -1)))
+        self.mrpDR.set(self._timeToCombo(self.sdf_parent.project.sessions[0].record_mib.get('DR1', -1)))
 
         ttk.Label(mcs_frame, text='SHL:').grid(row=2, column=0, sticky=tk.E, padx=2)
         self.mrpSHL = ttk.Combobox(mcs_frame, values=intervals, state='readonly', width=12)
         self.mrpSHL.grid(row=2, column=1, padx=2)
-        self.mrpSHL.set(self._timeToCombo(self.sdf_parent.project.sessions[0].recordMIB.get('SHL', -1)))
+        self.mrpSHL.set(self._timeToCombo(self.sdf_parent.project.sessions[0].record_mib.get('SHL', -1)))
 
         ttk.Label(mcs_frame, text='MCS:').grid(row=2, column=2, sticky=tk.E, padx=2)
         self.mrpMCS = ttk.Combobox(mcs_frame, values=intervals, state='readonly', width=12)
         self.mrpMCS.grid(row=2, column=3, padx=2)
-        self.mrpMCS.set(self._timeToCombo(self.sdf_parent.project.sessions[0].recordMIB.get('MCS', -1)))
+        self.mrpMCS.set(self._timeToCombo(self.sdf_parent.project.sessions[0].record_mib.get('MCS', -1)))
 
         # MIB Update Period
         ttk.Label(mcs_frame, text='MIB Update Period:').grid(row=3, column=0, columnspan=6, sticky=tk.W, pady=(10, 5))
@@ -2488,27 +2333,27 @@ class AdvancedInfo(tk.Toplevel):
         ttk.Label(mcs_frame, text='ASP:').grid(row=4, column=0, sticky=tk.E, padx=2)
         self.mupASP = ttk.Combobox(mcs_frame, values=intervals, state='readonly', width=12)
         self.mupASP.grid(row=4, column=1, padx=2)
-        self.mupASP.set(self._timeToCombo(self.sdf_parent.project.sessions[0].updateMIB.get('ASP', -1)))
+        self.mupASP.set(self._timeToCombo(self.sdf_parent.project.sessions[0].update_mib.get('ASP', -1)))
 
-        ttk.Label(mcs_frame, text='DP:').grid(row=4, column=2, sticky=tk.E, padx=2)
+        ttk.Label(mcs_frame, text='NDP:').grid(row=4, column=2, sticky=tk.E, padx=2)
         self.mupDP = ttk.Combobox(mcs_frame, values=intervals, state='readonly', width=12)
         self.mupDP.grid(row=4, column=3, padx=2)
-        self.mupDP.set(self._timeToCombo(self.sdf_parent.project.sessions[0].updateMIB.get('DP_', -1)))
+        self.mupDP.set(self._timeToCombo(self.sdf_parent.project.sessions[0].update_mib.get('NDP', -1)))
 
         ttk.Label(mcs_frame, text='DR1-DR4:').grid(row=4, column=4, sticky=tk.E, padx=2)
         self.mupDR = ttk.Combobox(mcs_frame, values=intervals, state='readonly', width=12)
         self.mupDR.grid(row=4, column=5, padx=2)
-        self.mupDR.set(self._timeToCombo(self.sdf_parent.project.sessions[0].updateMIB.get('DR1', -1)))
+        self.mupDR.set(self._timeToCombo(self.sdf_parent.project.sessions[0].update_mib.get('DR1', -1)))
 
         ttk.Label(mcs_frame, text='SHL:').grid(row=5, column=0, sticky=tk.E, padx=2)
         self.mupSHL = ttk.Combobox(mcs_frame, values=intervals, state='readonly', width=12)
         self.mupSHL.grid(row=5, column=1, padx=2)
-        self.mupSHL.set(self._timeToCombo(self.sdf_parent.project.sessions[0].updateMIB.get('SHL', -1)))
+        self.mupSHL.set(self._timeToCombo(self.sdf_parent.project.sessions[0].update_mib.get('SHL', -1)))
 
         ttk.Label(mcs_frame, text='MCS:').grid(row=5, column=2, sticky=tk.E, padx=2)
         self.mupMCS = ttk.Combobox(mcs_frame, values=intervals, state='readonly', width=12)
         self.mupMCS.grid(row=5, column=3, padx=2)
-        self.mupMCS.set(self._timeToCombo(self.sdf_parent.project.sessions[0].updateMIB.get('MCS', -1)))
+        self.mupMCS.set(self._timeToCombo(self.sdf_parent.project.sessions[0].update_mib.get('MCS', -1)))
 
         # Logging options
         self.schLog_var = tk.BooleanVar(value=self.sdf_parent.project.sessions[0].include_mcssch_log)
@@ -2570,71 +2415,20 @@ class AdvancedInfo(tk.Toplevel):
         self.aspATS.set('MCS Decides' if aspATS_val == -1 else str(aspATS_val))
         ttk.Label(asp_frame, text='for all inputs').grid(row=3, column=2, sticky=tk.W, padx=5)
 
-        # TBW-Specific Information (conditional)
-        self.tbwBits = None
-        self.tbwSamp = None
-        if self.sdf_parent.mode == 'TBW' or self.sdf_parent._getTBWValid():
-            tbw_frame = ttk.LabelFrame(main_frame, text='TBW-Specific Information', padding="5")
-            tbw_frame.pack(fill=tk.X, pady=(0, 10))
+        # TBT-Specific Information (conditional)
+        self.tbtSamp = None
+        if self.sdf_parent.mode == 'TBT':
+            tbt_frame = ttk.LabelFrame(main_frame, text='TBT-Specific Information', padding="5")
+            tbt_frame.pack(fill=tk.X, pady=(0, 10))
 
-            ttk.Label(tbw_frame, text='Data:').grid(row=0, column=0, sticky=tk.E, padx=5, pady=2)
-            self.tbwBits = ttk.Combobox(tbw_frame, values=bits_choices, state='readonly', width=10)
-            self.tbwBits.grid(row=0, column=1, padx=5, pady=2)
+            ttk.Label(tbt_frame, text='Samples:').grid(row=0, column=0, sticky=tk.E, padx=5, pady=2)
+            self.tbtSamp = ttk.Entry(tbt_frame, width=15)
+            self.tbtSamp.grid(row=0, column=1, padx=5, pady=2)
             try:
-                self.tbwBits.set('%i-bit' % self.sdf_parent.project.sessions[0].observations[0].bits)
+                self.tbtSamp.insert(0, str(self.sdf_parent.project.sessions[0].observations[0].samples))
             except (IndexError, AttributeError):
-                self.tbwBits.set('12-bit')
-
-            ttk.Label(tbw_frame, text='Samples:').grid(row=1, column=0, sticky=tk.E, padx=5, pady=2)
-            self.tbwSamp = ttk.Entry(tbw_frame, width=15)
-            self.tbwSamp.grid(row=1, column=1, padx=5, pady=2)
-            try:
-                self.tbwSamp.insert(0, str(self.sdf_parent.project.sessions[0].observations[0].samples))
-            except (IndexError, AttributeError):
-                self.tbwSamp.insert(0, '12000000')
-            ttk.Label(tbw_frame, text='per capture').grid(row=1, column=2, sticky=tk.W, padx=5)
-
-        # TBF-Specific Information (conditional)
-        self.tbfSamp = None
-        self.tbfBeam = None
-        if self.sdf_parent.mode == 'TBF' or self.sdf_parent._getTBFValid():
-            tbf_frame = ttk.LabelFrame(main_frame, text='TBF-Specific Information', padding="5")
-            tbf_frame.pack(fill=tk.X, pady=(0, 10))
-
-            ttk.Label(tbf_frame, text='Samples:').grid(row=0, column=0, sticky=tk.E, padx=5, pady=2)
-            self.tbfSamp = ttk.Entry(tbf_frame, width=15)
-            self.tbfSamp.grid(row=0, column=1, padx=5, pady=2)
-            try:
-                self.tbfSamp.insert(0, str(self.sdf_parent.project.sessions[0].observations[0].samples))
-            except (IndexError, AttributeError):
-                self.tbfSamp.insert(0, '12000000')
-            ttk.Label(tbf_frame, text='per capture').grid(row=0, column=2, sticky=tk.W, padx=5)
-
-            ttk.Label(tbf_frame, text='Beam:').grid(row=1, column=0, sticky=tk.E, padx=5, pady=2)
-            self.tbfBeam = ttk.Combobox(tbf_frame, values=drxBeam, state='readonly', width=12)
-            self.tbfBeam.grid(row=1, column=1, padx=5, pady=2)
-            if self.sdf_parent.project.sessions[0].drx_beam == -1:
-                self.tbfBeam.set('MCS Decides')
-            else:
-                self.tbfBeam.set(str(self.sdf_parent.project.sessions[0].drx_beam))
-
-        # TBN-Specific Information (conditional)
-        self.tbnGain = None
-        if self.sdf_parent.mode == 'TBN' or self.sdf_parent._getTBNValid() or (self.sdf_parent.mode == 'TBW' and ALLOW_TBW_TBN_SAME_SDF):
-            tbn_frame = ttk.LabelFrame(main_frame, text='TBN-Specific Information', padding="5")
-            tbn_frame.pack(fill=tk.X, pady=(0, 10))
-
-            ttk.Label(tbn_frame, text='Gain:').grid(row=0, column=0, sticky=tk.E, padx=5, pady=2)
-            self.tbnGain = ttk.Combobox(tbn_frame, values=tbnGain, state='readonly', width=12)
-            self.tbnGain.grid(row=0, column=1, padx=5, pady=2)
-            try:
-                if len(self.sdf_parent.project.sessions[0].observations) == 0 or \
-                   self.sdf_parent.project.sessions[0].observations[0].gain == -1:
-                    self.tbnGain.set('MCS Decides')
-                else:
-                    self.tbnGain.set(str(self.sdf_parent.project.sessions[0].observations[0].gain))
-            except (IndexError, AttributeError):
-                self.tbnGain.set('MCS Decides')
+                self.tbtSamp.insert(0, '12000000')
+            ttk.Label(tbt_frame, text='per capture').grid(row=0, column=2, sticky=tk.W, padx=5)
 
         # DRX-Specific Information (conditional)
         self.drxGain = None
@@ -2675,7 +2469,7 @@ class AdvancedInfo(tk.Toplevel):
 
             # Check if beam-dipole mode is currently enabled
             bdm_enabled = False
-            bdm_stand = '256' if self.sdf_parent.adp else '258'
+            bdm_stand = '256'
             bdm_dgain = '1.0000'
             bdm_bgain = '0.0041'
             bdm_pol = 'X'
@@ -2731,11 +2525,11 @@ class AdvancedInfo(tk.Toplevel):
         # DR Spectrometer Information (conditional)
         self.spc_opt = None
         if self.sdf_parent.project.sessions[0].data_return_method == 'DR Spectrometer' or \
-           (self.sdf_parent.project.sessions[0].spcSetup[0] != 0 and self.sdf_parent.project.sessions[0].spcSetup[1] != 0):
+           (self.sdf_parent.project.sessions[0].spc_setup[0] != 0 and self.sdf_parent.project.sessions[0].spc_setup[1] != 0):
             spc_frame = ttk.LabelFrame(main_frame, text='DR Spectrometer Information', padding="5")
             spc_frame.pack(fill=tk.X, pady=(0, 10))
 
-            mt = self.sdf_parent.project.sessions[0].spcMetatag
+            mt = self.sdf_parent.project.sessions[0].spc_metatag
             if mt is None:
                 isLinear = True
             else:
@@ -2777,8 +2571,7 @@ class AdvancedInfo(tk.Toplevel):
         ttk.Button(btn_frame, text='OK', command=self.onOK).pack(side=tk.RIGHT, padx=5)
         ttk.Button(btn_frame, text='Cancel', command=self.onCancel).pack(side=tk.RIGHT, padx=5)
 
-        # Set initial window size
-        self.geometry('700x800')
+        self.geometry('550x700')
 
     def _on_bdm_toggle(self):
         """Toggle beam-dipole mode controls."""
@@ -2804,55 +2597,35 @@ class AdvancedInfo(tk.Toplevel):
 
     def onOK(self):
         """Save everything into the correct places."""
-        # Validate TBW settings
-        if self.tbwBits is not None and self.tbwSamp is not None:
+        # Validate TBT settings
+        if self.tbtSamp is not None:
             try:
-                tbwBits = int(self.tbwBits.get().split('-')[0])
-                tbwSamp = int(self.tbwSamp.get())
-                if tbwSamp < 0:
-                    self.displayError('Number of TBW samples must be positive', title='TBW Sample Error')
+                tbtSamp = int(self.tbtSamp.get())
+                if tbtSamp < 0:
+                    self.displayError('Number of TBT samples must be positive', title='TBT Sample Error')
                     return
-                if tbwBits == 4 and tbwSamp > 36000000:
-                    self.displayError(f'Number of TBW samples too large for a {tbwBits}-bit capture',
-                                     details=f'{tbwSamp} > 36000000', title='TBW Sample Error')
-                    return
-                if tbwBits == 12 and tbwSamp > 12000000:
-                    self.displayError(f'Number of TBW samples too large for a {tbwBits}-bit capture',
-                                     details=f'{tbwSamp} > 12000000', title='TBW Sample Error')
+                if tbtSamp > 196000000 * 3:
+                    self.displayError('Number of TBT samples too large',
+                                     details=f'{tbtSamp} > 3 sec', title='TBT Sample Error')
                     return
             except ValueError:
-                self.displayError('TBW samples must be numeric', title='TBW Sample Error')
-                return
-
-        # Validate TBF settings
-        if self.tbfSamp is not None:
-            try:
-                tbfSamp = int(self.tbfSamp.get())
-                if tbfSamp < 0:
-                    self.displayError('Number of TBF samples must be positive', title='TBF Sample Error')
-                    return
-                if tbfSamp > 196000000 * 3:
-                    self.displayError('Number of TBF samples too large',
-                                     details=f'{tbfSamp} > 3 sec', title='TBF Sample Error')
-                    return
-            except ValueError:
-                self.displayError('TBF samples must be numeric', title='TBF Sample Error')
+                self.displayError('TBT samples must be numeric', title='TBT Sample Error')
                 return
 
         # Save MCS settings
-        self.sdf_parent.project.sessions[0].recordMIB['ASP'] = self._parseTimeCombo(self.mrpASP.get())
-        self.sdf_parent.project.sessions[0].recordMIB['DP_'] = self._parseTimeCombo(self.mrpDP.get())
+        self.sdf_parent.project.sessions[0].record_mib['ASP'] = self._parseTimeCombo(self.mrpASP.get())
+        self.sdf_parent.project.sessions[0].record_mib['NDP'] = self._parseTimeCombo(self.mrpDP.get())
         for i in range(1, 6):
-            self.sdf_parent.project.sessions[0].recordMIB['DR%i' % i] = self._parseTimeCombo(self.mrpDR.get())
-        self.sdf_parent.project.sessions[0].recordMIB['SHL'] = self._parseTimeCombo(self.mrpSHL.get())
-        self.sdf_parent.project.sessions[0].recordMIB['MCS'] = self._parseTimeCombo(self.mrpMCS.get())
+            self.sdf_parent.project.sessions[0].record_mib['DR%i' % i] = self._parseTimeCombo(self.mrpDR.get())
+        self.sdf_parent.project.sessions[0].record_mib['SHL'] = self._parseTimeCombo(self.mrpSHL.get())
+        self.sdf_parent.project.sessions[0].record_mib['MCS'] = self._parseTimeCombo(self.mrpMCS.get())
 
-        self.sdf_parent.project.sessions[0].updateMIB['ASP'] = self._parseTimeCombo(self.mupASP.get())
-        self.sdf_parent.project.sessions[0].updateMIB['DP_'] = self._parseTimeCombo(self.mupDP.get())
+        self.sdf_parent.project.sessions[0].update_mib['ASP'] = self._parseTimeCombo(self.mupASP.get())
+        self.sdf_parent.project.sessions[0].update_mib['NDP'] = self._parseTimeCombo(self.mupDP.get())
         for i in range(1, 6):
-            self.sdf_parent.project.sessions[0].updateMIB['DR%i' % i] = self._parseTimeCombo(self.mupDR.get())
-        self.sdf_parent.project.sessions[0].updateMIB['SHL'] = self._parseTimeCombo(self.mupSHL.get())
-        self.sdf_parent.project.sessions[0].updateMIB['MCS'] = self._parseTimeCombo(self.mupMCS.get())
+            self.sdf_parent.project.sessions[0].update_mib['DR%i' % i] = self._parseTimeCombo(self.mupDR.get())
+        self.sdf_parent.project.sessions[0].update_mib['SHL'] = self._parseTimeCombo(self.mupSHL.get())
+        self.sdf_parent.project.sessions[0].update_mib['MCS'] = self._parseTimeCombo(self.mupMCS.get())
 
         self.sdf_parent.project.sessions[0].include_mcssch_log = self.schLog_var.get()
         self.sdf_parent.project.sessions[0].include_mcsexe_log = self.exeLog_var.get()
@@ -2877,35 +2650,14 @@ class AdvancedInfo(tk.Toplevel):
 
         refresh_duration = False
 
-        # Save TBW settings
-        if self.tbwBits is not None and self.tbwSamp is not None:
-            tbwBits = int(self.tbwBits.get().split('-')[0])
-            tbwSamp = int(self.tbwSamp.get())
-            self.sdf_parent.project.sessions[0].tbwBits = tbwBits
-            self.sdf_parent.project.sessions[0].tbwSamples = tbwSamp
+        # Save TBT settings
+        if self.tbtSamp is not None:
+            tbtSamp = int(self.tbtSamp.get())
+            self.sdf_parent.project.sessions[0].tbtSamples = tbtSamp
             for i in range(len(self.sdf_parent.project.sessions[0].observations)):
-                self.sdf_parent.project.sessions[0].observations[i].bits = tbwBits
-                self.sdf_parent.project.sessions[0].observations[i].samples = tbwSamp
+                self.sdf_parent.project.sessions[0].observations[i].samples = tbtSamp
                 self.sdf_parent.project.sessions[0].observations[i].update()
                 refresh_duration = True
-
-        # Save TBF settings
-        if self.tbfSamp is not None:
-            tbfSamp = int(self.tbfSamp.get())
-            if self.tbfBeam is not None:
-                self.sdf_parent.project.sessions[0].drx_beam = self._parseGainCombo(self.tbfBeam.get())
-            self.sdf_parent.project.sessions[0].tbfSamples = tbfSamp
-            for i in range(len(self.sdf_parent.project.sessions[0].observations)):
-                self.sdf_parent.project.sessions[0].observations[i].samples = tbfSamp
-                self.sdf_parent.project.sessions[0].observations[i].update()
-                refresh_duration = True
-
-        # Save TBN gain
-        if self.tbnGain is not None:
-            gain = self._parseGainCombo(self.tbnGain.get())
-            self.sdf_parent.project.sessions[0].tbnGain = gain
-            for i in range(len(self.sdf_parent.project.sessions[0].observations)):
-                self.sdf_parent.project.sessions[0].observations[i].gain = gain
 
         # Save DRX settings
         if self.drxGain is not None:
@@ -2966,7 +2718,7 @@ class AdvancedInfo(tk.Toplevel):
 
         # Save DR Spectrometer settings
         if self.spc_opt is not None:
-            mt = self.sdf_parent.project.sessions[0].spcMetatag
+            mt = self.sdf_parent.project.sessions[0].spc_metatag
             if mt is None:
                 isLinear = True
             else:
@@ -2976,25 +2728,25 @@ class AdvancedInfo(tk.Toplevel):
 
             if isLinear:
                 if self.spc_opt.get() == 'opt1':
-                    self.sdf_parent.project.sessions[0].spcMetatag = '{Stokes=XXYY}'
+                    self.sdf_parent.project.sessions[0].spc_metatag = '{Stokes=XXYY}'
                 elif self.spc_opt.get() == 'opt2':
-                    self.sdf_parent.project.sessions[0].spcMetatag = '{Stokes=CRCI}'
+                    self.sdf_parent.project.sessions[0].spc_metatag = '{Stokes=CRCI}'
                 else:
-                    self.sdf_parent.project.sessions[0].spcMetatag = '{Stokes=XXCRCIYY}'
+                    self.sdf_parent.project.sessions[0].spc_metatag = '{Stokes=XXCRCIYY}'
             else:
                 if self.spc_opt.get() == 'opt1':
-                    self.sdf_parent.project.sessions[0].spcMetatag = '{Stokes=I}'
+                    self.sdf_parent.project.sessions[0].spc_metatag = '{Stokes=I}'
                 elif self.spc_opt.get() == 'opt2':
-                    self.sdf_parent.project.sessions[0].spcMetatag = '{Stokes=IV}'
+                    self.sdf_parent.project.sessions[0].spc_metatag = '{Stokes=IV}'
                 else:
-                    self.sdf_parent.project.sessions[0].spcMetatag = '{Stokes=IQUV}'
+                    self.sdf_parent.project.sessions[0].spc_metatag = '{Stokes=IQUV}'
 
         # Refresh duration column if needed
         if refresh_duration and hasattr(self.sdf_parent, 'columnMap') and 'duration' in self.sdf_parent.columnMap:
             col_idx = self.sdf_parent.columnMap.index('duration')
             for idx, child in enumerate(self.sdf_parent.listControl.get_children()):
                 obs = self.sdf_parent.project.sessions[0].observations[idx]
-                if obs.mode in ('TBW', 'TBF'):
+                if obs.mode == 'TBT':
                     values = list(self.sdf_parent.listControl.item(child, 'values'))
                     values[col_idx] = obs.duration
                     self.sdf_parent.listControl.item(child, values=values)
@@ -3053,7 +2805,7 @@ class SessionDisplay(tk.Toplevel):
         self.bind('<Configure>', self.resizePlots)
 
     def initPlot(self):
-        """Plot observation timeline for non-DRX modes (TBW, TBN, TBF)."""
+        """Plot observation timeline for non-DRX modes (TBT, TBS)."""
         self.obs = self.sdf_parent.project.sessions[0].observations
 
         if len(self.obs) == 0:
@@ -3122,7 +2874,7 @@ class SessionDisplay(tk.Toplevel):
             t = []
             alt = []
 
-            if o.mode not in ('TBW', 'TBF', 'TBN', 'STEPPED'):
+            if o.mode not in ('TBT', 'TBS', 'STEPPED'):
                 # Get the source
                 src = o.fixed_body
 
@@ -3292,9 +3044,9 @@ class VolumeInfo(tk.Toplevel):
         row = 2
 
         for obs in self.sdf_parent.project.sessions[0].observations:
-            if self.sdf_parent.project.sessions[0].spcSetup[0] != 0 and self.sdf_parent.project.sessions[0].spcSetup[1] != 0:
+            if self.sdf_parent.project.sessions[0].spc_setup[0] != 0 and self.sdf_parent.project.sessions[0].spc_setup[1] != 0:
                 # DR Spectrometer mode
-                mt = self.sdf_parent.project.sessions[0].spcMetatag
+                mt = self.sdf_parent.project.sessions[0].spc_metatag
                 if mt is None:
                     mt = '{Stokes=XXYY}'
                 junk, mt = mt.split('=', 1)
@@ -3308,7 +3060,7 @@ class VolumeInfo(tk.Toplevel):
                 mode = "%s+%s" % (obs.mode, mt)
 
                 tunes = 2
-                tlen, icount = self.sdf_parent.project.sessions[0].spcSetup
+                tlen, icount = self.sdf_parent.project.sessions[0].spc_setup
                 sample_rate = obs.filter_codes[obs.filter]
                 duration = obs.dur / 1000.0
                 dataVolume = (76 + tlen * tunes * products * 4) / (1.0 * tlen * icount / sample_rate) * duration
@@ -3584,7 +3336,7 @@ class HelpWindow(tk.Toplevel):
         super().__init__(parent)
 
         self.title('Session GUI Handbook')
-        self.geometry('600x500')
+        self.geometry('800x500')
         self.sdf_parent = parent
 
         # Store anchor positions for internal navigation
@@ -3932,7 +3684,7 @@ class SteppedWindow(tk.Toplevel):
 
         # Create columns based on RA/Dec or Az/Alt mode
         if self.RADec:
-            columns = ('id', 'duration', 'ra', 'dec', 'freq1', 'freq2', 'max_snr')
+            columns = ('id', 'duration', 'ra', 'dec', 'freq1', 'freq2', 'high_dr')
             headings = {
                 'id': ('ID', 40),
                 'duration': ('Duration', 120),
@@ -3940,10 +3692,10 @@ class SteppedWindow(tk.Toplevel):
                 'dec': ('Dec (Deg. J2000)', 140),
                 'freq1': ('Tuning 1 (MHz)', 120),
                 'freq2': ('Tuning 2 (MHz)', 120),
-                'max_snr': ('Max S/N?', 80),
+                'high_dr': ('Max S/N?', 80),
             }
         else:
-            columns = ('id', 'duration', 'az', 'alt', 'freq1', 'freq2', 'max_snr')
+            columns = ('id', 'duration', 'az', 'alt', 'freq1', 'freq2', 'high_dr')
             headings = {
                 'id': ('ID', 40),
                 'duration': ('Duration', 120),
@@ -3951,7 +3703,7 @@ class SteppedWindow(tk.Toplevel):
                 'alt': ('Altitude (Deg.)', 140),
                 'freq1': ('Tuning 1 (MHz)', 120),
                 'freq2': ('Tuning 2 (MHz)', 120),
-                'max_snr': ('Max S/N?', 80),
+                'high_dr': ('Max S/N?', 80),
             }
 
         self.listControl = ttk.Treeview(list_frame, columns=columns, show='headings', selectmode='extended')
@@ -4098,12 +3850,12 @@ class SteppedWindow(tk.Toplevel):
         """Add a step to the list display."""
         freq1 = "%.6f" % (step.freq1 * fS / 2**32 / 1e6)
         freq2 = "%.6f" % (step.freq2 * fS / 2**32 / 1e6)
-        max_snr = "Yes" if step.max_snr else "No"
+        high_dr = "Yes" if step.high_dr else "No"
 
         c1_str = self._dec2sexstr(step.c1, signed=False)
         c2_str = self._dec2sexstr(step.c2, signed=True)
 
-        values = (str(step_id), step.duration, c1_str, c2_str, freq1, freq2, max_snr)
+        values = (str(step_id), step.duration, c1_str, c2_str, freq1, freq2, high_dr)
         self.listControl.insert('', 'end', values=values)
 
     def onAddStep(self, event=None):
@@ -4146,8 +3898,8 @@ class SteppedWindow(tk.Toplevel):
                     if freq < 219130984 or freq > 1928352663:
                         raise ValueError(f"Frequency {new_value} MHz is out of tuning range")
                     step.freq2 = freq
-            elif col_idx == 6:  # Max S/N
-                step.max_snr = new_value.lower() in ('yes', 'true', '1')
+            elif col_idx == 6:  # High DR
+                step.high_dr = new_value.lower() in ('yes', 'true', '1')
 
             step.update()
             self.obs.update()
@@ -4367,10 +4119,6 @@ if __name__ == "__main__":
     )
     parser.add_argument('filename', type=str, nargs='?',
                         help='SDF file to open')
-    parser.add_argument('-s', '--lwasv', action='store_true',
-                        help='use LWA-SV instead of LWA1')
-    parser.add_argument('-n', '--lwana', action='store_true',
-                        help='use LWA-NA instead of LWA1')
     parser.add_argument('-d', '--drsu-size', type=float, default=10.0,
                         help='DRSU capacity in TB')
     args = parser.parse_args()

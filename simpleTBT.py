@@ -3,33 +3,29 @@
 import os
 import sys
 import math
-import pytz
 import time
 import argparse
 import subprocess
-from datetime import date, time, datetime, timedelta
+from datetime import date, time, datetime, timedelta, timezone
 
-from lsl.common.adp import fS
-from lsl.common import sdfADP as sdf
+from lsl.common.ndp import fS
+from lsl.common import sdf
 from lsl.common._sdf_utils import render_file_size as _render_file_size
 from lsl.misc import parser as aph
-
-
-_UTC = pytz.utc
 
 
 def load_preferences():
     """
     Load sessionGUI.py preferences for the observer info.
     """
-    
+
     preferences = {'ObserverID': 0,
                    'ObserverFirstName': 'Your',
                    'ObserverLastName': 'Name'}
     try:
         with open(os.path.join(os.path.expanduser('~'), '.sessionGUI')) as ph:
             pl = ph.readlines()
-            
+
         preferences = {}
         for line in pl:
             line = line.replace('\n', '')
@@ -41,7 +37,7 @@ def load_preferences():
             preferences[key] = value
     except:
         pass
-        
+
     return preferences
 
 
@@ -56,32 +52,30 @@ def main(args):
         us -= 1000000
         s += 1
     args.start_time = time(int(h,10), int(m,10), s, us)
-    tSDF = datetime.combine(args.start_date, args.start_time, tzinfo=_UTC)
-    
+    tSDF = datetime.combine(args.start_date, args.start_time, tzinfo=timezone.utc)
+
     # Convert the duration to a number of samples at fS
     samples = int(round(args.duration * fS))
-    print(samples)
-    
+
     # Load in the preferences
     prefs = load_preferences()
-    
+
     # Create the SDF
     ## Observer
     obs = sdf.Observer("%s %s" % (prefs['ObserverFirstName'], prefs['ObserverLastName']),
                        prefs['ObserverID'])
     ## Project
-    proj = sdf.Project(obs, "Simple TBF Run", args.project_code)
+    proj = sdf.Project(obs, "Simple TBT Run", args.project_code)
     if 'ProjectID' in prefs and 'ProjectName' in prefs:
         if args.project_code == prefs['ProjectID']:
             proj.name = prefs['ProjectName']
     ## Session
-    ses = sdf.Session("Simple TBF Run", args.session_id)
-    ses.drx_beam = 1
+    ses = sdf.Session("Simple TBT Run", args.session_id)
     ## Observation
-    tbf = sdf.TBF('TBF', 'TBF', tSDF, args.frequency1, args.frequency2, 7, samples)
-    ses.append(tbf)
+    tbt = sdf.TBT('TBT', 'TBT', tSDF, samples, 8)
+    ses.append(tbt)
     proj.append(ses)
-    
+
     # Validate and save
     try:
         filecontents = proj.render()
@@ -89,7 +83,7 @@ def main(args):
         print("ERROR: Invalid parameters:")
         proj.validate(verbose=True)
         sys.exit(1)
-        
+
     print('################################################################')
     print('# Be sure to fill in your observer and title information below #')
     print("# -> Estimated data volume is %-32s #" % _render_file_size(proj.sessions[0].observations[0].dataVolume))
@@ -99,7 +93,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description='script to build a simple TBF SDF',
+        description='script to build a simple TBT SDF',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
         )
     parser.add_argument('project_code', type=str,
@@ -110,10 +104,6 @@ if __name__ == "__main__":
                         help='observation UTC start date; YYYY/MM/DD)')
     parser.add_argument('start_time', type=aph.time,
                         help='observation UTC start time; HH:MM:SS[.sss]')
-    parser.add_argument('-1', '--frequency1', type=aph.frequency, default='38.1MHz',
-                        help='Tuning 1 center frequency')
-    parser.add_argument('-2', '--frequency2', type=aph.frequency, default='74.05MHz',
-                        help='Tuning 2 center frequency')
     parser.add_argument('-d', '--duration', type=aph.positive_float, default=0.25,
                         help='observation duration in seconds')
     args = parser.parse_args()
