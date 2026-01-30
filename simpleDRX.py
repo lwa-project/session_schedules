@@ -133,6 +133,7 @@ def main(args):
         ### Resolve the target to coordinates
         posn = astro.resolve_name(args.target)
         drx = sdf.DRX('DRX', args.target, tSDF, args.duration, posn.ra/15, posn.dec, args.frequency1, args.frequency2, 7, gain=args.gain)
+    drx.high_dr = args.high_dr
     ses.append(drx)
     proj.append(ses)
     
@@ -176,5 +177,7 @@ if __name__ == "__main__":
                         help='DRX gain')
     parser.add_argument('-d', '--duration', type=aph.positive_float, default=1800,
                         help='observation duration in seconds')
+    parser.add_argument('--high-dr', action='store_true',
+                        help='enable high dynamic range beam output')
     args = parser.parse_args()
     main(args)
