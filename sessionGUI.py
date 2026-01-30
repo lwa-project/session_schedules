@@ -1516,7 +1516,14 @@ class SDFCreator(tk.Tk):
 
     def onTimeseries(self, event=None):
         """Show session at a glance."""
-        SessionDisplay(self)
+        self.config(cursor="watch")
+        self.statusbar.config(text='Loading Session at a Glance...')
+        self.update()
+        try:
+            SessionDisplay(self)
+        finally:
+            self.config(cursor="")
+            self.statusbar.config(text='')
 
     def onAdvanced(self, event=None):
         """Open advanced settings."""
