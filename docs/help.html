@@ -4,7 +4,7 @@
 <a name="top"><h4>Table of Contents</h4></a>
 <ul>
 <li><a href="#intro">Introduction</a></li>
-<li><a href="#tbwtbn">Transient Buffer Modes</a></li>
+<li><a href="#tbttbs">Transient Buffer Modes</a></li>
 <li><a href="#drx">Beam Forming Mode</a></li>
 <li><a href="#data">Data and Reductions</a></li>
 <li><a href="#valid">SDF Validation</a></li>
@@ -32,25 +32,16 @@ Session GUI allows an observer to:
 </p>
 
 <p>
-<a name="tbwtbn">
+<a name="tbttbs">
 <h6>Transient Buffer Modes</h6>
-Sessions for the wide-band (TBW), frequency domain (TBF), and narrow-band (TBN) modes are supported.  
-The three modes, however, cannot be mixed within a single session.  In particular, TBF is only 
-available at LWA-SV and other ADP-based stations while TBW is only available at LWA1.<br /><br />
+Sessions for the wide-band triggered (TBT) and narrow-band streaming (TBS) modes are supported.  
 
-For TBW, both 4 and 12-bit data are supported.  The upper limit for the number of samples for 4-bit data is
-36 million, and the corresponding limit for 12-bit data is 12 million.  Due to the nature of TBW, observations 
-cannot be scheduled to fill a time range, e.g, capture consecutive sets of a given number of samples.  
-Rather, the individual captures need to be scheduled separately.  Session GUI keeps track of the combined integration
-and readout times to help avoid overlap in TBW captures.<br /><br />
+For TBS, dumps of up to three seconds (588 million samples) are supported.  This limit is set by the memory 
+available on the nodes that make up the DP system.<br /><br />
 
-For TBF, dumps of up to three seconds (588 million samples) are supported.  This limit is set by the memory 
-available on the nodes that make up the ADP system.<br /><br />
-
-For TBN, all tunings within the DP tuning range (10 to 88 MHz) as well as all 7 filters are supported. There 
-is no limit on the length of a TBN recording as long as the resulting data volume does not exceed the DRSU 
-capacity (data volume estimates can be found under the <a href="#data">data menu</a>). By default, the TBN gain setting is 
-determined by MCS but can be overridden in the <a href="#mcs">advanced settings menu</a>.
+For TBS, all tunings within the NDP tuning range (10 to 88 MHz) are supported with filter code 8. There 
+is no limit on the length of a TBS recording as long as the resulting data volume does not exceed the DRSU 
+capacity (data volume estimates can be found under the <a href="#data">data menu</a>).
 <br /><a href="#top">Top</a>
 </a>
 </p>
@@ -60,9 +51,8 @@ determined by MCS but can be overridden in the <a href="#mcs">advanced settings 
 <h6>Beam Forming Modes</h6>
 Beam forming modes tracking the sky, Sun, Jupiter, and some stepped observations are available.  For each 
 beam, both tunings are supported with the caveat that both tunings will use the same filter code and 
-gain settings.  Similar to TBN the default gain value can be changed if it has been specified under the 
-<a href="#mcs">advanced settings menu</a>.  It should also be noted that filter code 7 is not currently
-supported at LWA-SV and other ADP-based stations.
+gain settings. The default gain value can be changed if it has been specified under the 
+<a href="#mcs">advanced settings menu</a>.
 <br /><br />
 The supported stepped observation types are RA/Dec and Az/Alt with the beam forming coefficients calculated 
 by MCS.  Specifying the individual antenna gains and delays is currently not supported.
@@ -113,8 +103,8 @@ menu, the various MCS MIB report and update intervals can be tailored and the ob
 desired information (e.g. SSMIF file) to be included in the tar file that is created at the end of the 
 session.<br /><br />
 
-This window also contains the observation gain settings (TBN and DRX) and the TBW data bit-mode and sample
-number options.  Options are also available to change the setup of the ARX filters and gains.  These
+This window also contains the observation gain settings (DRX) and the TBT sample
+number option.  Options are also available to change the setup of the ARX filters and gains.  These
 options, however, cannot be finely tuned for a particular antenna and set all antennas to the same value.<br /><br />
 
 <i>Note:</i> Caution should be used when making changes in the Advanced MCS Settings menu as changes could 
