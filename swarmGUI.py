@@ -1680,11 +1680,25 @@ class IDFCreator(tk.Tk):
 
     def onTimeseries(self):
         """Open Run at a Glance dialog."""
-        RunDisplay(self)
+        self.config(cursor="watch")
+        self.statusbar.config(text='Loading Run at a Glance...')
+        self.update()
+        try:
+            RunDisplay(self)
+        finally:
+            self.config(cursor="")
+            self.statusbar.config(text='')
 
     def onUVCoverage(self):
         """Open UV Coverage dialog."""
-        RunUVCoverageDisplay(self)
+        self.config(cursor="watch")
+        self.statusbar.config(text='Loading UV Coverage...')
+        self.update()
+        try:
+            RunUVCoverageDisplay(self)
+        finally:
+            self.config(cursor="")
+            self.statusbar.config(text='')
 
     def onAdvanced(self):
         """Open advanced settings dialog."""
