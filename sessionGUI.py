@@ -945,6 +945,9 @@ class SDFCreator(tk.Tk):
         """
         Function to get the default value for the filter code.
         """
+        
+        if self.mode in ('TBT', 'TBS'):
+            return 8
         return 7
 
     def addColumns(self):
