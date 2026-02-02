@@ -52,8 +52,6 @@ class scripts_tests(unittest.TestCase):
         _SCRIPTS.sort()
         for script in _SCRIPTS:
             name = script.rsplit(os.path.sep)[-1]
-            if name in ('calibratorSearch.py', 'sessionGUI.py', 'swarmGUI.py', 'visualizeSessions.py'):
-                continue
             
             with self.subTest(script=name):
                 pylint_output = StringIO()
