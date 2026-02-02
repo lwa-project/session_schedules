@@ -29,9 +29,7 @@ __version__  = "0.2"
 __author__   = "Jayce Dowell"
 
 
-_PYLINT_IGNORES = [('no-member', "Module 'wx' has no"),
-                   ('no-member', "Module 'wx.html' has no"),
-                   ('no-member', "Instance of 'HDUList'"),
+_PYLINT_IGNORES = [('no-member', "Instance of 'HDUList'"),
                    ('no-member', "Module 'ephem' has no")]
 
 
