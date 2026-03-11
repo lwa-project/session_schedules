@@ -12,7 +12,7 @@ import webbrowser
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, font as tkfont
 from io import StringIO
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from xml.etree import ElementTree
 from html.parser import HTMLParser
 
@@ -1415,7 +1415,7 @@ class IDFCreator(tk.Tk):
 
     def _getCurrentDateString(self):
         """Get a datetime string, in UTC, for a new scan."""
-        tStop = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        tStop = datetime.now(tz=timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         if self.listControl.GetItemCount() > 0:
             _, tStop = idf.get_scan_start_stop(self.project.runs[0].scans[-1])
 

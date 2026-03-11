@@ -4,4 +4,4 @@ matplotlib
 scipy
 h5py
 lsl
-pytz
+backports.zoneinfo; python_version < '3.9'

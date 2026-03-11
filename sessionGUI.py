@@ -10,7 +10,7 @@ import argparse
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, font as tkfont
 from io import StringIO
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from xml.etree import ElementTree
 
 import conflict
@@ -931,7 +931,7 @@ class SDFCreator(tk.Tk):
         Function to get a datetime string, in UTC, for a new observation.
         """
 
-        tStop = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        tStop = datetime.now(tz=timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         if self.listControl.GetItemCount() > 0:
             if self.mode == 'DRX':
                 _, tStop = sdf.get_observation_start_stop(self.project.sessions[0].observations[-1])
