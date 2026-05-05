@@ -29,9 +29,7 @@ __version__  = "0.2"
 __author__   = "Jayce Dowell"
 
 
-_PYLINT_IGNORES = [('no-member', "Module 'wx' has no"),
-                   ('no-member', "Module 'wx.html' has no"),
-                   ('no-member', "Instance of 'HDUList'"),
+_PYLINT_IGNORES = [('no-member', "Instance of 'HDUList'"),
                    ('no-member', "Module 'ephem' has no")]
 
 
@@ -52,8 +50,6 @@ class scripts_tests(unittest.TestCase):
         _SCRIPTS.sort()
         for script in _SCRIPTS:
             name = script.rsplit(os.path.sep)[-1]
-            if name in ('calibratorSearch.py', 'sessionGUI.py', 'swarmGUI.py', 'visualizeSessions.py'):
-                continue
             
             with self.subTest(script=name):
                 pylint_output = StringIO()
