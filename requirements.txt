@@ -3,5 +3,5 @@ numpy
 matplotlib
 scipy
 h5py
-lsl
+lsl<4
 pytz
