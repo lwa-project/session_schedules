@@ -333,7 +333,7 @@ def main(args):
     print("Saving to: %s" % outputIDF)
     if not project.validate():
         # Make sure we are about to be valid
-        project.validate(verbose=True)
+        project.validate()
         raise RuntimeError("Cannot validate IDF file")
         
     with open(outputIDF, 'w') as fh:

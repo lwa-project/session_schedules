@@ -142,7 +142,7 @@ def main(args):
         filecontents = proj.render()
     except RuntimeError:
         print("ERROR: Invalid parameters:")
-        proj.validate(verbose=True)
+        proj.validate()
         sys.exit(1)
         
     print('################################################################')

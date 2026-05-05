@@ -1616,7 +1616,7 @@ class IDFCreator(tk.Tk):
         # we can mark bad scans with red highlighting
         for i, obs in enumerate(self.project.runs[0].scans):
             pid_print(f"Validating scan {i+1}")
-            valid = obs.validate(verbose=True)
+            valid = obs.validate()
 
             if not valid:
                 validObs = False
@@ -1633,7 +1633,7 @@ class IDFCreator(tk.Tk):
         old_stdout = sys.stdout
         sys.stdout = StringIO()
         try:
-            global_valid = self.project.validate(verbose=True)
+            global_valid = self.project.validate()
             full_msg = sys.stdout.getvalue()
             sys.stdout = old_stdout
 

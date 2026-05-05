@@ -1471,7 +1471,7 @@ class SDFCreator(tk.Tk):
         all_valid = True
         for i, obs in enumerate(self.project.sessions[0].observations):
             pid_print(f"Validating observation {i+1}")
-            valid = obs.validate(verbose=True)
+            valid = obs.validate()
             if not valid:
                 all_valid = False
                 # Mark invalid rows (could add tag support here)
@@ -1484,7 +1484,7 @@ class SDFCreator(tk.Tk):
 
         # Global validation
         sys.stdout = StringIO()
-        if self.project.validate(verbose=True):
+        if self.project.validate():
             full_msg = sys.stdout.getvalue()[:-1] if sys.stdout.getvalue() else ''
             sys.stdout.close()
             sys.stdout = sys.__stdout__
