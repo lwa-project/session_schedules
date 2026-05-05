@@ -26,6 +26,7 @@ from lsl.astro import deg_to_dms, deg_to_hms, MJD_OFFSET, DJD_OFFSET
 from lsl.reader.drx import FILTER_CODES as DRXFilters
 from lsl.correlator import uvutils
 from lsl.misc import parser as aph
+from lsl.logger_gui import LoggerGUI
 
 import matplotlib
 matplotlib.use('TkAgg')
@@ -1644,7 +1645,7 @@ class IDFCreator(tk.Tk):
                                        'Congratulations, you have a valid set of scans.')
                 return True
             else:
-                self.statusbar.config(text='Validation failed - see console for details')
+                self.statusbar.config(text='Validation failed - see logger window for details')
                 # Print errors to console
                 for line in full_msg.split('\n'):
                     if 'Error' in line or 'error' in line:
@@ -3622,7 +3623,7 @@ class HelpWindow(tk.Toplevel):
             self.text.see(self.anchors[anchor_name])
 
 
-# Main entry point
+if __name__ == '__main__':
 def main():
     parser = argparse.ArgumentParser(
         description='Create and edit interferometer definition files (IDF) for the LWA Swarm',
@@ -3635,12 +3636,7 @@ def main():
     args = parser.parse_args()
 
     app = IDFCreator(args)
-
     if args.filename:
         app.parseFile(args.filename)
-
+    lgw = LoggerGUI()
     app.mainloop()
-
-
-if __name__ == '__main__':
-    main()

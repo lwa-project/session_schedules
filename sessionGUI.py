@@ -23,6 +23,7 @@ from lsl.astro import deg_to_dms, deg_to_hms, MJD_OFFSET, DJD_OFFSET
 from lsl.reader.drx import FILTER_CODES as DRXFilters
 from lsl.common import sdf
 from lsl.misc import parser as aph
+from lsl.logger_gui import LoggerGUI
 
 import matplotlib
 matplotlib.use('TkAgg')
@@ -1502,12 +1503,12 @@ class SDFCreator(tk.Tk):
                 if 'Error' in line:
                     pid_print(line)
 
-            self.statusbar.config(text='Validation failed - see console for details')
+            self.statusbar.config(text='Validation failed - see logger window for details')
             if confirmValid:
                 if all_valid:
-                    messagebox.showwarning('Validation', 'All observations are valid, but there are errors in the session setup. See the console for details.')
+                    messagebox.showwarning('Validation', 'All observations are valid, but there are errors in the session setup. See the logger window for details.')
                 else:
-                    messagebox.showerror('Validation', 'Validation failed. See the console for details.')
+                    messagebox.showerror('Validation', 'Validation failed. See the logger window for details.')
             return False
 
     def onResolve(self, event=None):
@@ -4134,4 +4135,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     app = SDFCreator(args)
+    lgw = LoggerGUI()
     app.mainloop()
