@@ -3,5 +3,5 @@ numpy
 matplotlib
 scipy
 h5py
-lsl < 4
-pytz
+lsl >= 4
+backports.zoneinfo; python_version < '3.9'

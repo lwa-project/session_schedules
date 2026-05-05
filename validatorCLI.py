@@ -9,34 +9,20 @@ import os
 import re
 import sys
 import math
-import pytz
 import ephem
 import argparse
 import tempfile
 import subprocess
 
-from lsl.common import sdf, sdfADP, sdfNDP
+from lsl.common import sdf
 from lsl.common.stations import lwa1
 from lsl.astro import utcjd_to_unix, MJD_OFFSET
 
 
-_tpss_base = os.path.join(os.path.dirname(__file__), 'tpss')
+_tpss = os.path.join(os.path.dirname(__file__), 'tpss')
 
 
 def main(args):
-    # Set the TPSS and SDF versions to use
-    _tpss = f"{_tpss_base}-lwa1"
-    _sdf = sdf
-    if args.lwasv:
-        _tpss = f"{_tpss_base}-lwasv"
-        _sdf = sdfADP
-    elif args.lwana:
-        _tpss = '%s-lwana' % _tpss_base
-        _sdf = sdfNDP
-    else:
-        _tpss = '%s-lwa1' % _tpss_base
-        _sdf = sdf
-        
     # Read the contents of the temporary SD file into a list so that we can examine
     # the file independently of the parser
     with open(args.filename, 'r') as fh:
@@ -115,7 +101,7 @@ def main(args):
             errors.append( {'line': lineNumbers[-2], 'message': message} )
             
     # Parse the file into a sdf.Project instance
-    project = _sdf.parse_sdf(args.filename)
+    project = sdf.parse_sdf(args.filename)
     
     # Deal with a potentiall un-runnable TPSS
     if tpssVersion == 'TPSS not used':
@@ -142,13 +128,13 @@ def main(args):
     print("TPSS version used for validation: %s" % tpss['version'])
     print(" ")
     
-    if project.sessions[0].observations[0].mode not in ('TBW', 'TBN'):
+    if project.sessions[0].observations[0].mode not in ('TBT', 'TBS'):
         print("Source List:")
         for obs in project.sessions[0].observations:
             if obs.mode == 'TRK_RADEC':
-                print("%s at RA: %.3f hours, Dec.: %+.3f degrees is visible for %i%% of the observation" % (obs.target, obs.ra, obs.dec, obs.target_visibility * 100))
+                print("%s at RA: %.3f hours, Dec.: %+.3f degrees is visible for %i%% of the observation" % (obs.target, obs.ra, obs.dec, obs.computeVisibility() * 100))
             if obs.mode == 'TRK_SOL':
-                print("Sun is visible for %i%% of the observation" % (obs.compute_visibility() * 100,))
+                print("Sun is visible for %i%% of the observation" % (obs.computeVisibility() * 100,))
             if obs.mode == 'TRK_JOV':
                 print("Jupiter is visible for %i%% of the observation" % (obs.computeVisibility() * 100,))
             if obs.mode == 'STEPPED':
@@ -158,7 +144,7 @@ def main(args):
                         print("  RA: %.3f hours, Dec.: %+.3f degrees" % (step.c1, step.c2))
                     else:
                         print(" azimuth: %.3f degrees, elevation: %.3f degrees" % (step.c1, step.c2))
-                print("Combined visibility for all steps is %i%%." % (obs.target_visibility * 100,))
+                print("Combined visibility for all steps is %i%%." % (obs.computeVisibility() * 100,))
         print(" ")
         
     print("Validator Output:")
@@ -168,16 +154,11 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description='off-line version of the LWA session definition file validator', 
+        description='off-line version of the LWA session definition file validator',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         )
-    parser.add_argument('filename', type=str, 
+    parser.add_argument('filename', type=str,
                         help='SDF file to validate')
-    sgroup = parser.add_mutually_exclusive_group(required=False)
-    sgroup.add_argument('-s', '--lwasv', action='store_true', 
-                        help='validate for LWA-SV instead of LWA1')
-    sgroup.add_argument('-n', '--lwana', action='store_true', 
-                        help='validate for LWA-NA instead of LWA1')
     args = parser.parse_args()
     main(args)
     

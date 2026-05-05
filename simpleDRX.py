@@ -3,19 +3,15 @@
 import os
 import sys
 import math
-import pytz
 import time
 import argparse
 import subprocess
-from datetime import date, time, datetime, timedelta
+from datetime import date, time, datetime, timedelta, timezone
 
 from lsl import astro
-from lsl.common import sdfADP as sdf
+from lsl.common import sdf
 from lsl.common._sdf_utils import render_file_size as _render_file_size
 from lsl.misc import parser as aph
-
-
-_UTC = pytz.utc
 
 
 def ra_conv(text):
@@ -101,7 +97,7 @@ def main(args):
         us -= 1000000
         s += 1
     args.start_time = time(int(h,10), int(m,10), s, us)
-    tSDF = datetime.combine(args.start_date, args.start_time, tzinfo=_UTC)
+    tSDF = datetime.combine(args.start_date, args.start_time, tzinfo=timezone.utc)
     
     # Load in the preferences
     prefs = load_preferences()
@@ -137,6 +133,7 @@ def main(args):
         ### Resolve the target to coordinates
         posn = astro.resolve_name(args.target)
         drx = sdf.DRX('DRX', args.target, tSDF, args.duration, posn.ra/15, posn.dec, args.frequency1, args.frequency2, 7, gain=args.gain)
+    drx.high_dr = args.high_dr
     ses.append(drx)
     proj.append(ses)
     
@@ -145,7 +142,7 @@ def main(args):
         filecontents = proj.render()
     except RuntimeError:
         print("ERROR: Invalid parameters:")
-        proj.validate(verbose=True)
+        proj.validate()
         sys.exit(1)
         
     print('################################################################')
@@ -180,5 +177,7 @@ if __name__ == "__main__":
                         help='DRX gain')
     parser.add_argument('-d', '--duration', type=aph.positive_float, default=1800,
                         help='observation duration in seconds')
+    parser.add_argument('--high-dr', action='store_true',
+                        help='enable high dynamic range beam output')
     args = parser.parse_args()
     main(args)

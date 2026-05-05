@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 
 """
-Simple script for estimating the data volume for a TBN or DRX observation.
+Simple script for estimating the data volume for a TBS or DRX observation.
 
 Usage:
 estimateData.py <mode> <filter code>  HH:MM:SS.SSS
 
 .. note::
     For spectrometer data, the mode is given by SPC,<tlen>,<icount> where
-    'tlen' is the transform length (channel count) and 'icount' is the 
+    'tlen' is the transform length (channel count) and 'icount' is the
     number of transforms per integration.
 """
 
@@ -16,8 +16,7 @@ import os
 import sys
 import argparse
 
-from lsl.reader.tbn import FRAME_SIZE as tbnFRAME_SIZE
-from lsl.reader.tbn import FILTER_CODES as tbn_filters
+from lsl.common.ndp import fS
 from lsl.reader.drx import FRAME_SIZE as drxFRAME_SIZE
 from lsl.reader.drx import FILTER_CODES as drx_filters
 from lsl.misc import parser as aph
@@ -46,10 +45,10 @@ def main(args):
     duration = hour*3600 + minute*60 + second
 
     # Figure out the data rate
-    if mode == 'TBN':
-        antpols = 520
-        sample_rate = tbn_filters[filterCode]
-        dataRate = 1.0*sample_rate/512*tbnFRAME_SIZE*antpols
+    if mode == 'TBS':
+        antpols = 512
+        sample_rate = fS / 8192
+        dataRate = 1.0*sample_rate*8*antpols*1
     elif mode == 'DRX':
         tunepols = 4
         sample_rate = drx_filters[filterCode]
@@ -88,7 +87,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description='estimate the data volume for a TBN or DRX observation', 
+        description='estimate the data volume for a TBS or DRX observation', 
         epilog="NOTE:  For spectrometer data, the mode is given by SPC,<tlen>,<icount> where 'tlen' is the transform length (channel count) and 'icount' is the number of transforms per integration.", 
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
         )
