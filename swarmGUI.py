@@ -11,7 +11,6 @@ import argparse
 import webbrowser
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, font as tkfont
-from io import StringIO
 from datetime import datetime, timedelta, timezone
 from xml.etree import ElementTree
 from html.parser import HTMLParser
@@ -26,6 +25,7 @@ from lsl.astro import deg_to_dms, deg_to_hms, MJD_OFFSET, DJD_OFFSET
 from lsl.reader.drx import FILTER_CODES as DRXFilters
 from lsl.correlator import uvutils
 from lsl.misc import parser as aph
+from lsl.logger import LSL_LOGGER
 from lsl.logger_gui import LoggerGUI
 
 import matplotlib
@@ -40,10 +40,6 @@ from calibratorSearch import CalibratorSearch as OCS
 
 __version__ = "0.2"
 __author__ = "Jayce Dowell"
-
-
-def pid_print(*args, **kwds):
-    print(f"[{os.getpid()}]", *args, **kwds)
 
 
 def dec2sexstr(value, signed=True):
@@ -1616,7 +1612,7 @@ class IDFCreator(tk.Tk):
         # Loop through the scans and validate one-at-a-time so that
         # we can mark bad scans with red highlighting
         for i, obs in enumerate(self.project.runs[0].scans):
-            pid_print(f"Validating scan {i+1}")
+            LSL_LOGGER.info(f"Validating scan {i+1}")
             valid = obs.validate()
 
             if not valid:
@@ -1631,31 +1627,21 @@ class IDFCreator(tk.Tk):
         self.update()
 
         # Do a global validation
-        old_stdout = sys.stdout
-        sys.stdout = StringIO()
         try:
             global_valid = self.project.validate()
-            full_msg = sys.stdout.getvalue()
-            sys.stdout = old_stdout
-
             if global_valid and validObs:
                 self.statusbar.config(text='Validation complete - all valid')
                 if confirmValid:
                     messagebox.showinfo('Validator Results',
-                                       'Congratulations, you have a valid set of scans.')
+                                        'Congratulations, you have a valid set of scans.')
                 return True
             else:
                 self.statusbar.config(text='Validation failed - see logger window for details')
-                # Print errors to console
-                for line in full_msg.split('\n'):
-                    if 'Error' in line or 'error' in line:
-                        pid_print(line)
                 if confirmValid:
                     messagebox.showerror('Validation Error',
-                                        full_msg if full_msg else 'Validation failed.')
+                                         'Validation failed - see logger window for details)
                 return False
         except Exception as e:
-            sys.stdout = old_stdout
             self.statusbar.config(text='Validation error')
             self.displayError(e, title='Validation Error')
             return False
@@ -1771,7 +1757,7 @@ Based on lsl version {lsl.version.version}"""
             self.project = idf.parse_idf(filename)
             self.filename = filename
 
-            pid_print(f"Parsing file '{filename}'")
+            LSL_LOGGER.info(f"Parsing file '{filename}'")
 
             # Populate the list
             for i, scan in enumerate(self.project.runs[0].scans):

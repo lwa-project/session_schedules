@@ -9,7 +9,6 @@ import ephem
 import argparse
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, font as tkfont
-from io import StringIO
 from datetime import datetime, timedelta, timezone
 from xml.etree import ElementTree
 
@@ -23,6 +22,7 @@ from lsl.astro import deg_to_dms, deg_to_hms, MJD_OFFSET, DJD_OFFSET
 from lsl.reader.drx import FILTER_CODES as DRXFilters
 from lsl.common import sdf
 from lsl.misc import parser as aph
+from lsl.logger import LSL_LOGGER
 from lsl.logger_gui import LoggerGUI
 
 import matplotlib
@@ -35,10 +35,6 @@ from matplotlib.ticker import NullFormatter, NullLocator
 
 __version__ = "0.6"
 __author__ = "Jayce Dowell"
-
-
-def pid_print(*args, **kwds):
-    print(f"[{os.getpid()}]", *args, **kwds)
 
 
 class ObservationListCtrl(ttk.Treeview):
@@ -1471,7 +1467,7 @@ class SDFCreator(tk.Tk):
         # Loop through observations and validate
         all_valid = True
         for i, obs in enumerate(self.project.sessions[0].observations):
-            pid_print(f"Validating observation {i+1}")
+            LSL_LOGGER.info(f"Validating observation {i+1}")
             valid = obs.validate()
             if not valid:
                 all_valid = False
@@ -1484,25 +1480,12 @@ class SDFCreator(tk.Tk):
         self.listControl.tag_configure('invalid', foreground='red')
 
         # Global validation
-        sys.stdout = StringIO()
         if self.project.validate():
-            full_msg = sys.stdout.getvalue()[:-1] if sys.stdout.getvalue() else ''
-            sys.stdout.close()
-            sys.stdout = sys.__stdout__
             self.statusbar.config(text='Validation complete - all valid')
             if confirmValid:
                 messagebox.showinfo('Validation', 'Congratulations, you have a valid set of observations.')
             return True
         else:
-            full_msg = sys.stdout.getvalue()[:-1] if sys.stdout.getvalue() else ''
-            sys.stdout.close()
-            sys.stdout = sys.__stdout__
-
-            # Print errors
-            for line in full_msg.split('\n'):
-                if 'Error' in line:
-                    pid_print(line)
-
             self.statusbar.config(text='Validation failed - see logger window for details')
             if confirmValid:
                 if all_valid:
@@ -1684,7 +1667,7 @@ Website: http://lwa.unm.edu"""
         self.listControl.setCheckDependant()
         self.initSDF()
 
-        pid_print(f"Parsing file '{filename}'")
+        LSL_LOGGER.info(f"Parsing file '{filename}'")
         try:
             self.project = sdf.parse_sdf(filename)
         except Exception as e:
@@ -1746,11 +1729,11 @@ Website: http://lwa.unm.edu"""
             title = 'An Error has Occurred'
 
         if details is None:
-            pid_print(f"Error: {str(error)}")
+            LSL_LOGGER.error(f"Error: {str(error)}")
             self.statusbar.config(text=f"Error: {str(error)}")
             messagebox.showerror(title, str(error))
         else:
-            pid_print(f"Error: {str(details)}")
+            LSL_LOGGER.error(f"Error: {str(details)}")
             self.statusbar.config(text=f"Error: {str(details)}")
             messagebox.showerror(title, f"{str(error)}\n\nDetails:\n{str(details)}")
 
