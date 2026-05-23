@@ -1639,7 +1639,7 @@ class IDFCreator(tk.Tk):
                 self.statusbar.config(text='Validation failed - see logger window for details')
                 if confirmValid:
                     messagebox.showerror('Validation Error',
-                                         'Validation failed - see logger window for details)
+                                         'Validation failed - see logger window for details')
                 return False
         except Exception as e:
             self.statusbar.config(text='Validation error')
@@ -3610,7 +3610,6 @@ class HelpWindow(tk.Toplevel):
 
 
 if __name__ == '__main__':
-def main():
     parser = argparse.ArgumentParser(
         description='Create and edit interferometer definition files (IDF) for the LWA Swarm',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
